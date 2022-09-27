@@ -171,6 +171,19 @@ async def get_account_balance():
 
 ### Tutorial: Querying State of an Account (Current & Historical)
 
+```python
+async def get_account_state():
+	account_identifier = 'TA4RYHMNHCFRCT2PCWOCJMWVAQ3ZCJDOTF2SGBI'  # Address or public key
+
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/accounts/{account_identifier}') as response:
+			# wait for the (JSON) response
+			return await response.json()
+```
+
+TODO: @jaguar, what else should go here, do we want to do anything re historical?
+
 ### Tutorial: Adding or Modifying (Account) Metadata
 
 Account can have assigned metadata. Metadata is assigned to address and either can be assigned via _own_ account or via some other account.
@@ -876,7 +889,10 @@ Revoke allows the creator of a mosaic to recall the supply from holders **at any
 
 ### Tutorial: Creating a Mosaic
 
-TODO: Should this be an aggregate that contains definition + supply + namespace + alias?
+Creating mosaic is either 2 or 3 step process:
+ 1. create mosaic definition
+ 2. create mosaic supply - which actually mints units
+ 3. (optional) create and link namespace id to mosaic
 
 ```python
 async def create_mosaic_definition_transaction(facade, signer_key_pair):
@@ -995,6 +1011,9 @@ async def create_mosaic_supply_transaction(facade, signer_key_pair):
 ```
 
 Corresponding transaction: [6115…142E](https://testnet.symbol.fyi/transactions/6115527581BC9874B51967EB8E5574D2B6CEA82463A7892190555E215910142E)
+
+TODO: should there be namespace link here as well?
+
 
 ### Tutorial: Working with Rules (restrictions?)
 
@@ -1385,6 +1404,11 @@ Corresponding transaction:
 [F6D1…BC55](https://testnet.symbol.fyi/transactions/F6D1E60A7FC47B88D16D3B8358D79EAE5EAAB328F4D988DE45669BD013C8BC55)
 
 ### Tutorial: Querying State of a Mosaic (Current, Historical, Namespace)
+
+Query mosaic state:
+```sh
+curl https://${SYMBOL_API_NODE}:3001/mosaics/1788BA84888894EB
+```
 
 ## Transactions
 
