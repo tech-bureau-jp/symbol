@@ -93,6 +93,8 @@ private key: 984D4E4EC6AB5C772876135D88DF40F13B7B5880324A6D7F19E16DB292F8C443
 
 ### Tutorial: Querying the Balance of an Account
 
+Account state can be easily queried using `/accounts/<account-id>` identifier.
+
 **Query by address:**
 ```sh
 curl https://${SYMBOL_API_NODE}:3001/accounts/TA4RYHMNHCFRCT2PCWOCJMWVAQ3ZCJDOTF2SGBI
@@ -102,6 +104,70 @@ curl https://${SYMBOL_API_NODE}:3001/accounts/TA4RYHMNHCFRCT2PCWOCJMWVAQ3ZCJDOTF
 ```sh
 curl https://${SYMBOL_API_NODE}:3001/accounts/23AC0770A1060241604A8E60A47166E3E5B4034D4EE321DBE19B342E85B21544
 ```
+
+Getting actual balance in a generic fashion is a bit more complicated.
+
+First network currency id needs to be retrieved.
+```python
+async def get_network_currency():
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/network/properties') as response:
+			# wait for the (JSON) response
+			properties = await response.json()
+
+			# exctract currency mosaic id
+			mosaic_id = int(properties['chain']['currencyMosaicId'].replace('\'', ''), 0)
+			print(f'currency mosaic id: {mosaic_id}')
+			return mosaic_id
+```
+
+Next to get currency mosaic divisibility, mosaic properties needs to be retrieved.
+```python
+async def get_mosaic_properties(mosaic_id):
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/mosaics/{mosaic_id}') as response:
+			# wait for the (JSON) response
+			return await response.json()
+```
+
+Finally account state can be queried and all pieces can glued together. `account.mosaics` needs to be searched for currency. Additionally amount is formatted using obtained mosaic divisibility.
+
+```python
+async def get_account_state():
+	account_identifier = 'TA4RYHMNHCFRCT2PCWOCJMWVAQ3ZCJDOTF2SGBI'  # Address or public key
+
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/accounts/{account_identifier}') as response:
+			# wait for the (JSON) response
+			return await response.json()
+```
+```python
+async def get_account_balance():
+	network_currency_id = await get_network_currency()
+	network_currency_id_formatted = f'{network_currency_id:08X}'
+
+	currency_mosaic = await get_mosaic_properties(network_currency_id_formatted)
+	divisibility = currency_mosaic['mosaic']['divisibility']
+
+	account_state = await get_account_state()
+
+	account_currency = next(mosaic for mosaic in account_state['account']['mosaics'] if network_currency_id == int(mosaic['id'], 16))
+	amount = int(account_currency['amount'])
+	account_balance = {
+		'balance': {
+			'id': account_currency['id'],
+			'amount': amount,
+			'formatted_amount': f'{amount // 10**divisibility}.{(amount % 10**divisibility):0{divisibility}}'
+		}
+	}
+
+	print(account_balance)
+	return account_balance
+```
+
 
 ### Tutorial: Querying State of an Account (Current & Historical)
 
