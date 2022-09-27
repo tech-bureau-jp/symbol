@@ -1,3 +1,4 @@
+import os
 import re
 from enum import Enum
 
@@ -74,7 +75,7 @@ def process(parsed_code, infile, outfile):
 			command = match.group('command')
 			name = match.group('name')
 			if '!inline' == command:
-				with open(f'{name}.md', 'r', encoding='utf8') as inlined_file:
+				with open(f'docs/{name}.md', 'r', encoding='utf8') as inlined_file:
 					process(parsed_code, inlined_file, outfile)
 			elif '!example' == command:
 				insert_fenced_example(outfile, parsed_code[name])
@@ -83,11 +84,14 @@ def process(parsed_code, infile, outfile):
 
 
 def main():
-	with open('../sdk/python/examples/docs/__main__.py', 'r', encoding='utf8') as infile:
+	root_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+	os.chdir(root_dir)
+
+	with open(f'sdk/python/examples/docs/__main__.py', 'r', encoding='utf8') as infile:
 		parsed_code = parse_code(infile)
 
-	with open('big.md', 'r', encoding='utf8') as infile:
-		with open('index.md', 'w', encoding='utf8') as outfile:
+	with open('docs/big.md', 'r', encoding='utf8') as infile:
+		with open('docs/index.md', 'w', encoding='utf8') as outfile:
 			process(parsed_code, infile, outfile)
 
 
