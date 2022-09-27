@@ -11,7 +11,7 @@ from aiohttp import ClientSession
 from symbolchain.Bip32 import Bip32
 from symbolchain.CryptoTypes import Hash256, PrivateKey
 from symbolchain.facade.SymbolFacade import SymbolFacade
-from symbolchain.sc import Amount, Cosignature, PublicKey, Signature
+from symbolchain.sc import Amount
 from symbolchain.symbol.IdGenerator import generate_mosaic_alias_id, generate_mosaic_id, generate_namespace_id
 from symbolchain.symbol.Metadata import metadata_update_value
 from symbolchain.symbol.Network import NetworkTimestamp  # TODO_: should we link this to Facade or Network to avoid direct import?
@@ -47,10 +47,7 @@ SYMBOL_EXPLORER_TRANSACTION_URL_PATTERN = 'https://testnet.symbol.fyi/transactio
 	{% if cosignatory_key_pairs -%}
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in {{ cosignatory_key_pairs }}:
-		cosignature = Cosignature()
-		cosignature.version = 0
-		cosignature.signer_public_key = PublicKey(cosignatory_key_pair.public_key.bytes)
-		cosignature.signature = Signature(cosignatory_key_pair.sign(transaction_hash.bytes).bytes)
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
 		transaction.cosignatures.append(cosignature)
 
 	{% endif -%}

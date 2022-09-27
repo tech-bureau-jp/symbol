@@ -11,7 +11,7 @@ from aiohttp import ClientSession
 from symbolchain.Bip32 import Bip32
 from symbolchain.CryptoTypes import Hash256, PrivateKey
 from symbolchain.facade.SymbolFacade import SymbolFacade
-from symbolchain.sc import Amount, Cosignature, PublicKey, Signature
+from symbolchain.sc import Amount
 from symbolchain.symbol.IdGenerator import generate_mosaic_alias_id, generate_mosaic_id, generate_namespace_id
 from symbolchain.symbol.Metadata import metadata_update_value
 from symbolchain.symbol.Network import NetworkTimestamp  # TODO_: should we link this to Facade or Network to avoid direct import?
@@ -191,65 +191,6 @@ async def get_network_finalized_height():
 			height = int(response_json['latestFinalizedBlock']['height'])
 			print(f'finalized height: {height}')
 			return height
-
-# endregion
-
-
-# region account property accessors
-
-async def get_network_currency():
-	async with ClientSession(raise_for_status=True) as session:
-		# initiate a HTTP GET request to a Symbol REST endpoint
-		async with session.get(f'{SYMBOL_API_ENDPOINT}/network/properties') as response:
-			# wait for the (JSON) response
-			properties = await response.json()
-
-			# exctract currency mosaic id
-			mosaic_id = int(properties['chain']['currencyMosaicId'].replace('\'', ''), 0)
-			print(f'currency mosaic id: {mosaic_id}')
-			return mosaic_id
-
-
-async def get_mosaic_properties(mosaic_id):
-	async with ClientSession(raise_for_status=True) as session:
-		# initiate a HTTP GET request to a Symbol REST endpoint
-		async with session.get(f'{SYMBOL_API_ENDPOINT}/mosaics/{mosaic_id}') as response:
-			# wait for the (JSON) response
-			return await response.json()
-
-
-async def get_account_state():
-	account_identifier = 'TA4RYHMNHCFRCT2PCWOCJMWVAQ3ZCJDOTF2SGBI'  # Address or public key
-
-	async with ClientSession(raise_for_status=True) as session:
-		# initiate a HTTP GET request to a Symbol REST endpoint
-		async with session.get(f'{SYMBOL_API_ENDPOINT}/accounts/{account_identifier}') as response:
-			# wait for the (JSON) response
-			return await response.json()
-
-
-async def get_account_balance():
-	network_currency_id = await get_network_currency()
-	network_currency_id_formatted = f'{network_currency_id:08X}'
-
-	currency_mosaic = await get_mosaic_properties(network_currency_id_formatted)
-	divisibility = currency_mosaic['mosaic']['divisibility']
-
-	account_state = await get_account_state()
-
-	account_currency = next(mosaic for mosaic in account_state['account']['mosaics'] if network_currency_id == int(mosaic['id'], 16))
-	amount = int(account_currency['amount'])
-	account_balance = {
-		'balance': {
-			'id': account_currency['id'],
-			'amount': amount,
-			'formatted_amount': f'{amount // 10**divisibility}.{(amount % 10**divisibility):0{divisibility}}'
-		}
-	}
-
-	print(account_balance)
-	return account_balance
-
 
 # endregion
 
@@ -438,10 +379,7 @@ async def create_multisig_account_modification_transaction_new_account(facade, s
 
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in cosignatory_key_pairs:
-		cosignature = Cosignature()
-		cosignature.version = 0
-		cosignature.signer_public_key = PublicKey(cosignatory_key_pair.public_key.bytes)
-		cosignature.signature = Signature(cosignatory_key_pair.sign(transaction_hash.bytes).bytes)
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
 		transaction.cosignatures.append(cosignature)
 
 	# finally, construct the over wire payload
@@ -524,10 +462,7 @@ async def create_multisig_account_modification_transaction_modify_account(facade
 
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in [cosignatory_key_pairs[2], cosignatory_key_pairs[3]]:
-		cosignature = Cosignature()
-		cosignature.version = 0
-		cosignature.signer_public_key = PublicKey(cosignatory_key_pair.public_key.bytes)
-		cosignature.signature = Signature(cosignatory_key_pair.sign(transaction_hash.bytes).bytes)
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
 		transaction.cosignatures.append(cosignature)
 
 	# finally, construct the over wire payload
@@ -1212,10 +1147,7 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in [partner_key_pair]:
-		cosignature = Cosignature()
-		cosignature.version = 0
-		cosignature.signer_public_key = PublicKey(cosignatory_key_pair.public_key.bytes)
-		cosignature.signature = Signature(cosignatory_key_pair.sign(transaction_hash.bytes).bytes)
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
 		transaction.cosignatures.append(cosignature)
 
 	# finally, construct the over wire payload
@@ -1278,13 +1210,6 @@ async def run_network_query_examples():
 		print_banner(func.__qualname__)
 		await func()
 
-async def run_account_query_examples():
-	functions = [
-		get_account_balance
-	]
-	for func in functions:
-		print_banner(func.__qualname__)
-		await func()
 
 async def run_transaction_creation_examples(facade):
 	print_banner('CREATING SIGNER ACCOUNT FOR TRANSACTION CREATION EXAMPLES')
@@ -1322,10 +1247,9 @@ async def run_transaction_creation_examples(facade):
 async def main():
 	facade = SymbolFacade('testnet')
 
-	# run_offline_account_creation_examples(facade)
-	#await run_network_query_examples()
-	await run_account_query_examples()
-	#await run_transaction_creation_examples(facade)
+	run_offline_account_creation_examples(facade)
+	await run_network_query_examples()
+	await run_transaction_creation_examples(facade)
 
 	print_banner('FIN')
 
