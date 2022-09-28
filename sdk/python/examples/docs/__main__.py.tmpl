@@ -5,6 +5,7 @@ import asyncio
 import json
 import shutil
 import time
+from binascii import unhexlify
 
 from aiohttp import ClientSession
 
@@ -315,8 +316,12 @@ async def create_account_metadata_transaction_new(facade, signer_key_pair):  # p
 			'type': 'account_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
+			# the key consists of a tuple (signer, target_address, scoped_metadata_key)
+			#  - if signer is different than target address, the target account will need to cosign the transaction
+			#  - scoped_metadata_key can be any 64-bit value picked by metadata creator
 			'target_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'scoped_metadata_key': 0x72657474697774,  # this can be any value picked by creator
+			'scoped_metadata_key': 0x72657474697774,
+
 			'value_size_delta': len(value),  # when creating _new_ value this needs to be equal to value size
 			'value': value
 		})
@@ -348,8 +353,11 @@ async def create_account_metadata_transaction_modify(facade, signer_key_pair):  
 			'type': 'account_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
+			# the key consists of a tuple (signer, target_address, scoped_metadata_key),
+			# when updating all values must match previously used values
 			'target_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'scoped_metadata_key': 0x72657474697774,  # when updating existing value, both target_address and key must match previously set
+			'scoped_metadata_key': 0x72657474697774,
+
 			'value_size_delta': len(new_value) - len(old_value),  # change in size, negative because the value will be shrunk
 			'value': update_value
 		})
@@ -510,12 +518,14 @@ async def create_namespace_metadata_transaction_new(facade, signer_key_pair):  #
 			'type': 'namespace_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
-			'target_namespace_id': generate_namespace_id('killed', generate_namespace_id(root_namespace_name)),
-
-			# the key consists of pair (target_address, scoped_metadata_key), if target address
-			# is not signer, the account will need to cosign this transaction
+			# the key consists of a tuple (signer, target_address, target_namespace_id, scoped_metadata_key)
+			#  - if signer is different than target address, the target account will need to cosign the transaction
+			#  - target address must be namespace owner
+			#  - namespace with target_namespace_id must exist
+			#  - scoped_metadata_key can be any 64-bit value picked by metadata creator
 			'target_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'scoped_metadata_key': 0x656d616e,
+			'target_namespace_id': generate_namespace_id('killed', generate_namespace_id(root_namespace_name)),
+			'scoped_metadata_key': int.from_bytes(b'name', byteorder='little'),
 
 			'value_size_delta': len(value),
 			'value': value
@@ -548,13 +558,11 @@ async def create_namespace_metadata_transaction_modify(facade, signer_key_pair):
 			'type': 'namespace_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
-			'target_namespace_id': generate_namespace_id('killed', generate_namespace_id(root_namespace_name)),
-
-			# to update existing metadata, key which consists of pair (target_address, scoped_metadata_key),
-			# needs to match previously set key
-			# if target address is not signer, the update will require cosignature
+			# the key consists of a tuple (signer, target_address, target_namespace_id, scoped_metadata_key)
+			# when updating all values must match previously used values
 			'target_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'scoped_metadata_key': 0x656d616e,
+			'target_namespace_id': generate_namespace_id('killed', generate_namespace_id(root_namespace_name)),
+			'scoped_metadata_key': int.from_bytes(b'name', byteorder='little'),
 
 			'value_size_delta': len(new_value) - len(old_value),
 			'value': update_value
@@ -622,6 +630,56 @@ async def create_mosaic_supply_transaction(facade, signer_key_pair):
 	})
 
 	{{ create_transaction_footer('mosaic supply') }}
+
+async def create_mosaic_atomic_swap(facade, signer_key_pair):
+	{{ create_transaction_header() }}
+
+	# create a second signing key pair that will be used as the swap partner
+	partner_key_pair = await create_account_with_tokens_from_faucet(facade)
+
+	# Alice (signer) owns some amount of custom mosaic (with divisibility=2)
+	# Bob (partner) wants to exchange 20 xem for a single piece of Alice's custom mosaic
+	# there will be two transfers within an aggregate
+	embedded_transactions = [
+		facade.transaction_factory.create_embedded({
+			'type': 'transfer_transaction',
+			'signer_public_key': partner_key_pair.public_key,
+
+			'recipient_address': facade.network.public_key_to_address(signer_key_pair.public_key),
+			'mosaics': [
+				{'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 20_000000}
+			]
+		}),
+
+		facade.transaction_factory.create_embedded({
+			'type': 'transfer_transaction',
+			'signer_public_key': signer_key_pair.public_key,
+
+			'recipient_address': facade.network.public_key_to_address(partner_key_pair.public_key),
+			'mosaics': [
+				{'mosaic_id': generate_mosaic_id(signer_address, 123), 'amount': 100}
+			]
+		})
+	]
+
+	# Alice will be signer of aggregate itself, that also means he won't have to attach his cosignature
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'aggregate_complete_transaction',
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions': embedded_transactions
+	})
+
+	# Bob needs to cosign the transaction because the swap will only be confirmed if both the sender and the partner agree to it
+
+	{{ create_transaction_footer('mosaic swap', '[partner_key_pair]') }}
+
+# endregion
+
+
+# region mosaic restrictions transactions
 
 async def create_global_mosaic_restriction_transaction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
 	{{ create_transaction_header() }}
@@ -721,38 +779,39 @@ async def create_global_mosaic_restriction_transaction_modify(facade, signer_key
 
 	{{ create_transaction_footer('global mosaic restriction (modify)') }}
 
-async def create_mosaic_atomic_swap(facade, signer_key_pair):
+# endregion
+
+
+# region mosaic metadata
+
+async def create_mosaic_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
 	{{ create_transaction_header() }}
 
-	# create a second signing key pair that will be used as the swap partner
-	partner_key_pair = await create_account_with_tokens_from_faucet(facade)
+	# metadata transaction needs to be wrapped in aggregate transaction
 
-	# Alice (signer) owns some amount of custom mosaic (with divisibility=2)
-	# Bob (partner) wants to exchange 20 xem for a single piece of Alice's custom mosaic
-	# there will be two transfers within an aggregate
+	value = unhexlify(
+		'89504e470d0a1a0a0000000d49484452000000010000000108000000003a7e9b55'
+		'0000000a49444154185763f80f00010101005a4d6ff10000000049454e44ae426082')
+
 	embedded_transactions = [
 		facade.transaction_factory.create_embedded({
-			'type': 'transfer_transaction',
-			'signer_public_key': partner_key_pair.public_key,
-
-			'recipient_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'mosaics': [
-				{'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 20_000000}
-			]
-		}),
-
-		facade.transaction_factory.create_embedded({
-			'type': 'transfer_transaction',
+			'type': 'mosaic_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
-			'recipient_address': facade.network.public_key_to_address(partner_key_pair.public_key),
-			'mosaics': [
-				{'mosaic_id': generate_mosaic_id(signer_address, 123), 'amount': 100}
-			]
+			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
+			#  - if signer is different than target address, the target account will need to cosign the transaction
+			#  - target address must be mosaic owner
+			#  - mosaic with target_mosaic_id must exist
+			#  - scoped_metadata_key can be any 64-bit value picked by metadata creator
+			'target_address': signer_address,
+			'target_mosaic_id': generate_mosaic_id(signer_address, 123),
+			'scoped_metadata_key': int.from_bytes(b'avatar', byteorder='little'),  # this can be any 64-bit value picked by creator
+
+			'value_size_delta': len(value),  # when creating _new_ value this needs to be equal to value size
+			'value': value
 		})
 	]
-
-	# Alice will be signer of aggregate itself, that also means he won't have to attach his cosignature
+	# create the transaction
 	transaction = facade.transaction_factory.create({
 		'signer_public_key': signer_key_pair.public_key,
 		'deadline': network_time.timestamp,
@@ -762,16 +821,97 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 		'transactions': embedded_transactions
 	})
 
-	# Bob needs to cosign the transaction because the swap will only be confirmed if both the sender and the partner agree to it
+	{{ create_transaction_footer('mosaic metadata (new)') }}
 
-	{{ create_transaction_footer('mosaic swap', '[partner_key_pair]') }}
+async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
+	# pylint: disable=too-many-locals
+	{{ create_transaction_header() }}
 
-# endregion
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(1)]
 
+	# set new high score for an account
 
-# region mosaic restrictions transactions
+	value = (440).to_bytes(4, byteorder='little')
 
-# ...
+	embedded_transactions = [
+		facade.transaction_factory.create_embedded({
+			'type': 'mosaic_metadata_transaction',
+			'signer_public_key': cosignatory_key_pairs[0].public_key,
+
+			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
+			#  - if signer is different than target address, the target account will need to cosign the transaction
+			#  - target address must be mosaic owner
+			#  - mosaic with target_mosaic_id must exist
+			#  - scoped_metadata_key can be any 64-bit value picked by metadata creator
+			'target_mosaic_id': generate_mosaic_id(signer_address, 123),
+			'scoped_metadata_key': int.from_bytes(b'rating', byteorder='little'),  # this can be any 64-bit value picked by creator
+			'target_address': signer_address,
+
+			'value_size_delta': len(value),  # when creating _new_ value this needs to be equal to value size
+			'value': value
+		})
+	]
+	# create the transaction
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': cosignatory_key_pairs[0].public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'aggregate_complete_transaction',
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions': embedded_transactions
+	})
+
+	{{
+		create_transaction_footer(
+			'mosaic metadata (cosigned 1)',
+			'[signer_key_pair]',
+			'cosignatory_key_pairs[0]')
+	}}
+
+async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
+	# pylint: disable=too-many-locals
+	{{ create_transaction_header() }}
+
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(1)]
+
+	# update high score for an account
+
+	old_value = (440).to_bytes(4, byteorder='little')
+	new_value = (9001).to_bytes(4, byteorder='little')
+	update_value = metadata_update_value(old_value, new_value)
+
+	embedded_transactions = [
+		facade.transaction_factory.create_embedded({
+			'type': 'mosaic_metadata_transaction',
+			'signer_public_key': cosignatory_key_pairs[0].public_key,
+
+			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
+			# when updating all values must match previously used values
+			'target_mosaic_id': generate_mosaic_id(signer_address, 123),
+			'scoped_metadata_key': int.from_bytes(b'rating', byteorder='little'),  # this can be any 64-bit value picked by creator
+			'target_address': signer_address,
+
+			# this should be difference between sizes, but this example does not change the size, so delta = 0
+			'value_size_delta': 0,
+			'value': update_value
+		})
+	]
+	# create the transaction
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'aggregate_complete_transaction',
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions': embedded_transactions
+	})
+
+	{{
+		create_transaction_footer(
+			'mosaic metadata (cosigned 2)',
+			'[signer_key_pair]',
+			'cosignatory_key_pairs[0]')
+	}}
 
 # endregion
 
@@ -843,7 +983,11 @@ async def run_transaction_creation_examples(facade):
 		]),
 		('MULTISIG (COMPLETE)', [
 			create_multisig_account_modification_transaction_new_account,
-			create_multisig_account_modification_transaction_modify_account
+			create_multisig_account_modification_transaction_modify_account,
+
+			create_mosaic_metadata_new,
+			create_mosaic_metadata_cosigned_1,
+			create_mosaic_metadata_cosigned_2,
 		]),
 		# ('MULTISIG (BONDED)', [
 		# 	create_multisig_account_modification_transaction_new_account,

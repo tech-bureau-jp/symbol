@@ -154,6 +154,7 @@ async def get_account_balance():
 
 	account_state = await get_account_state()
 
+	# search for currency inside account mosaics
 	account_currency = next(mosaic for mosaic in account_state['account']['mosaics'] if network_currency_id == int(mosaic['id'], 16))
 	amount = int(account_currency['amount'])
 	account_balance = {
@@ -214,8 +215,12 @@ async def create_account_metadata_transaction_new(facade, signer_key_pair):  # p
 			'type': 'account_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
+			# the key consists of a tuple (signer, target_address, scoped_metadata_key)
+			#  - if signer is different than target address, the target account will need to cosign the transaction
+			#  - scoped_metadata_key can be any 64-bit value picked by metadata creator
 			'target_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'scoped_metadata_key': 0x72657474697774,  # this can be any value picked by creator
+			'scoped_metadata_key': 0x72657474697774,
+
 			'value_size_delta': len(value),  # when creating _new_ value this needs to be equal to value size
 			'value': value
 		})
@@ -287,8 +292,11 @@ async def create_account_metadata_transaction_modify(facade, signer_key_pair):  
 			'type': 'account_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
+			# the key consists of a tuple (signer, target_address, scoped_metadata_key),
+			# when updating all values must match previously used values
 			'target_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'scoped_metadata_key': 0x72657474697774,  # when updating existing value, both target_address and key must match previously set
+			'scoped_metadata_key': 0x72657474697774,
+
 			'value_size_delta': len(new_value) - len(old_value),  # change in size, negative because the value will be shrunk
 			'value': update_value
 		})
@@ -398,10 +406,7 @@ async def create_multisig_account_modification_transaction_new_account(facade, s
 
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in cosignatory_key_pairs:
-		cosignature = Cosignature()
-		cosignature.version = 0
-		cosignature.signer_public_key = PublicKey(cosignatory_key_pair.public_key.bytes)
-		cosignature.signature = Signature(cosignatory_key_pair.sign(transaction_hash.bytes).bytes)
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
 		transaction.cosignatures.append(cosignature)
 
 	# finally, construct the over wire payload
@@ -492,10 +497,7 @@ async def create_multisig_account_modification_transaction_modify_account(facade
 
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in [cosignatory_key_pairs[2], cosignatory_key_pairs[3]]:
-		cosignature = Cosignature()
-		cosignature.version = 0
-		cosignature.signer_public_key = PublicKey(cosignatory_key_pair.public_key.bytes)
-		cosignature.signature = Signature(cosignatory_key_pair.sign(transaction_hash.bytes).bytes)
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
 		transaction.cosignatures.append(cosignature)
 
 	# finally, construct the over wire payload
@@ -746,12 +748,14 @@ async def create_namespace_metadata_transaction_new(facade, signer_key_pair):  #
 			'type': 'namespace_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
-			'target_namespace_id': generate_namespace_id('killed', generate_namespace_id(root_namespace_name)),
-
-			# the key consists of pair (target_address, scoped_metadata_key), if target address
-			# is not signer, the account will need to cosign this transaction
+			# the key consists of a tuple (signer, target_address, target_namespace_id, scoped_metadata_key)
+			#  - if signer is different than target address, the target account will need to cosign the transaction
+			#  - target address must be namespace owner
+			#  - namespace with target_namespace_id must exist
+			#  - scoped_metadata_key can be any 64-bit value picked by metadata creator
 			'target_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'scoped_metadata_key': 0x656d616e,
+			'target_namespace_id': generate_namespace_id('killed', generate_namespace_id(root_namespace_name)),
+			'scoped_metadata_key': int.from_bytes(b'name', byteorder='little'),
 
 			'value_size_delta': len(value),
 			'value': value
@@ -817,13 +821,11 @@ async def create_namespace_metadata_transaction_modify(facade, signer_key_pair):
 			'type': 'namespace_metadata_transaction',
 			'signer_public_key': signer_key_pair.public_key,
 
-			'target_namespace_id': generate_namespace_id('killed', generate_namespace_id(root_namespace_name)),
-
-			# to update existing metadata, key which consists of pair (target_address, scoped_metadata_key),
-			# needs to match previously set key
-			# if target address is not signer, the update will require cosignature
+			# the key consists of a tuple (signer, target_address, target_namespace_id, scoped_metadata_key)
+			# when updating all values must match previously used values
 			'target_address': facade.network.public_key_to_address(signer_key_pair.public_key),
-			'scoped_metadata_key': 0x656d616e,
+			'target_namespace_id': generate_namespace_id('killed', generate_namespace_id(root_namespace_name)),
+			'scoped_metadata_key': int.from_bytes(b'name', byteorder='little'),
 
 			'value_size_delta': len(new_value) - len(old_value),
 			'value': update_value
@@ -1304,6 +1306,251 @@ Corresponding transaction (from **TALICE**): [70E5…5EC6](https://testnet.symbo
 
 ### Tutorial: Adding, Modifying or Querying (Mosaic) Metadata
 
+Similar to account metadata, mosaic can have assigned metadata.
+The key used to access metadata is a pair: `(mosaic id, scoped key)`.
+Target address needs to be set to mosaic owner address.
+
+In a similar way to account metadata, mosaic metadata always require to be wrapped within an aggregate.
+
+In future there some scoped keys might be standarized to be used across different issuers.
+
+**Simple mosaic metadata assignment:**
+
+```python
+async def create_mosaic_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# metadata transaction needs to be wrapped in aggregate transaction
+
+	value = unhexlify(
+		'89504e470d0a1a0a0000000d49484452000000010000000108000000003a7e9b55'
+		'0000000a49444154185763f80f00010101005a4d6ff10000000049454e44ae426082')
+
+	embedded_transactions = [
+		facade.transaction_factory.create_embedded({
+			'type': 'mosaic_metadata_transaction',
+			'signer_public_key': signer_key_pair.public_key,
+
+			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
+			#  - if signer is different than target address, the target account will need to cosign the transaction
+			#  - target address must be mosaic owner
+			#  - mosaic with target_mosaic_id must exist
+			#  - scoped_metadata_key can be any 64-bit value picked by metadata creator
+			'target_address': signer_address,
+			'target_mosaic_id': generate_mosaic_id(signer_address, 123),
+			'scoped_metadata_key': int.from_bytes(b'avatar', byteorder='little'),  # this can be any 64-bit value picked by creator
+
+			'value_size_delta': len(value),  # when creating _new_ value this needs to be equal to value size
+			'value': value
+		})
+	]
+	# create the transaction
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'aggregate_complete_transaction',
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions': embedded_transactions
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'mosaic metadata (new) transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network and wait for it to be confirmed
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(response_json)
+
+	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic metadata (new) transaction')
+```
+
+Corresponding transaction [3805…D98B](https://testnet.symbol.fyi/transactions/38057E848B2669B05EF61DF53BBF3658340959D212D14E898181DA0363A0D98B)
+
+**Attaching metadata to mosaic via third party:**
+
+```python
+async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
+	# pylint: disable=too-many-locals
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(1)]
+
+	# set new high score for an account
+
+	value = (440).to_bytes(4, byteorder='little')
+
+	embedded_transactions = [
+		facade.transaction_factory.create_embedded({
+			'type': 'mosaic_metadata_transaction',
+			'signer_public_key': cosignatory_key_pairs[0].public_key,
+
+			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
+			#  - if signer is different than target address, the target account will need to cosign the transaction
+			#  - target address must be mosaic owner
+			#  - mosaic with target_mosaic_id must exist
+			#  - scoped_metadata_key can be any 64-bit value picked by metadata creator
+			'target_mosaic_id': generate_mosaic_id(signer_address, 123),
+			'scoped_metadata_key': int.from_bytes(b'rating', byteorder='little'),  # this can be any 64-bit value picked by creator
+			'target_address': signer_address,
+
+			'value_size_delta': len(value),  # when creating _new_ value this needs to be equal to value size
+			'value': value
+		})
+	]
+	# create the transaction
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': cosignatory_key_pairs[0].public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'aggregate_complete_transaction',
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions': embedded_transactions
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(cosignatory_key_pairs[0], transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'mosaic metadata (cosigned 1) transaction hash {transaction_hash}')
+
+	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
+	for cosignatory_key_pair in [signer_key_pair]:
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
+		transaction.cosignatures.append(cosignature)
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network and wait for it to be confirmed
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(response_json)
+
+	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic metadata (cosigned 1) transaction')
+```
+
+Corresponding transaction [A31C…3365](https://testnet.symbol.fyi/transactions/A31CA406F225370C835889B1A726BD26DBB3CF73EA89F658C475409624363365)
+
+**Modify metadata to mosaic via third party:**
+
+```python
+async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
+	# pylint: disable=too-many-locals
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(1)]
+
+	# update high score for an account
+
+	old_value = (440).to_bytes(4, byteorder='little')
+	new_value = (9001).to_bytes(4, byteorder='little')
+	update_value = metadata_update_value(old_value, new_value)
+
+	embedded_transactions = [
+		facade.transaction_factory.create_embedded({
+			'type': 'mosaic_metadata_transaction',
+			'signer_public_key': cosignatory_key_pairs[0].public_key,
+
+			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
+			# when updating all values must match previously used values
+			'target_mosaic_id': generate_mosaic_id(signer_address, 123),
+			'scoped_metadata_key': int.from_bytes(b'rating', byteorder='little'),  # this can be any 64-bit value picked by creator
+			'target_address': signer_address,
+
+			# this should be difference between sizes, but this example does not change the size, so delta = 0
+			'value_size_delta': 0,
+			'value': update_value
+		})
+	]
+	# create the transaction
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'aggregate_complete_transaction',
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions': embedded_transactions
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(cosignatory_key_pairs[0], transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'mosaic metadata (cosigned 2) transaction hash {transaction_hash}')
+
+	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
+	for cosignatory_key_pair in [signer_key_pair]:
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
+		transaction.cosignatures.append(cosignature)
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network and wait for it to be confirmed
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(response_json)
+
+	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic metadata (cosigned 2) transaction')
+```
+
+Corresponding transaction [3F4C…BA43](https://testnet.symbol.fyi/transactions/3F4CBD0B6392DE5553A4217F72DA640F78256A92D5A1FF54E9414D676941BA43)
+
 ### Tutorial: Performing an Atomic Swap
 
 Atomic swaps within Symbol network are trivial, thanks to aggregate transactions.
@@ -1378,10 +1625,7 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in [partner_key_pair]:
-		cosignature = Cosignature()
-		cosignature.version = 0
-		cosignature.signer_public_key = PublicKey(cosignatory_key_pair.public_key.bytes)
-		cosignature.signature = Signature(cosignatory_key_pair.sign(transaction_hash.bytes).bytes)
+		cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction)
 		transaction.cosignatures.append(cosignature)
 
 	# finally, construct the over wire payload
