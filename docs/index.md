@@ -1878,122 +1878,122 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 	   # (25719853000 - 25407256928) / 1000 / 30 = 10419
 	   ```
 	5. Finally Bob can create secret lock
-```python
-async def create_secret_lock_transaction(facade, signer_key_pair):
-	# derive the signer's address
-	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
-	print(f'creating transaction with signer {signer_address}')
-
-	# get the current network time from the network, and set the transaction deadline two hours in the future
-	network_time = await get_network_time()
-	network_time = network_time.add_hours(2)
-
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
-	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
-	print(f'recipient: {recipient_address}')
-
-	# double sha256 hash the proof value
-	secret_hash = Hash256(hashlib.sha256(hashlib.sha256('correct horse battery staple'.encode('utf8')).digest()).digest())
-
-	transaction = facade.transaction_factory.create({
-		'signer_public_key': signer_key_pair.public_key,
-		'deadline': network_time.timestamp,
-
-		'type': 'secret_lock_transaction',
-		'mosaic': {'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 7_000000},  # mosaic to transfer upon proof
-
-		'duration': 111,  # number of blocks
-		'recipient_address': recipient_address,
-		'secret': secret_hash,
-		'hash_algorithm': 'hash_256'  # double Hash256
-	})
-
-	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
-	transaction.fee = Amount(100 * transaction.size)
-
-	# sign the transaction and attach its signature
-	signature = facade.sign_transaction(signer_key_pair, transaction)
-	facade.transaction_factory.attach_signature(transaction, signature)
-
-	# hash the transaction (this is dependent on the signature)
-	transaction_hash = facade.hash_transaction(transaction)
-	print(f'secret lock transaction hash {transaction_hash}')
-
-	# finally, construct the over wire payload
-	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
-
-	# print the signed transaction, including its signature
-	print(transaction)
-
-	# submit the transaction to the network
-	async with ClientSession(raise_for_status=True) as session:
-		# initiate a HTTP PUT request to a Symbol REST endpoint
-		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
-			response_json = await response.json()
-			print(f'/transactions: {response_json}')
-
-	# wait for the transaction to be confirmed
-	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret lock transaction')
-```
+		```python
+		async def create_secret_lock_transaction(facade, signer_key_pair):
+			# derive the signer's address
+			signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+			print(f'creating transaction with signer {signer_address}')
+		
+			# get the current network time from the network, and set the transaction deadline two hours in the future
+			network_time = await get_network_time()
+			network_time = network_time.add_hours(2)
+		
+			# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+			recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+			print(f'recipient: {recipient_address}')
+		
+			# double sha256 hash the proof value
+			secret_hash = Hash256(hashlib.sha256(hashlib.sha256('correct horse battery staple'.encode('utf8')).digest()).digest())
+		
+			transaction = facade.transaction_factory.create({
+				'signer_public_key': signer_key_pair.public_key,
+				'deadline': network_time.timestamp,
+		
+				'type': 'secret_lock_transaction',
+				'mosaic': {'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 7_000000},  # mosaic to transfer upon proof
+		
+				'duration': 111,  # number of blocks
+				'recipient_address': recipient_address,
+				'secret': secret_hash,
+				'hash_algorithm': 'hash_256'  # double Hash256
+			})
+		
+			# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+			transaction.fee = Amount(100 * transaction.size)
+		
+			# sign the transaction and attach its signature
+			signature = facade.sign_transaction(signer_key_pair, transaction)
+			facade.transaction_factory.attach_signature(transaction, signature)
+		
+			# hash the transaction (this is dependent on the signature)
+			transaction_hash = facade.hash_transaction(transaction)
+			print(f'secret lock transaction hash {transaction_hash}')
+		
+			# finally, construct the over wire payload
+			json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+		
+			# print the signed transaction, including its signature
+			print(transaction)
+		
+			# submit the transaction to the network
+			async with ClientSession(raise_for_status=True) as session:
+				# initiate a HTTP PUT request to a Symbol REST endpoint
+				async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+					response_json = await response.json()
+					print(f'/transactions: {response_json}')
+		
+			# wait for the transaction to be confirmed
+			await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret lock transaction')
+		```
 	6. Secret lock transaction for your amusement: [B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B](https://testnet.symbol.fyi/transactions/B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B).
 3. Now Alice can claim the lock, that part is substantially easier:
 	1. create secret proof (withdraw)
-```python
-async def create_secret_proof_transaction(facade, signer_key_pair):
-	# derive the signer's address
-	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
-	print(f'creating transaction with signer {signer_address}')
-
-	# get the current network time from the network, and set the transaction deadline two hours in the future
-	network_time = await get_network_time()
-	network_time = network_time.add_hours(2)
-
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
-	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
-	print(f'recipient: {recipient_address}')
-
-	# double sha256 hash the proof value
-	secret_hash = Hash256(hashlib.sha256(hashlib.sha256('correct horse battery staple'.encode('utf8')).digest()).digest())
-
-	transaction = facade.transaction_factory.create({
-		'signer_public_key': signer_key_pair.public_key,
-		'deadline': network_time.timestamp,
-
-		'type': 'secret_proof_transaction',
-
-		'recipient_address': recipient_address,
-		'secret': secret_hash,
-		'hash_algorithm': 'hash_256',  # double Hash256
-		'proof': 'correct horse battery staple'
-	})
-
-	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
-	transaction.fee = Amount(100 * transaction.size)
-
-	# sign the transaction and attach its signature
-	signature = facade.sign_transaction(signer_key_pair, transaction)
-	facade.transaction_factory.attach_signature(transaction, signature)
-
-	# hash the transaction (this is dependent on the signature)
-	transaction_hash = facade.hash_transaction(transaction)
-	print(f'secret proof transaction hash {transaction_hash}')
-
-	# finally, construct the over wire payload
-	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
-
-	# print the signed transaction, including its signature
-	print(transaction)
-
-	# submit the transaction to the network
-	async with ClientSession(raise_for_status=True) as session:
-		# initiate a HTTP PUT request to a Symbol REST endpoint
-		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
-			response_json = await response.json()
-			print(f'/transactions: {response_json}')
-
-	# wait for the transaction to be confirmed
-	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret proof transaction')
-```
+		```python
+		async def create_secret_proof_transaction(facade, signer_key_pair):
+			# derive the signer's address
+			signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+			print(f'creating transaction with signer {signer_address}')
+		
+			# get the current network time from the network, and set the transaction deadline two hours in the future
+			network_time = await get_network_time()
+			network_time = network_time.add_hours(2)
+		
+			# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+			recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+			print(f'recipient: {recipient_address}')
+		
+			# double sha256 hash the proof value
+			secret_hash = Hash256(hashlib.sha256(hashlib.sha256('correct horse battery staple'.encode('utf8')).digest()).digest())
+		
+			transaction = facade.transaction_factory.create({
+				'signer_public_key': signer_key_pair.public_key,
+				'deadline': network_time.timestamp,
+		
+				'type': 'secret_proof_transaction',
+		
+				'recipient_address': recipient_address,
+				'secret': secret_hash,
+				'hash_algorithm': 'hash_256',  # double Hash256
+				'proof': 'correct horse battery staple'
+			})
+		
+			# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+			transaction.fee = Amount(100 * transaction.size)
+		
+			# sign the transaction and attach its signature
+			signature = facade.sign_transaction(signer_key_pair, transaction)
+			facade.transaction_factory.attach_signature(transaction, signature)
+		
+			# hash the transaction (this is dependent on the signature)
+			transaction_hash = facade.hash_transaction(transaction)
+			print(f'secret proof transaction hash {transaction_hash}')
+		
+			# finally, construct the over wire payload
+			json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+		
+			# print the signed transaction, including its signature
+			print(transaction)
+		
+			# submit the transaction to the network
+			async with ClientSession(raise_for_status=True) as session:
+				# initiate a HTTP PUT request to a Symbol REST endpoint
+				async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+					response_json = await response.json()
+					print(f'/transactions: {response_json}')
+		
+			# wait for the transaction to be confirmed
+			await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret proof transaction')
+		```
 	2. Corresponding secret proof transaction: [40ACE09ADC8469A134E5CD136116A86B377FBA282EF6CB01A9E763592023E332](https://testnet.symbol.fyi/transactions/40ACE09ADC8469A134E5CD136116A86B377FBA282EF6CB01A9E763592023E332)
 4. Now that Bob has learned super complicated proof he can use contract's `withdraw` method:<br>`cast send 0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B 'withdraw(bytes32, bytes)' 0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f 636F727265637420686F727365206261747465727920737461706C65`
 	1. `0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B` is a contract address, the same one as used by Alice,

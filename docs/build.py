@@ -58,16 +58,16 @@ def parse_code(infile):
 	return parsed_code
 
 
-def insert_fenced_example(outfile, lines):
-	outfile.write('```python\n')
+def insert_fenced_example(outfile, lines, indent):
+	outfile.write(f'{indent}```python\n')
 	for line in lines:
-		outfile.write(f'{line}\n')
-	outfile.write('```\n')
+		outfile.write(f'{indent}{line}\n')
+	outfile.write(f'{indent}```\n')
 
 
 def process(parsed_code, infile, outfile):
 	"""Parse big.md file, inserting !inline-s and !example-s."""
-	processor_pattern = re.compile(r'^(?P<command>!inline|!example) (?P<name>\S*)( @(?P<directory>.*))?')
+	processor_pattern = re.compile(r'^(?P<indent>\t+)*(?P<command>!inline|!example) (?P<name>\S*)( @(?P<directory>.*))?')
 
 	for line in infile:
 		match = re.match(processor_pattern, line)
@@ -81,7 +81,8 @@ def process(parsed_code, infile, outfile):
 				with open(inlined_filename, encoding='utf8') as inlined_file:
 					process(parsed_code, inlined_file, outfile)
 			elif '!example' == command:
-				insert_fenced_example(outfile, parsed_code[name])
+				indent = match.group('indent') or ''
+				insert_fenced_example(outfile, parsed_code[name], indent)
 		else:
 			outfile.write(line)
 
