@@ -252,14 +252,15 @@ async def create_account_metadata_transaction_new(facade, signer_key_pair):  # p
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='account metadata (new) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='account metadata (new) transaction')
 ```
 
 Corresponding transaction: [E14…C901](https://testnet.symbol.fyi/transactions/E14F3658477C177C64E9CC070D878F07408877783729C1E5567D96B65441C901)
@@ -328,14 +329,15 @@ async def create_account_metadata_transaction_modify(facade, signer_key_pair):  
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='account metadata (modify) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='account metadata (modify) transaction')
 ```
 
 Corresponding transaction: [2422…3709](https://testnet.symbol.fyi/transactions/2422FEB2A935B34B1A926650F9B0910C44568B6282AF4FAACFE8456AC8E73709)
@@ -365,13 +367,12 @@ async def create_multisig_account_modification_transaction_new_account(facade, s
 	network_time = network_time.add_hours(2)
 
 	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
-	# (they are insecurely deterministically generated for the benefit of create_multisig_account_modification_transaction_modify_account)
+	# (they are insecurely deterministically generated for the benefit related tests)
 	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(3)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
 	# multisig account modification transaction needs to be wrapped in aggregate transaction
 
-	# to update existing metadata, new value needs to be 'xored' with previous value.
 	embedded_transactions = [
 		facade.transaction_factory.create_embedded({
 			'type': 'multisig_account_modification_transaction',
@@ -402,7 +403,7 @@ async def create_multisig_account_modification_transaction_new_account(facade, s
 
 	# hash the transaction (this is dependent on the signature)
 	transaction_hash = facade.hash_transaction(transaction)
-	print(f'multisig account modification (create) transaction hash {transaction_hash}')
+	print(f'multisig account (create) transaction hash {transaction_hash}')
 
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in cosignatory_key_pairs:
@@ -415,14 +416,15 @@ async def create_multisig_account_modification_transaction_new_account(facade, s
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='multisig account modification (create) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='multisig account (create) transaction')
 ```
 
 Corresponding transaction [2914…A144](https://testnet.symbol.fyi/transactions/29149344AA870A37242D8649659D09A20523BFB8FFC546626A1099B07811A144)
@@ -448,7 +450,6 @@ async def create_multisig_account_modification_transaction_modify_account(facade
 
 	# multisig account modification transaction needs to be wrapped in aggregate transaction
 
-	# to update existing metadata, new value needs to be 'xored' with previous value.
 	embedded_transactions = [
 		# create a transfer from the multisig account to the primary cosignatory to cover the transaction fee
 		facade.transaction_factory.create_embedded({
@@ -493,7 +494,7 @@ async def create_multisig_account_modification_transaction_modify_account(facade
 
 	# hash the transaction (this is dependent on the signature)
 	transaction_hash = facade.hash_transaction(transaction)
-	print(f'multisig account modification (modify) transaction hash {transaction_hash}')
+	print(f'multisig account (modify) transaction hash {transaction_hash}')
 
 	# cosign transaction by all partners (this is dependent on the hash and consequently the main signature)
 	for cosignatory_key_pair in [cosignatory_key_pairs[2], cosignatory_key_pairs[3]]:
@@ -506,14 +507,15 @@ async def create_multisig_account_modification_transaction_modify_account(facade
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='multisig account modification (modify) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='multisig account (modify) transaction')
 ```
 
 Note, that the aggregate transaction is signed by `cosignatory[0]` key pair, but "signer" (or rather _sender_) of the modification transaction is `multisig_key_pair`.
@@ -654,14 +656,15 @@ async def create_namespace_registration_transaction_root(facade, signer_key_pair
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='namespace (root) registration transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace (root) registration transaction')
 ```
 
 Corresponding transaction: [D709…AFE7](https://testnet.symbol.fyi/transactions/D709B77D3AE1AF4A264711ED71AFD9D5997AEB93693C37C017E1ED2715ECAFE7).
@@ -708,14 +711,15 @@ async def create_namespace_registration_transaction_child(facade, signer_key_pai
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='namespace (child) registration transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace (child) registration transaction')
 ```
 
 Corresponding transaction: [C537…A556](https://testnet.symbol.fyi/transactions/C5374DBCBC0BF9BE287F5110566494148CA40907F9C95C95BAEA60C8DD29A556).
@@ -788,14 +792,15 @@ async def create_namespace_metadata_transaction_new(facade, signer_key_pair):  #
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='namespace metadata (new) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace metadata (new) transaction')
 ```
 
 Modify the above metadata.
@@ -858,14 +863,15 @@ async def create_namespace_metadata_transaction_modify(facade, signer_key_pair):
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='namespace metadata (modify) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace metadata (modify) transaction')
 ```
 
 [C9EE…79BC1](https://testnet.symbol.fyi/transactions/C9EE0F9318EC3F2BAB3CC20601D13E9687A881F1ABD084B1A52A283566879BC1)
@@ -943,14 +949,15 @@ async def create_mosaic_definition_transaction(facade, signer_key_pair):
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic definition transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic definition transaction')
 ```
 
 Corresponding transaction: [9BDA…78A8](https://testnet.symbol.fyi/transactions/9BDA55FADF7C34B854C5ABB9535944ECF75AB508E367F1A25D070507CD8078A8)
@@ -1002,14 +1009,15 @@ async def create_mosaic_supply_transaction(facade, signer_key_pair):
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic supply transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic supply transaction')
 ```
 
 Corresponding transaction: [6115…142E](https://testnet.symbol.fyi/transactions/6115527581BC9874B51967EB8E5574D2B6CEA82463A7892190555E215910142E)
@@ -1072,14 +1080,15 @@ async def create_global_mosaic_restriction_transaction_new(facade, signer_key_pa
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='global mosaic restriction (new) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='global mosaic restriction (new) transaction')
 ```
 
 Corresponding transaction: [8F93…F306](https://testnet.symbol.fyi/transactions/8F938362633A3CDE06F5599E70FCFF19202C87DB6F03C06DE058D4D34B27F306)
@@ -1121,7 +1130,7 @@ async def create_address_mosaic_restriction_transaction_1(facade, signer_key_pai
 
 	# hash the transaction (this is dependent on the signature)
 	transaction_hash = facade.hash_transaction(transaction)
-	print(f'address mosaic restriction (new - 1) transaction hash {transaction_hash}')
+	print(f'address mosaic restriction (new:1) transaction hash {transaction_hash}')
 
 	# finally, construct the over wire payload
 	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
@@ -1129,14 +1138,15 @@ async def create_address_mosaic_restriction_transaction_1(facade, signer_key_pai
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='address mosaic restriction (new - 1) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:1) transaction')
 ```
 ```python
 async def create_address_mosaic_restriction_transaction_2(facade, signer_key_pair):  # pylint: disable=invalid-name
@@ -1170,7 +1180,7 @@ async def create_address_mosaic_restriction_transaction_2(facade, signer_key_pai
 
 	# hash the transaction (this is dependent on the signature)
 	transaction_hash = facade.hash_transaction(transaction)
-	print(f'address mosaic restriction (new - 2) transaction hash {transaction_hash}')
+	print(f'address mosaic restriction (new:2) transaction hash {transaction_hash}')
 
 	# finally, construct the over wire payload
 	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
@@ -1178,14 +1188,15 @@ async def create_address_mosaic_restriction_transaction_2(facade, signer_key_pai
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='address mosaic restriction (new - 2) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:2) transaction')
 ```
 ```python
 async def create_address_mosaic_restriction_transaction_3(facade, signer_key_pair):  # pylint: disable=invalid-name
@@ -1219,7 +1230,7 @@ async def create_address_mosaic_restriction_transaction_3(facade, signer_key_pai
 
 	# hash the transaction (this is dependent on the signature)
 	transaction_hash = facade.hash_transaction(transaction)
-	print(f'address mosaic restriction (new - 3) transaction hash {transaction_hash}')
+	print(f'address mosaic restriction (new:3) transaction hash {transaction_hash}')
 
 	# finally, construct the over wire payload
 	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
@@ -1227,14 +1238,15 @@ async def create_address_mosaic_restriction_transaction_3(facade, signer_key_pai
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='address mosaic restriction (new - 3) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:3) transaction')
 ```
 
 Notice, that **TBOBBY** account has value set to 1, while **TALICE** set to 2, this will be used later.
@@ -1287,14 +1299,15 @@ async def create_global_mosaic_restriction_transaction_modify(facade, signer_key
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='global mosaic restriction (modify) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='global mosaic restriction (modify) transaction')
 ```
 
 Corresponding transaction: [4B67…2654](https://testnet.symbol.fyi/transactions/4B67957FFEC54D0011E79DCB3612D6C92DC0205299CC57CC54E93CD830EC2654)
@@ -1377,14 +1390,15 @@ async def create_mosaic_metadata_new(facade, signer_key_pair):  # pylint: disabl
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic metadata (new) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic metadata (new) transaction')
 ```
 
 Corresponding transaction [3805…D98B](https://testnet.symbol.fyi/transactions/38057E848B2669B05EF61DF53BBF3658340959D212D14E898181DA0363A0D98B)
@@ -1402,7 +1416,8 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(1)]
+	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([0]))
+	authority_key_pair = await create_account_with_tokens_from_faucet(facade, 100, authority_semi_deterministic_key)
 
 	# set new high score for an account
 
@@ -1411,7 +1426,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	embedded_transactions = [
 		facade.transaction_factory.create_embedded({
 			'type': 'mosaic_metadata_transaction',
-			'signer_public_key': cosignatory_key_pairs[0].public_key,
+			'signer_public_key': authority_key_pair.public_key,
 
 			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
 			#  - if signer is different than target address, the target account will need to cosign the transaction
@@ -1428,7 +1443,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	]
 	# create the transaction
 	transaction = facade.transaction_factory.create({
-		'signer_public_key': cosignatory_key_pairs[0].public_key,
+		'signer_public_key': authority_key_pair.public_key,
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
@@ -1440,7 +1455,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	transaction.fee = Amount(100 * transaction.size)
 
 	# sign the transaction and attach its signature
-	signature = facade.sign_transaction(cosignatory_key_pairs[0], transaction)
+	signature = facade.sign_transaction(authority_key_pair, transaction)
 	facade.transaction_factory.attach_signature(transaction, signature)
 
 	# hash the transaction (this is dependent on the signature)
@@ -1458,14 +1473,15 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic metadata (cosigned 1) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic metadata (cosigned 1) transaction')
 ```
 
 Corresponding transaction [A31C…3365](https://testnet.symbol.fyi/transactions/A31CA406F225370C835889B1A726BD26DBB3CF73EA89F658C475409624363365)
@@ -1483,7 +1499,8 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(1)]
+	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([0]))
+	authority_key_pair = await create_account_with_tokens_from_faucet(facade, 100, authority_semi_deterministic_key)
 
 	# update high score for an account
 
@@ -1494,7 +1511,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	embedded_transactions = [
 		facade.transaction_factory.create_embedded({
 			'type': 'mosaic_metadata_transaction',
-			'signer_public_key': cosignatory_key_pairs[0].public_key,
+			'signer_public_key': authority_key_pair.public_key,
 
 			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
 			# when updating all values must match previously used values
@@ -1509,7 +1526,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	]
 	# create the transaction
 	transaction = facade.transaction_factory.create({
-		'signer_public_key': signer_key_pair.public_key,
+		'signer_public_key': authority_key_pair.public_key,
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
@@ -1521,7 +1538,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	transaction.fee = Amount(100 * transaction.size)
 
 	# sign the transaction and attach its signature
-	signature = facade.sign_transaction(cosignatory_key_pairs[0], transaction)
+	signature = facade.sign_transaction(authority_key_pair, transaction)
 	facade.transaction_factory.attach_signature(transaction, signature)
 
 	# hash the transaction (this is dependent on the signature)
@@ -1539,17 +1556,21 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic metadata (cosigned 2) transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic metadata (cosigned 2) transaction')
 ```
 
 Corresponding transaction [3F4C…BA43](https://testnet.symbol.fyi/transactions/3F4CBD0B6392DE5553A4217F72DA640F78256A92D5A1FF54E9414D676941BA43)
+
+
+**Quering mosaic state:**
 
 ### Tutorial: Performing an Atomic Swap
 
@@ -1576,7 +1597,7 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 	partner_key_pair = await create_account_with_tokens_from_faucet(facade)
 
 	# Alice (signer) owns some amount of custom mosaic (with divisibility=2)
-	# Bob (partner) wants to exchange 20 xem for a single piece of Alice's custom mosaic
+	# Bob (partner) wants to exchange 20 xym for a single piece of Alice's custom mosaic
 	# there will be two transfers within an aggregate
 	embedded_transactions = [
 		facade.transaction_factory.create_embedded({
@@ -1634,18 +1655,21 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 	# print the signed transaction, including its signature
 	print(transaction)
 
-	# submit the transaction to the network and wait for it to be confirmed
+	# submit the transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
 		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
 			response_json = await response.json()
-			print(response_json)
+			print(f'/transactions: {response_json}')
 
-	await wait_for_confirmed_transaction(transaction_hash, transaction_description='mosaic swap transaction')
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic swap transaction')
 ```
 
 Corresponding transaction:
 [F6D1…BC55](https://testnet.symbol.fyi/transactions/F6D1E60A7FC47B88D16D3B8358D79EAE5EAAB328F4D988DE45669BD013C8BC55)
+
+
 
 ### Tutorial: Querying State of a Mosaic (Current, Historical, Namespace)
 

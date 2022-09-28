@@ -96,10 +96,10 @@ async def wait_for_transaction_status(transaction_hash, desired_status, **kwargs
 		raise RuntimeError(f'{transaction_description} {transaction_hash} did not transition to {desired_status} in alloted time period')
 
 
-async def create_account_with_tokens_from_faucet(facade, amount=100):  # pylint: disable=invalid-name
+async def create_account_with_tokens_from_faucet(facade, amount=100, private_key=None):  # pylint: disable=invalid-name
 	# create a key pair that will be used to send transactions
 	# when the PrivateKey is known, pass the raw private key bytes or hex encoded string to the PrivateKey(...) constructor instead
-	key_pair = facade.KeyPair(PrivateKey.random())
+	key_pair = facade.KeyPair(PrivateKey.random()) if private_key is None else facade.KeyPair(private_key)
 	address = facade.network.public_key_to_address(key_pair.public_key)
 	print(f'new account created with address: {address}')
 
@@ -1338,7 +1338,8 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(1)]
+	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([0]))
+	authority_key_pair = await create_account_with_tokens_from_faucet(facade, 100, authority_semi_deterministic_key)
 
 	# set new high score for an account
 
@@ -1347,7 +1348,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	embedded_transactions = [
 		facade.transaction_factory.create_embedded({
 			'type': 'mosaic_metadata_transaction',
-			'signer_public_key': cosignatory_key_pairs[0].public_key,
+			'signer_public_key': authority_key_pair.public_key,
 
 			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
 			#  - if signer is different than target address, the target account will need to cosign the transaction
@@ -1364,7 +1365,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	]
 	# create the transaction
 	transaction = facade.transaction_factory.create({
-		'signer_public_key': cosignatory_key_pairs[0].public_key,
+		'signer_public_key': authority_key_pair.public_key,
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
@@ -1376,7 +1377,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	transaction.fee = Amount(100 * transaction.size)
 
 	# sign the transaction and attach its signature
-	signature = facade.sign_transaction(cosignatory_key_pairs[0], transaction)
+	signature = facade.sign_transaction(authority_key_pair, transaction)
 	facade.transaction_factory.attach_signature(transaction, signature)
 
 	# hash the transaction (this is dependent on the signature)
@@ -1415,7 +1416,8 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(1)]
+	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([0]))
+	authority_key_pair = await create_account_with_tokens_from_faucet(facade, 100, authority_semi_deterministic_key)
 
 	# update high score for an account
 
@@ -1426,7 +1428,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	embedded_transactions = [
 		facade.transaction_factory.create_embedded({
 			'type': 'mosaic_metadata_transaction',
-			'signer_public_key': cosignatory_key_pairs[0].public_key,
+			'signer_public_key': authority_key_pair.public_key,
 
 			# the key consists of a tuple (signer, target_address, target_mosaic_id, scoped_metadata_key)
 			# when updating all values must match previously used values
@@ -1441,7 +1443,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	]
 	# create the transaction
 	transaction = facade.transaction_factory.create({
-		'signer_public_key': signer_key_pair.public_key,
+		'signer_public_key': authority_key_pair.public_key,
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
@@ -1453,7 +1455,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	transaction.fee = Amount(100 * transaction.size)
 
 	# sign the transaction and attach its signature
-	signature = facade.sign_transaction(cosignatory_key_pairs[0], transaction)
+	signature = facade.sign_transaction(authority_key_pair, transaction)
 	facade.transaction_factory.attach_signature(transaction, signature)
 
 	# hash the transaction (this is dependent on the signature)
