@@ -1280,36 +1280,44 @@ async def run_account_query_examples():
 
 
 async def run_transaction_creation_examples(facade):
-	print_banner('CREATING SIGNER ACCOUNT FOR TRANSACTION CREATION EXAMPLES')
+	function_groups = [
+		('BASIC', [
+			create_account_metadata_transaction_new,
+			create_account_metadata_transaction_modify,
 
-	# create a signing key pair that will be used to sign the created transaction(s)
-	signer_key_pair = await create_account_with_tokens_from_faucet(facade)
+			create_namespace_registration_transaction_root,
+			create_namespace_registration_transaction_child,
+			create_namespace_metadata_transaction_new,
+			create_namespace_metadata_transaction_modify,
 
-	functions = [
-		create_account_metadata_transaction_new,
-		create_account_metadata_transaction_modify,
+			create_mosaic_definition_transaction,
+			create_mosaic_supply_transaction,
+			create_mosaic_atomic_swap,
 
-		create_namespace_registration_transaction_root,
-		create_namespace_registration_transaction_child,
-		create_namespace_metadata_transaction_new,
-		create_namespace_metadata_transaction_modify,
-
-		create_mosaic_definition_transaction,
-		create_mosaic_supply_transaction,
-		create_mosaic_atomic_swap,
-
-		create_global_mosaic_restriction_transaction_new,
-		create_address_mosaic_restriction_transaction_1,
-		create_address_mosaic_restriction_transaction_2,
-		create_address_mosaic_restriction_transaction_3,
-		create_global_mosaic_restriction_transaction_modify,
-
-		create_multisig_account_modification_transaction_new_account,
-		create_multisig_account_modification_transaction_modify_account
+			create_global_mosaic_restriction_transaction_new,
+			create_address_mosaic_restriction_transaction_1,
+			create_address_mosaic_restriction_transaction_2,
+			create_address_mosaic_restriction_transaction_3,
+			create_global_mosaic_restriction_transaction_modify,
+		]),
+		('MULTISIG (COMPLETE)', [
+			create_multisig_account_modification_transaction_new_account,
+			create_multisig_account_modification_transaction_modify_account
+		]),
+		# ('MULTISIG (BONDED)', [
+		# 	create_multisig_account_modification_transaction_new_account,
+		# 	create_multisig_account_modification_transaction_modify_account
+		# ])
 	]
-	for func in functions:
-		print_banner(func.__qualname__)
-		await func(facade, signer_key_pair)
+	for (group_name, functions) in function_groups:
+		print_banner(f'CREATING SIGNER ACCOUNT FOR {group_name} TRANSACTION CREATION EXAMPLES')
+
+		# create a signing key pair that will be used to sign the created transaction(s) in this group
+		signer_key_pair = await create_account_with_tokens_from_faucet(facade)
+
+		for func in functions:
+			print_banner(func.__qualname__)
+			await func(facade, signer_key_pair)
 
 
 async def main():
