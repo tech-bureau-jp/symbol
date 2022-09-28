@@ -1831,27 +1831,27 @@ Finally some hands-on. For ethereum, example below will use tools from [foundry]
 Alice will swap 0.2 ETH with Bob for 7887 XYM.
 
 1. Alice creates a lock:<br>`cast send --value 0.2ether 0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B 'newContract(address,bytes32,uint)' 0xb0bb12D1befe54Dc773CefE7BB3687c72a33d335 b867db875479bcc0287352cdaa4a1755689b8338777d0915e9acd9f6edbc96cb 1663568700`
-    1. [0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B](https://sepolia.etherscan.io/address/0xd58e030bd21c7788897ae5ea845daba936e91d2b) is the contract address mentioned earlier
-    2. **0xb0bb1**2D1befe54Dc773CefE7BB3687c72a33d335 - is bob eth destination,
-    3. b867…96cb - is the lock value,
-    4. finally 1663568700 is a timestamp corresponding to _Monday, 19 September 2022 06:25:00_ GMT,
-    5. corresponding tx on Sepolia testnet: [0x23265e1a9aaaa70d582369fd3edbbe20b2f44a3a18a0a96205fb8beac8689964](https://sepolia.etherscan.io/tx/0x23265e1a9aaaa70d582369fd3edbbe20b2f44a3a18a0a96205fb8beac8689964),
-    6. as can be seen in transaction logs, `contractId` (read: identifier of created lock) is `0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f`
+	1. [0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B](https://sepolia.etherscan.io/address/0xd58e030bd21c7788897ae5ea845daba936e91d2b) is the contract address mentioned earlier
+	2. **0xb0bb1**2D1befe54Dc773CefE7BB3687c72a33d335 - is bob eth destination,
+	3. b867…96cb - is the lock value,
+	4. finally 1663568700 is a timestamp corresponding to _Monday, 19 September 2022 06:25:00_ GMT,
+	5. corresponding tx on Sepolia testnet: [0x23265e1a9aaaa70d582369fd3edbbe20b2f44a3a18a0a96205fb8beac8689964](https://sepolia.etherscan.io/tx/0x23265e1a9aaaa70d582369fd3edbbe20b2f44a3a18a0a96205fb8beac8689964),
+	6. as can be seen in transaction logs, `contractId` (read: identifier of created lock) is `0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f`
 2. Bob creates lock inside Symbol:
-    1. First bob needs to turn Alice's timelock into secret lock duration.
-    2. Current testnet block at the time of writing is [697357](https://testnet.symbol.fyi/blocks/697357), with network timestamp: **25407256928**.
-    3. Alice's unix epoch-based timestamp needs to be converted to Symbol network timestamp, additionally, we want to lower it by two hours, so that lock in Symbol expires prior to corresponding lock in eth (see explanation below)
-       ```python
-       timelock_datetime = datetime.fromtimestamp(unix_epoch_timelock, tz=timezone.utc)
-       symbol_timestamp = facade.network.from_datetime(timelock_datetime)
-       symbol_timestamp.add_hours(-2)
-       ```
-    4. Produced network timestamp needs to be turned into block-based duration. Network timestamps are in milliseconds, so difference needs to be divided by 1000. Symbol testnet network block generation target time is 30s, so to obtain number of blocks:
-       ```python
-       duration = int((symbol_timestamp.timestamp - 25407256928) / 1000 / 30)
-       # (25719853000 - 25407256928) / 1000 / 30 = 10419
-       ```
-    5. Finally Bob can create secret lock
+	1. First bob needs to turn Alice's timelock into secret lock duration.
+	2. Current testnet block at the time of writing is [697357](https://testnet.symbol.fyi/blocks/697357), with network timestamp: **25407256928**.
+	3. Alice's unix epoch-based timestamp needs to be converted to Symbol network timestamp, additionally, we want to lower it by two hours, so that lock in Symbol expires prior to corresponding lock in eth (see explanation below)
+	   ```python
+	   timelock_datetime = datetime.fromtimestamp(unix_epoch_timelock, tz=timezone.utc)
+	   symbol_timestamp = facade.network.from_datetime(timelock_datetime)
+	   symbol_timestamp.add_hours(-2)
+	   ```
+	4. Produced network timestamp needs to be turned into block-based duration. Network timestamps are in milliseconds, so difference needs to be divided by 1000. Symbol testnet network block generation target time is 30s, so to obtain number of blocks:
+	   ```python
+	   duration = int((symbol_timestamp.timestamp - 25407256928) / 1000 / 30)
+	   # (25719853000 - 25407256928) / 1000 / 30 = 10419
+	   ```
+	5. Finally Bob can create secret lock
 ```python
 async def create_secret_lock_transaction(facade, signer_key_pair):
 	# derive the signer's address
@@ -1909,9 +1909,9 @@ async def create_secret_lock_transaction(facade, signer_key_pair):
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret lock transaction')
 ```
-    6. Secret lock transaction for your amusement: [B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B](https://testnet.symbol.fyi/transactions/B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B).
+	6. Secret lock transaction for your amusement: [B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B](https://testnet.symbol.fyi/transactions/B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B).
 3. Now Alice can claim the lock, that part is substantially easier:
-    1. create secret proof (withdraw)
+	1. create secret proof (withdraw)
 ```python
 async def create_secret_proof_transaction(facade, signer_key_pair):
 	# derive the signer's address
@@ -1968,12 +1968,12 @@ async def create_secret_proof_transaction(facade, signer_key_pair):
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret proof transaction')
 ```
-    2. Corresponding secret proof transaction: [40ACE09ADC8469A134E5CD136116A86B377FBA282EF6CB01A9E763592023E332](https://testnet.symbol.fyi/transactions/40ACE09ADC8469A134E5CD136116A86B377FBA282EF6CB01A9E763592023E332)
+	2. Corresponding secret proof transaction: [40ACE09ADC8469A134E5CD136116A86B377FBA282EF6CB01A9E763592023E332](https://testnet.symbol.fyi/transactions/40ACE09ADC8469A134E5CD136116A86B377FBA282EF6CB01A9E763592023E332)
 4. Now that Bob has learned super complicated proof he can use contract's `withdraw` method:<br>`cast send 0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B 'withdraw(bytes32, bytes)' 0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f 636F727265637420686F727365206261747465727920737461706C65`
-    1. `0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B` is a contract address, the same one as used by Alice,
-    2. `0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f` is a lock contract id (`contractId`),
-    3. `636F727265637420686F727365206261747465727920737461706C65` - i.e. found in Symbol's testnet explorer ([B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B](https://testnet.symbol.fyi/transactions/B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B) from earlier),
-    4. corresponding transaction on Sepolia testnet: [0x14eef724a76ae2aa29b0c405cbc0da2af3c7827e198bfdbbdadbb27eb67a2c05](https://sepolia.etherscan.io/tx/0x14eef724a76ae2aa29b0c405cbc0da2af3c7827e198bfdbbdadbb27eb67a2c05).
+	1. `0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B` is a contract address, the same one as used by Alice,
+	2. `0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f` is a lock contract id (`contractId`),
+	3. `636F727265637420686F727365206261747465727920737461706C65` - i.e. found in Symbol's testnet explorer ([B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B](https://testnet.symbol.fyi/transactions/B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B) from earlier),
+	4. corresponding transaction on Sepolia testnet: [0x14eef724a76ae2aa29b0c405cbc0da2af3c7827e198bfdbbdadbb27eb67a2c05](https://sepolia.etherscan.io/tx/0x14eef724a76ae2aa29b0c405cbc0da2af3c7827e198bfdbbdadbb27eb67a2c05).
 5. And they lived happily ever after.
 
 As mentioned in 2.3 lock created in symbol should be _slightly_ shorter. If it would be longer, or in general if ETH timelock will expire before Symbol's lock, Alice could cheat Bob, simply by waiting until eth timelock expires and then publishing both:
