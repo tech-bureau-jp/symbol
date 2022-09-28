@@ -195,6 +195,65 @@ async def get_network_finalized_height():
 # endregion
 
 
+# region account property accessors
+
+async def get_network_currency():
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/network/properties') as response:
+			# wait for the (JSON) response
+			properties = await response.json()
+
+			# exctract currency mosaic id
+			mosaic_id = int(properties['chain']['currencyMosaicId'].replace('\'', ''), 0)
+			print(f'currency mosaic id: {mosaic_id}')
+			return mosaic_id
+
+
+async def get_mosaic_properties(mosaic_id):
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/mosaics/{mosaic_id}') as response:
+			# wait for the (JSON) response
+			return await response.json()
+
+
+async def get_account_state():
+	account_identifier = 'TA4RYHMNHCFRCT2PCWOCJMWVAQ3ZCJDOTF2SGBI'  # Address or public key
+
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/accounts/{account_identifier}') as response:
+			# wait for the (JSON) response
+			return await response.json()
+
+
+async def get_account_balance():
+	network_currency_id = await get_network_currency()
+	network_currency_id_formatted = f'{network_currency_id:08X}'
+
+	currency_mosaic = await get_mosaic_properties(network_currency_id_formatted)
+	divisibility = currency_mosaic['mosaic']['divisibility']
+
+	account_state = await get_account_state()
+
+	# search for currency inside account mosaics
+	account_currency = next(mosaic for mosaic in account_state['account']['mosaics'] if network_currency_id == int(mosaic['id'], 16))
+	amount = int(account_currency['amount'])
+	account_balance = {
+		'balance': {
+			'id': account_currency['id'],
+			'amount': amount,
+			'formatted_amount': f'{amount // 10**divisibility}.{(amount % 10**divisibility):0{divisibility}}'
+		}
+	}
+
+	print(account_balance)
+	return account_balance
+
+# endregion
+
+
 # region account transactions
 
 async def create_account_metadata_transaction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
@@ -1211,6 +1270,15 @@ async def run_network_query_examples():
 		await func()
 
 
+async def run_account_query_examples():
+	functions = [
+		get_account_balance
+	]
+	for func in functions:
+		print_banner(func.__qualname__)
+		await func()
+
+
 async def run_transaction_creation_examples(facade):
 	print_banner('CREATING SIGNER ACCOUNT FOR TRANSACTION CREATION EXAMPLES')
 
@@ -1249,6 +1317,7 @@ async def main():
 
 	run_offline_account_creation_examples(facade)
 	await run_network_query_examples()
+	await run_account_query_examples()
 	await run_transaction_creation_examples(facade)
 
 	print_banner('FIN')
