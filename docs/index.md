@@ -1738,24 +1738,30 @@ Maximum supply is the maximum number of XYM that can ever be minted.
 ```sh
 curl https://${SYMBOL_API_NODE}:3001/network/currency/supply/max
 ```
-```py
+```python
 async def get_maximum_supply():
-	async with ClientSession() as session:
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
 		async with session.get(f'{SYMBOL_API_ENDPOINT}/network/currency/supply/max') as response:
+			# wait for the (text) response and interpret it as a floating point value
 			maximum_supply = float(await response.text())
-			print(f'maximum supply: {maximum_supply:.6f}')
+			print(f'maximum supply: {maximum_supply:.6f} XYM')
+			return maximum_supply
 ```
 
 Total supply is the number of XYM minted to date.
 ```sh
 curl https://${SYMBOL_API_NODE}:3001/network/currency/supply/total
 ```
-```py
+```python
 async def get_total_supply():
-	async with ClientSession() as session:
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
 		async with session.get(f'{SYMBOL_API_ENDPOINT}/network/currency/supply/total') as response:
+			# wait for the (text) response and interpret it as a floating point value
 			total_supply = float(await response.text())
-			print(f'total supply: {total_supply:.6f}')
+			print(f'total supply: {total_supply:.6f} XYM')
+			return total_supply
 ```
 
 Circulating supply is the number of XYM minted to date, excluding the balances of the two fee sinks:
@@ -1765,15 +1771,16 @@ Circulating supply is the number of XYM minted to date, excluding the balances o
 ```sh
 curl https://${SYMBOL_API_NODE}:3001/network/currency/supply/circulating
 ```
-```py
+```python
 async def get_circulating_supply():
-	async with ClientSession() as session:
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
 		async with session.get(f'{SYMBOL_API_ENDPOINT}/network/currency/supply/circulating') as response:
+			# wait for the (text) response and interpret it as a floating point value
 			circulating_supply = float(await response.text())
-			print(f'circulating supply: {circulating_supply:.6f}')
+			print(f'circulating supply: {circulating_supply:.6f} XYM')
+			return circulating_supply
 ```
-
-
 
 ### Tutorial: Querying Current Block Rewards
 ### Tutorial: Querying Historical Block Rewards
