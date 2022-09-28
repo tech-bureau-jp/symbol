@@ -291,7 +291,7 @@ async def create_account_metadata_transaction_new(facade, signer_key_pair):  # p
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -359,7 +359,7 @@ async def create_account_metadata_transaction_modify(facade, signer_key_pair):  
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -532,7 +532,7 @@ async def create_namespace_metadata_transaction_new(facade, signer_key_pair):  #
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -601,7 +601,7 @@ async def create_namespace_metadata_transaction_modify(facade, signer_key_pair):
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -791,7 +791,7 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -874,7 +874,7 @@ async def create_mosaic_metadata_new(facade, signer_key_pair):  # pylint: disabl
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -947,7 +947,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -1025,7 +1025,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -1364,7 +1364,7 @@ async def create_multisig_account_modification_transaction_new_account(facade, s
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
@@ -1447,7 +1447,7 @@ async def create_multisig_account_modification_transaction_modify_account(facade
 		'deadline': network_time.timestamp,
 
 		'type': 'aggregate_complete_transaction',
-		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions).bytes,
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
 		'transactions': embedded_transactions
 	})
 
