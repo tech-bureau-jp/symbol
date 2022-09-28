@@ -2,6 +2,7 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+import hashlib
 import json
 import shutil
 import time
@@ -10,7 +11,7 @@ from binascii import unhexlify
 from aiohttp import ClientSession
 
 from symbolchain.Bip32 import Bip32
-from symbolchain.CryptoTypes import Hash256, PrivateKey
+from symbolchain.CryptoTypes import Hash256, PrivateKey, PublicKey
 from symbolchain.facade.SymbolFacade import SymbolFacade
 from symbolchain.sc import Amount
 from symbolchain.symbol.IdGenerator import generate_mosaic_alias_id, generate_mosaic_id, generate_namespace_id
@@ -389,6 +390,124 @@ async def create_account_metadata_transaction_modify(facade, signer_key_pair):  
 
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='account metadata (modify) transaction')
+
+
+# endregion
+
+
+# region secret lock transaction
+
+async def create_secret_lock_transaction(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+	print(f'recipient: {recipient_address}')
+
+	# double sha256 hash the proof value
+	secret_hash = Hash256(hashlib.sha256(hashlib.sha256('correct horse battery staple'.encode('utf8')).digest()).digest())
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'secret_lock_transaction',
+		'mosaic': {'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 7_000000},  # mosaic to transfer upon proof
+
+		'duration': 111,  # number of blocks
+		'recipient_address': recipient_address,
+		'secret': secret_hash,
+		'hash_algorithm': 'hash_256'  # double Hash256
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'secret lock transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret lock transaction')
+
+
+async def create_secret_proof_transaction(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+	print(f'recipient: {recipient_address}')
+
+	# double sha256 hash the proof value
+	secret_hash = Hash256(hashlib.sha256(hashlib.sha256('correct horse battery staple'.encode('utf8')).digest()).digest())
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'secret_proof_transaction',
+
+		'recipient_address': recipient_address,
+		'secret': secret_hash,
+		'hash_algorithm': 'hash_256',  # double Hash256
+		'proof': 'correct horse battery staple'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'secret proof transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret proof transaction')
 
 
 # endregion
@@ -1669,35 +1788,38 @@ async def run_account_query_examples():
 async def run_transaction_creation_examples(facade):
 	function_groups = [
 		('BASIC', [
-			create_account_metadata_transaction_new,
-			create_account_metadata_transaction_modify,
+			# create_account_metadata_transaction_new,
+			# create_account_metadata_transaction_modify,
 
-			create_namespace_registration_transaction_root,
-			create_namespace_registration_transaction_child,
-			create_namespace_metadata_transaction_new,
-			create_namespace_metadata_transaction_modify,
+			create_secret_lock_transaction,
+			create_secret_proof_transaction,
 
-			create_mosaic_definition_transaction,
-			create_mosaic_supply_transaction,
-			create_mosaic_atomic_swap,
+			# create_namespace_registration_transaction_root,
+			# create_namespace_registration_transaction_child,
+			# create_namespace_metadata_transaction_new,
+			# create_namespace_metadata_transaction_modify,
 
-			create_mosaic_metadata_new,
-			create_mosaic_metadata_cosigned_1,
-			create_mosaic_metadata_cosigned_2,
+			# create_mosaic_definition_transaction,
+			# create_mosaic_supply_transaction,
+			# create_mosaic_atomic_swap,
 
-			create_global_mosaic_restriction_transaction_new,
-			create_address_mosaic_restriction_transaction_1,
-			create_address_mosaic_restriction_transaction_2,
-			create_address_mosaic_restriction_transaction_3,
-			create_global_mosaic_restriction_transaction_modify
+			# create_mosaic_metadata_new,
+			# create_mosaic_metadata_cosigned_1,
+			# create_mosaic_metadata_cosigned_2,
+
+			# create_global_mosaic_restriction_transaction_new,
+			# create_address_mosaic_restriction_transaction_1,
+			# create_address_mosaic_restriction_transaction_2,
+			# create_address_mosaic_restriction_transaction_3,
+			# create_global_mosaic_restriction_transaction_modify
 		]),
-		('MULTISIG (COMPLETE)', [
-			create_multisig_account_modification_transaction_new_account,
-			create_multisig_account_modification_transaction_modify_account
-		]),
-		('MULTISIG (BONDED)', [
-			create_multisig_account_modification_transaction_new_account_bonded
-		])
+		# ('MULTISIG (COMPLETE)', [
+		# 	create_multisig_account_modification_transaction_new_account,
+		# 	create_multisig_account_modification_transaction_modify_account
+		# ]),
+		# ('MULTISIG (BONDED)', [
+		# 	create_multisig_account_modification_transaction_new_account_bonded
+		# ])
 	]
 	for (group_name, functions) in function_groups:
 		print_banner(f'CREATING SIGNER ACCOUNT FOR {group_name} TRANSACTION CREATION EXAMPLES')

@@ -2,6 +2,7 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+import hashlib
 import json
 import shutil
 import time
@@ -10,7 +11,7 @@ from binascii import unhexlify
 from aiohttp import ClientSession
 
 from symbolchain.Bip32 import Bip32
-from symbolchain.CryptoTypes import Hash256, PrivateKey
+from symbolchain.CryptoTypes import Hash256, PrivateKey, PublicKey
 from symbolchain.facade.SymbolFacade import SymbolFacade
 from symbolchain.sc import Amount
 from symbolchain.symbol.IdGenerator import generate_mosaic_alias_id, generate_mosaic_id, generate_namespace_id
@@ -376,6 +377,60 @@ async def create_account_metadata_transaction_modify(facade, signer_key_pair):  
 	})
 
 	{{ create_transaction_footer('account metadata (modify)') }}
+
+# endregion
+
+
+# region secret lock transaction
+
+async def create_secret_lock_transaction(facade, signer_key_pair):
+	{{ create_transaction_header() }}
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+	print(f'recipient: {recipient_address}')
+
+	# double sha256 hash the proof value
+	secret_hash = Hash256(hashlib.sha256(hashlib.sha256('correct horse battery staple'.encode('utf8')).digest()).digest())
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'secret_lock_transaction',
+		'mosaic': {'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 7_000000},  # mosaic to transfer upon proof
+
+		'duration': 111,  # number of blocks
+		'recipient_address': recipient_address,
+		'secret': secret_hash,
+		'hash_algorithm': 'hash_256'  # double Hash256
+	})
+
+	{{ create_transaction_footer('secret lock') }}
+
+async def create_secret_proof_transaction(facade, signer_key_pair):
+	{{ create_transaction_header() }}
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+	print(f'recipient: {recipient_address}')
+
+	# double sha256 hash the proof value
+	secret_hash = Hash256(hashlib.sha256(hashlib.sha256('correct horse battery staple'.encode('utf8')).digest()).digest())
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'secret_proof_transaction',
+
+		'recipient_address': recipient_address,
+		'secret': secret_hash,
+		'hash_algorithm': 'hash_256',  # double Hash256
+		'proof': 'correct horse battery staple'
+	})
+
+	{{ create_transaction_footer('secret proof') }}
 
 # endregion
 
@@ -1059,6 +1114,9 @@ async def run_transaction_creation_examples(facade):
 		('BASIC', [
 			create_account_metadata_transaction_new,
 			create_account_metadata_transaction_modify,
+
+			create_secret_lock_transaction,
+			create_secret_proof_transaction,
 
 			create_namespace_registration_transaction_root,
 			create_namespace_registration_transaction_child,
