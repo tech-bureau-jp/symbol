@@ -1569,8 +1569,34 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 
 Corresponding transaction [3F4C…BA43](https://testnet.symbol.fyi/transactions/3F4CBD0B6392DE5553A4217F72DA640F78256A92D5A1FF54E9414D676941BA43)
 
-
 **Quering mosaic state:**
+
+TODO: not sure if we should list all possible ways to query metadata here, especially if the API is subject to change...
+
+```sh
+curl https://${SYMBOL_API_NODE}:3001/metadata?targetId=1788BA84888894EB&scopedMetadataKey=0000000074736574
+```
+
+```python
+async def get_mosaic_metadata(facade, signer_key_pair):
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+
+	mosaic_id = generate_mosaic_id(signer_address, 123)
+	scoped_metadata_key = int.from_bytes(b'rating', byteorder='little')
+
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		params = {
+			'targetId': f'{mosaic_id:016X}',
+			'scopedMetadataKey': f'{scoped_metadata_key:016X}'
+		}
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/metadata', params=params) as response:
+			# wait for the (JSON) response
+			response_json = await response.json()
+
+			print(json.dumps(response_json, indent=4))
+			return response_json
+```
 
 ### Tutorial: Performing an Atomic Swap
 

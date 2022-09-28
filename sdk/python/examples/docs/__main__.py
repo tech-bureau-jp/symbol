@@ -1603,6 +1603,25 @@ async def create_multisig_account_modification_transaction_modify_account(facade
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='multisig account (modify) transaction')
 
 
+async def get_mosaic_metadata(facade, signer_key_pair):
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+
+	mosaic_id = generate_mosaic_id(signer_address, 123)
+	scoped_metadata_key = int.from_bytes(b'rating', byteorder='little')
+
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		params = {
+			'targetId': f'{mosaic_id:016X}',
+			'scopedMetadataKey': f'{scoped_metadata_key:016X}'
+		}
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/metadata', params=params) as response:
+			# wait for the (JSON) response
+			response_json = await response.json()
+
+			print(json.dumps(response_json, indent=4))
+			return response_json
+
 # endregion
 
 
@@ -1788,38 +1807,39 @@ async def run_account_query_examples():
 async def run_transaction_creation_examples(facade):
 	function_groups = [
 		('BASIC', [
-			# create_account_metadata_transaction_new,
-			# create_account_metadata_transaction_modify,
+			create_account_metadata_transaction_new,
+			create_account_metadata_transaction_modify,
 
 			create_secret_lock_transaction,
 			create_secret_proof_transaction,
 
-			# create_namespace_registration_transaction_root,
-			# create_namespace_registration_transaction_child,
-			# create_namespace_metadata_transaction_new,
-			# create_namespace_metadata_transaction_modify,
+			create_namespace_registration_transaction_root,
+			create_namespace_registration_transaction_child,
+			create_namespace_metadata_transaction_new,
+			create_namespace_metadata_transaction_modify,
 
-			# create_mosaic_definition_transaction,
-			# create_mosaic_supply_transaction,
-			# create_mosaic_atomic_swap,
+			create_mosaic_definition_transaction,
+			create_mosaic_supply_transaction,
+			create_mosaic_atomic_swap,
 
-			# create_mosaic_metadata_new,
-			# create_mosaic_metadata_cosigned_1,
-			# create_mosaic_metadata_cosigned_2,
+			create_mosaic_metadata_new,
+			create_mosaic_metadata_cosigned_1,
+			create_mosaic_metadata_cosigned_2,
+			get_mosaic_metadata,
 
-			# create_global_mosaic_restriction_transaction_new,
-			# create_address_mosaic_restriction_transaction_1,
-			# create_address_mosaic_restriction_transaction_2,
-			# create_address_mosaic_restriction_transaction_3,
-			# create_global_mosaic_restriction_transaction_modify
+			create_global_mosaic_restriction_transaction_new,
+			create_address_mosaic_restriction_transaction_1,
+			create_address_mosaic_restriction_transaction_2,
+			create_address_mosaic_restriction_transaction_3,
+			create_global_mosaic_restriction_transaction_modify
 		]),
-		# ('MULTISIG (COMPLETE)', [
-		# 	create_multisig_account_modification_transaction_new_account,
-		# 	create_multisig_account_modification_transaction_modify_account
-		# ]),
-		# ('MULTISIG (BONDED)', [
-		# 	create_multisig_account_modification_transaction_new_account_bonded
-		# ])
+		('MULTISIG (COMPLETE)', [
+			create_multisig_account_modification_transaction_new_account,
+			create_multisig_account_modification_transaction_modify_account
+		]),
+		('MULTISIG (BONDED)', [
+			create_multisig_account_modification_transaction_new_account_bonded
+		])
 	]
 	for (group_name, functions) in function_groups:
 		print_banner(f'CREATING SIGNER ACCOUNT FOR {group_name} TRANSACTION CREATION EXAMPLES')
