@@ -623,6 +623,46 @@ async def create_mosaic_supply(facade, signer_key_pair):
 
 	{{ create_transaction_footer('mosaic supply') }}
 
+async def create_mosaic_transfer(facade, signer_key_pair):
+	{{ create_transaction_header() }}
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'recipient: {recipient_address}')
+
+	# send 10 of the custom mosaic to the recipient
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'transfer_transaction',
+		'recipient_address': recipient_address,
+		'mosaics': [
+			{'mosaic_id': generate_mosaic_id(signer_address, 123), 'amount': 10_00}
+		]
+	})
+
+	{{ create_transaction_footer('mosaic transfer') }}
+
+async def create_mosaic_revocation(facade, signer_key_pair):
+	{{ create_transaction_header() }}
+
+	# create a deterministic source (it insecurely deterministically generated for the benefit related tests)
+	source_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'source: {source_address}')
+
+	# revoke 7 of the custom mosaic from the recipient
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'mosaic_supply_revocation_transaction',
+		'source_address': source_address,
+		'mosaic': {'mosaic_id': generate_mosaic_id(signer_address, 123), 'amount': 7_00}
+	})
+
+	{{ create_transaction_footer('mosaic revocation') }}
+
 async def create_mosaic_atomic_swap(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
@@ -1295,6 +1335,8 @@ async def run_transaction_creation_examples(facade):
 			create_mosaic_definition_new,
 			create_mosaic_definition_modify,
 			create_mosaic_supply,
+			create_mosaic_transfer,
+			create_mosaic_revocation,
 			create_mosaic_atomic_swap,
 
 			create_mosaic_metadata_new,

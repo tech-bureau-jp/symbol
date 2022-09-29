@@ -925,6 +925,110 @@ async def create_mosaic_supply(facade, signer_key_pair):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic supply transaction')
 
 
+async def create_mosaic_transfer(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'recipient: {recipient_address}')
+
+	# send 10 of the custom mosaic to the recipient
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'transfer_transaction',
+		'recipient_address': recipient_address,
+		'mosaics': [
+			{'mosaic_id': generate_mosaic_id(signer_address, 123), 'amount': 10_00}
+		]
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'mosaic transfer transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic transfer transaction')
+
+
+async def create_mosaic_revocation(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic source (it insecurely deterministically generated for the benefit related tests)
+	source_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'source: {source_address}')
+
+	# revoke 7 of the custom mosaic from the recipient
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'mosaic_supply_revocation_transaction',
+		'source_address': source_address,
+		'mosaic': {'mosaic_id': generate_mosaic_id(signer_address, 123), 'amount': 7_00}
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'mosaic revocation transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic revocation transaction')
+
+
 async def create_mosaic_atomic_swap(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -2302,6 +2406,8 @@ async def run_transaction_creation_examples(facade):
 			create_mosaic_definition_new,
 			create_mosaic_definition_modify,
 			create_mosaic_supply,
+			create_mosaic_transfer,
+			create_mosaic_revocation,
 			create_mosaic_atomic_swap,
 
 			create_mosaic_metadata_new,
