@@ -197,7 +197,7 @@ There might be better ways to store (or simply encode) the data that is not expe
 **Assigning metadata to own account:**
 
 ```python
-async def create_account_metadata_transaction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_account_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -272,7 +272,7 @@ When changing/updating existing data, passed value needs to be "xor" result of o
 !js symbol.metadata.metadataUpdateValue
 
 ```python
-async def create_account_metadata_transaction_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_account_metadata_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -356,7 +356,7 @@ Transaction preparation can be split into three phases:
  3. adding cosignatures - this part might look bit weird, that is because it needs to convert some of SDK types into low-level catbuffer types from `symbolchain.sc` module.
 
 ```python
-async def create_multisig_account_modification_transaction_new_account(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_new_account(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -435,7 +435,7 @@ After this transaction 2-of-3 cosignatories are required to make any transaction
 Following example shows how two of cosignatories can swap third one for some other one. Additionally altering amount of cosignatories required for removal (`min_removal_delta`) - example is bit artificial, cause in effect single cosignatory can remove all others, which makes multisig account quite insecure.
 
 ```python
-async def create_multisig_account_modification_transaction_modify_account(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_modify_account(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -618,7 +618,7 @@ In 'mainnet' value of `childNamespaceRentalFee` is 10.
 Namespaces besides having maximal duration, also have minimal duration, in 'mainnet' that is 30d (2880 * 30 blocks).
 
 ```python
-async def create_namespace_registration_transaction_root(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_registration_root(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -673,7 +673,7 @@ Registration of root namespace generates `BalanceTransferReceipt` with type `Nam
 
 Child namespace:
 ```python
-async def create_namespace_registration_transaction_child(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_registration_child(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -733,7 +733,7 @@ Namespaces - like accounts - can have assigned metadata (compare with [Tutorial:
 Example below assumes signer is also owner of the namespace.
 
 ```python
-async def create_namespace_metadata_transaction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -805,7 +805,7 @@ async def create_namespace_metadata_transaction_new(facade, signer_key_pair):  #
 
 Modify the above metadata.
 ```python
-async def create_namespace_metadata_transaction_modify(facade, signer_key_pair):  # pylint: disable=invalid-name,too-many-locals
+async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint: disable=invalid-name,too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -903,7 +903,7 @@ Creating mosaic is either 2 or 3 step process:
  3. (optional) create and link namespace id to mosaic
 
 ```python
-async def create_mosaic_definition_transaction(facade, signer_key_pair):
+async def create_mosaic_definition(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -967,7 +967,7 @@ Corresponding transaction: [9BDA…78A8](https://testnet.symbol.fyi/transactions
 Mosaic above has id `0x1788BA84888894EB`, following transaction will increase it's supply. Supply needs to be specified in atomic unis. Mosaic has divisibility set to 2, so to create 123 mosaics `12300` needs to be specified as number of units.
 
 ```python
-async def create_mosaic_supply_transaction(facade, signer_key_pair):
+async def create_mosaic_supply(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1036,7 +1036,7 @@ Global restrictions allow to define global rules, that determine if account is a
 Mosaic from [creating a mosaic](#Tutorial:-Creating-a-Mosaic) example has id `0x1788BA84888894EB`.
 
 ```python
-async def create_global_mosaic_restriction_transaction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_global_mosaic_restriction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1099,7 +1099,7 @@ owner first need to set mosaic address restrictions **including own account**.
 It's called restriction, but technically this is addresss-based mosaic-level metadata, that is accessed by global restriction rule.
 
 ```python
-async def create_address_mosaic_restriction_transaction_1(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_1(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1149,7 +1149,7 @@ async def create_address_mosaic_restriction_transaction_1(facade, signer_key_pai
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:1) transaction')
 ```
 ```python
-async def create_address_mosaic_restriction_transaction_2(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_2(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1199,7 +1199,7 @@ async def create_address_mosaic_restriction_transaction_2(facade, signer_key_pai
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:2) transaction')
 ```
 ```python
-async def create_address_mosaic_restriction_transaction_3(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_3(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1257,7 +1257,7 @@ Owner can send some `0x1788BA84888894EB` mosaic to two other accounts, both can 
 Corresponding transactions: [25BE…918F](https://testnet.symbol.fyi/transactions/25BEC04709D95202460795A229DE3879BBAB623529B0E546889027207931918F), [9539…7E1A](https://testnet.symbol.fyi/transactions/95399DDC03DF52C2C9F63A855C7F7C975FB60A7362BD5FCB92DFDACE1C5E7E1A), [E8D2…316C](https://testnet.symbol.fyi/transactions/E8D24F266FBABD828219D7DE6FBA5B36C7378D09FB365E0AD77528C359A1316C), [C5B5…095E](https://testnet.symbol.fyi/transactions/C5B5BF7A7A32AD6D8B474153BA86851F874D785EC99A29C282AAEC47B6BE095E)
 
 ```python
-async def create_global_mosaic_restriction_transaction_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_global_mosaic_restriction_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1879,7 +1879,7 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 	   ```
 	5. Finally Bob can create secret lock
 		```python
-		async def create_secret_lock_transaction(facade, signer_key_pair):
+		async def create_secret_lock(facade, signer_key_pair):
 			# derive the signer's address
 			signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 			print(f'creating transaction with signer {signer_address}')
@@ -1939,7 +1939,7 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 3. Now Alice can claim the lock, that part is substantially easier:
 	1. create secret proof (withdraw)
 		```python
-		async def create_secret_proof_transaction(facade, signer_key_pair):
+		async def create_secret_proof(facade, signer_key_pair):
 			# derive the signer's address
 			signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 			print(f'creating transaction with signer {signer_address}')
