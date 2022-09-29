@@ -73,7 +73,7 @@ SYMBOL_EXPLORER_TRANSACTION_URL_PATTERN = 'https://testnet.symbol.fyi/transactio
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='{{ friendly_name }} transaction')
 {% endmacro %}
-# region create account with faucet
+# region utilities
 
 async def wait_for_transaction_status(transaction_hash, desired_status, **kwargs):
 	transaction_description = kwargs.get('transaction_description', 'transaction')
@@ -106,7 +106,7 @@ async def wait_for_transaction_status(transaction_hash, desired_status, **kwargs
 		raise RuntimeError(f'{transaction_description} {transaction_hash} did not transition to {desired_status} in alloted time period')
 
 
-async def create_account_with_tokens_from_faucet(facade, amount=100, private_key=None):  # pylint: disable=invalid-name
+async def create_account_with_tokens_from_faucet(facade, amount=150, private_key=None):  # pylint: disable=invalid-name
 	# create a key pair that will be used to send transactions
 	# when the PrivateKey is known, pass the raw private key bytes or hex encoded string to the PrivateKey(...) constructor instead
 	key_pair = facade.KeyPair(PrivateKey.random()) if private_key is None else facade.KeyPair(private_key)
@@ -551,7 +551,7 @@ async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint: 
 
 # region mosaic transactions
 
-async def create_mosaic_definition(facade, signer_key_pair):
+async def create_mosaic_definition_new(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	transaction = facade.transaction_factory.create({
@@ -563,13 +563,38 @@ async def create_mosaic_definition(facade, signer_key_pair):
 		'divisibility': 2,  # number of supported decimal places
 
 		# nonce is used as a locally unique identifier for mosaics with a common owner
-		# mosaic id is dreived from the owner's address and the nonce
+		# mosaic id is derived from the owner's address and the nonce
 		'nonce': 123,
 
 		# set of restrictions to apply to the mosaic
 		# - 'transferable' indicates the mosaic can be freely transfered among any account that can own the mosaic
 		# - 'restrictable' indicates that the owner can restrict the accounts that can own the mosaic
 		'flags': 'transferable restrictable'
+	})
+
+	# transaction.id field is mosaic id and it is filled automatically after calling transaction_factory.create()
+
+	{{ create_transaction_footer('mosaic definition') }}
+
+async def create_mosaic_definition_modify(facade, signer_key_pair):
+	{{ create_transaction_header() }}
+
+	# create a transaction that modifies an existing mosaic definition
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'mosaic_definition_transaction',
+		'duration': 0,  # number of blocks the mosaic will be active; 0 indicates it will never expire ( added to existing value)
+		'divisibility': 0,  # number of supported decimal places (XOR'd against existing value)
+
+		# nonce is used as a locally unique identifier for mosaics with a common owner
+		# mosaic id is derived from the owner's address and the nonce
+		'nonce': 123,
+
+		# set of restrictions to apply to the mosaic (XOR'd against existing value)
+		# - 'revokable' indicates the mosaic can be revoked by the owner from any account
+		'flags': 'revokable'
 	})
 
 	# transaction.id field is mosaic id and it is filled automatically after calling transaction_factory.create()
@@ -1266,7 +1291,8 @@ async def run_transaction_creation_examples(facade):
 			create_namespace_metadata_new,
 			create_namespace_metadata_modify,
 
-			create_mosaic_definition,
+			create_mosaic_definition_new,
+			create_mosaic_definition_modify,
 			create_mosaic_supply,
 			create_mosaic_atomic_swap,
 
