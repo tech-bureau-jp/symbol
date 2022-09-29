@@ -23,3 +23,5 @@
 !inline a.catbuffer
 
 !inline b.analytics
+
+!inline c.other
