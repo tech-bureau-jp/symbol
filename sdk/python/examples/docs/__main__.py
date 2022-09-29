@@ -407,7 +407,7 @@ async def create_secret_lock(facade, signer_key_pair):
 	network_time = network_time.add_hours(2)
 
 	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
-	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 
 	# double sha256 hash the proof value
@@ -464,7 +464,7 @@ async def create_secret_proof(facade, signer_key_pair):
 	network_time = network_time.add_hours(2)
 
 	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
-	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 
 	# double sha256 hash the proof value
@@ -1035,7 +1035,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([0]))
+	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	authority_key_pair = await create_account_with_tokens_from_faucet(facade, 100, authority_semi_deterministic_key)
 
 	# set new high score for an account
@@ -1113,7 +1113,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([0]))
+	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	authority_key_pair = await create_account_with_tokens_from_faucet(facade, 100, authority_semi_deterministic_key)
 
 	# update high score for an account
@@ -1447,6 +1447,429 @@ async def create_global_mosaic_restriction_modify(facade, signer_key_pair):  # p
 # endregion
 
 
+# region links
+
+async def create_account_key_link(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# this account will sign blocks on behalf of the (funded) signing account
+	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'remote public key: {remote_key_pair.public_key}')
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'account_key_link_transaction',
+		'linked_public_key': remote_key_pair.public_key,
+		'link_action': 'link'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'account key link transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='account key link transaction')
+
+
+async def create_vrf_key_link(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# this account will inject randomness into blocks harvested by the (funded) signing account
+	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'VRF public key: {vrf_key_pair.public_key}')
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'vrf_key_link_transaction',
+		'linked_public_key': vrf_key_pair.public_key,
+		'link_action': 'link'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'vrf key link transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='vrf key link transaction')
+
+
+async def create_voting_key_link(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic root voting public key (insecurely deterministically generated for the benefit related tests)
+	# this account will be participate in voting on behalf of the (funded) signing account
+	voting_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
+	print(f'voting public key: {voting_public_key}')
+
+	# notice that voting changes will only take effect after finalization of the block containing the voting key link transaction
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'voting_key_link_transaction',
+		'linked_public_key': voting_public_key,
+		'start_epoch': 10,
+		'end_epoch': 150,
+		'link_action': 'link'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'node key link transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='node key link transaction')
+
+
+async def create_node_key_link(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# this account will be asked to host delegated harvesting of the (funded) signing account
+	node_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
+	print(f'node public key: {node_public_key}')
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'node_key_link_transaction',
+		'linked_public_key': node_public_key,
+		'link_action': 'link'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'node key link transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='node key link transaction')
+
+
+async def create_account_key_unlink(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# this account will sign blocks on behalf of the (funded) signing account
+	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'remote public key: {remote_key_pair.public_key}')
+
+	# when unlinking, linked_public_key must match previous value used in link
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'account_key_link_transaction',
+		'linked_public_key': remote_key_pair.public_key,
+		'link_action': 'unlink'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'account key link transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='account key link transaction')
+
+
+async def create_vrf_key_unlink(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# this account will inject randomness into blocks harvested by the (funded) signing account
+	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'VRF public key: {vrf_key_pair.public_key}')
+
+	# when unlinking, linked_public_key must match previous value used in link
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'vrf_key_link_transaction',
+		'linked_public_key': vrf_key_pair.public_key,
+		'link_action': 'unlink'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'vrf key link transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='vrf key link transaction')
+
+
+async def create_voting_key_unlink(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic root voting public key (insecurely deterministically generated for the benefit related tests)
+	# this account will be participate in voting on behalf of the (funded) signing account
+	voting_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
+	print(f'voting public key: {voting_public_key}')
+
+	# notice that voting changes will only take effect after finalization of the block containing the voting key link transaction
+	# when unlinking, linked_public_key must match previous value used in link
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'voting_key_link_transaction',
+		'linked_public_key': voting_public_key,
+		'start_epoch': 10,
+		'end_epoch': 150,
+		'link_action': 'unlink'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'node key link transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='node key link transaction')
+
+
+async def create_node_key_unlink(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# this account will be asked to host delegated harvesting of the (funded) signing account
+	node_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
+	print(f'node public key: {node_public_key}')
+
+	# when unlinking, linked_public_key must match previous value used in link
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'node_key_link_transaction',
+		'linked_public_key': node_public_key,
+		'link_action': 'unlink'
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'node key link transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='node key link transaction')
+
+
+# endregion
+
+
 # region account multisig management transactions (complete)
 
 async def create_multisig_account_modification_new_account(facade, signer_key_pair):  # pylint: disable=invalid-name
@@ -1461,7 +1884,7 @@ async def create_multisig_account_modification_new_account(facade, signer_key_pa
 
 	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
 	# (they are insecurely deterministically generated for the benefit related tests)
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(3)]
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(3)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
 	# multisig account modification transaction needs to be wrapped in aggregate transaction
@@ -1530,7 +1953,7 @@ async def create_multisig_account_modification_modify_account(facade, signer_key
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(4)]
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(4)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
 	# multisig account modification transaction needs to be wrapped in aggregate transaction
@@ -1687,7 +2110,7 @@ async def create_multisig_account_modification_new_account_bonded(facade, signer
 
 	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
 	# (they are insecurely deterministically generated for the benefit related tests)
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(3)]
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(3)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
 	embedded_transactions = [
@@ -1832,6 +2255,17 @@ async def run_transaction_creation_examples(facade):
 			create_address_mosaic_restriction_2,
 			create_address_mosaic_restriction_3,
 			create_global_mosaic_restriction_modify
+		]),
+		('BASIC (LINKS)', [
+			create_account_key_link,
+			create_vrf_key_link,
+			create_voting_key_link,
+			create_node_key_link,
+
+			create_account_key_unlink,
+			create_vrf_key_unlink,
+			create_voting_key_unlink,
+			create_node_key_unlink
 		]),
 		('MULTISIG (COMPLETE)', [
 			create_multisig_account_modification_new_account,
