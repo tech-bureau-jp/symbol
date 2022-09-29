@@ -829,14 +829,15 @@ async def create_mosaic_definition_modify(facade, signer_key_pair):
 		'deadline': network_time.timestamp,
 
 		'type': 'mosaic_definition_transaction',
-		'duration': 0,  # number of blocks the mosaic will be active; 0 indicates it will never expire ( added to existing value)
-		'divisibility': 0,  # number of supported decimal places (XOR'd against existing value)
+		'duration': 0,  # number of blocks the mosaic will be active; 0 indicates it will never expire (added to existing value: 0 + 0 = 0)
+		'divisibility': 0,  # number of supported decimal places (XOR'd against existing value: 2 ^ 0 = 2)
 
-		# nonce is used as a locally unique identifier for mosaics with a common owner
+		# nonce is used as a locally unique identifier for mosaics with a common owner and identifies the mosaic definition to modify
 		# mosaic id is derived from the owner's address and the nonce
 		'nonce': 123,
 
-		# set of restrictions to apply to the mosaic (XOR'd against existing value)
+		# set of restrictions to apply to the mosaic
+		# (XOR'd against existing value: (transferable|restrictable) ^ revokable = transferable|restrictable|revokable)
 		# - 'revokable' indicates the mosaic can be revoked by the owner from any account
 		'flags': 'revokable'
 	})

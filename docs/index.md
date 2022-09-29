@@ -368,7 +368,7 @@ async def create_multisig_account_modification_new_account(facade, signer_key_pa
 
 	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
 	# (they are insecurely deterministically generated for the benefit related tests)
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(3)]
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(3)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
 	# multisig account modification transaction needs to be wrapped in aggregate transaction
@@ -445,7 +445,7 @@ async def create_multisig_account_modification_modify_account(facade, signer_key
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([i]))) for i in range(4)]
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(4)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
 	# multisig account modification transaction needs to be wrapped in aggregate transaction
@@ -903,7 +903,7 @@ Creating mosaic is either 2 or 3 step process:
  3. (optional) create and link namespace id to mosaic
 
 ```python
-async def create_mosaic_definition(facade, signer_key_pair):
+async def create_mosaic_definition_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -921,7 +921,7 @@ async def create_mosaic_definition(facade, signer_key_pair):
 		'divisibility': 2,  # number of supported decimal places
 
 		# nonce is used as a locally unique identifier for mosaics with a common owner
-		# mosaic id is dreived from the owner's address and the nonce
+		# mosaic id is derived from the owner's address and the nonce
 		'nonce': 123,
 
 		# set of restrictions to apply to the mosaic
@@ -1416,7 +1416,7 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([0]))
+	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	authority_key_pair = await create_account_with_tokens_from_faucet(facade, 100, authority_semi_deterministic_key)
 
 	# set new high score for an account
@@ -1499,7 +1499,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-1] + bytes([0]))
+	authority_semi_deterministic_key = PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	authority_key_pair = await create_account_with_tokens_from_faucet(facade, 100, authority_semi_deterministic_key)
 
 	# update high score for an account
@@ -1889,7 +1889,7 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 			network_time = network_time.add_hours(2)
 		
 			# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
-			recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+			recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 			print(f'recipient: {recipient_address}')
 		
 			# double sha256 hash the proof value
@@ -1949,7 +1949,7 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 			network_time = network_time.add_hours(2)
 		
 			# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
-			recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.private_key.bytes[:-1] + bytes([0])))
+			recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 			print(f'recipient: {recipient_address}')
 		
 			# double sha256 hash the proof value
