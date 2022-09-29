@@ -1751,7 +1751,37 @@ In Symbol, new blocks are created through a process called *harvesting*.
 #### Merkle Trees
 #### Patricia Trees
 ### Tutorial: Querying Finalization Height
+
+```python
+async def get_network_finalized_height():
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/chain/info') as response:
+			# wait for the (JSON) response
+			response_json = await response.json()
+
+			# extract the finalized height from the json
+			height = int(response_json['latestFinalizedBlock']['height'])
+			print(f'finalized height: {height}')
+			return height
+```
+
 ### Tutorial: Querying Current Height
+
+```python
+async def get_network_height():
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/chain/info') as response:
+			# wait for the (JSON) response
+			response_json = await response.json()
+
+			# extract the height from the json
+			height = int(response_json['height'])
+			print(f'height: {height}')
+			return height
+```
+
 ### Tutorial: Working with Proofs
 
 
