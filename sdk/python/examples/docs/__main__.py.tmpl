@@ -1111,6 +1111,46 @@ async def create_node_key_{{ action }}(facade, signer_key_pair):
 
 {{ create_node_key_link('link') }}
 
+async def create_harvesting_delegation_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+	# pylint: disable=too-many-locals
+	{{ create_transaction_header() }}
+
+	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# this account will sign blocks on behalf of the (funded) signing account
+	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'remote public key: {remote_key_pair.public_key}')
+
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# this account will inject randomness into blocks harvested by the (funded) signing account
+	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 1])))
+	print(f'VRF public key: {vrf_key_pair.public_key}')
+
+	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# this account will be asked to host delegated harvesting of the (funded) signing account
+	node_public_key = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 2]))).public_key
+	print(f'node public key: {node_public_key}')
+
+	# create a harvesting delecation request message using the signer's private key and the remote node's public key
+	# the signer's remote and VRF private keys will be shared with the node
+	# in order to deactivate, these should be regenerated
+	message_encoder = MessageEncoder(signer_key_pair)
+	harvest_request_payload = message_encoder.encode_persistent_harvesting_delegation(node_public_key, remote_key_pair, vrf_key_pair)
+	print(f'harvest request message: {hexlify(harvest_request_payload)}')
+
+	# the same encoder can be used to decode a message
+	decrypt_utf8_message(signer_key_pair, node_public_key, harvest_request_payload)
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'transfer_transaction',
+		'recipient_address': facade.network.public_key_to_address(node_public_key),
+		'message': harvest_request_payload
+	})
+
+	{{ create_transaction_footer('transfer') }}
+
 {{ create_account_key_link('unlink') }}
 
 {{ create_vrf_key_link('unlink') }}
@@ -1404,6 +1444,8 @@ async def run_transaction_creation_examples(facade):
 			create_vrf_key_link,
 			create_voting_key_link,
 			create_node_key_link,
+
+			create_harvesting_delegation_message,
 
 			create_account_key_unlink,
 			create_vrf_key_unlink,

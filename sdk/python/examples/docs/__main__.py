@@ -1898,6 +1898,78 @@ async def create_node_key_link(facade, signer_key_pair):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='node key link transaction')
 
 
+async def create_harvesting_delegation_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+	# pylint: disable=too-many-locals
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# this account will sign blocks on behalf of the (funded) signing account
+	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'remote public key: {remote_key_pair.public_key}')
+
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# this account will inject randomness into blocks harvested by the (funded) signing account
+	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 1])))
+	print(f'VRF public key: {vrf_key_pair.public_key}')
+
+	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# this account will be asked to host delegated harvesting of the (funded) signing account
+	node_public_key = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 2]))).public_key
+	print(f'node public key: {node_public_key}')
+
+	# create a harvesting delecation request message using the signer's private key and the remote node's public key
+	# the signer's remote and VRF private keys will be shared with the node
+	# in order to deactivate, these should be regenerated
+	message_encoder = MessageEncoder(signer_key_pair)
+	harvest_request_payload = message_encoder.encode_persistent_harvesting_delegation(node_public_key, remote_key_pair, vrf_key_pair)
+	print(f'harvest request message: {hexlify(harvest_request_payload)}')
+
+	# the same encoder can be used to decode a message
+	decrypt_utf8_message(signer_key_pair, node_public_key, harvest_request_payload)
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'transfer_transaction',
+		'recipient_address': facade.network.public_key_to_address(node_public_key),
+		'message': harvest_request_payload
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'transfer transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='transfer transaction')
+
+
 async def create_account_key_unlink(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -2471,55 +2543,57 @@ async def run_account_query_examples():
 
 async def run_transaction_creation_examples(facade):
 	function_groups = [
-		('BASIC', [
-			create_transfer_with_encrypted_message
-			create_account_metadata_new,
-			create_account_metadata_modify,
+		# ('BASIC', [
+		# 	create_transfer_with_encrypted_message
+		# 	create_account_metadata_new,
+		# 	create_account_metadata_modify,
 
-			create_secret_lock,
-			create_secret_proof,
+		# 	create_secret_lock,
+		# 	create_secret_proof,
 
-			create_namespace_registration_root,
-			create_namespace_registration_child,
-			create_namespace_metadata_new,
-			create_namespace_metadata_modify,
+		# 	create_namespace_registration_root,
+		# 	create_namespace_registration_child,
+		# 	create_namespace_metadata_new,
+		# 	create_namespace_metadata_modify,
 
-			create_mosaic_definition_new,
-			create_mosaic_definition_modify,
-			create_mosaic_supply,
-			create_mosaic_transfer,
-			create_mosaic_revocation,
-			create_mosaic_atomic_swap,
+		# 	create_mosaic_definition_new,
+		# 	create_mosaic_definition_modify,
+		# 	create_mosaic_supply,
+		# 	create_mosaic_transfer,
+		# 	create_mosaic_revocation,
+		# 	create_mosaic_atomic_swap,
 
-			create_mosaic_metadata_new,
-			create_mosaic_metadata_cosigned_1,
-			create_mosaic_metadata_cosigned_2,
-			get_mosaic_metadata,
+		# 	create_mosaic_metadata_new,
+		# 	create_mosaic_metadata_cosigned_1,
+		# 	create_mosaic_metadata_cosigned_2,
+		# 	get_mosaic_metadata,
 
-			create_global_mosaic_restriction_new,
-			create_address_mosaic_restriction_1,
-			create_address_mosaic_restriction_2,
-			create_address_mosaic_restriction_3,
-			create_global_mosaic_restriction_modify
-		]),
+		# 	create_global_mosaic_restriction_new,
+		# 	create_address_mosaic_restriction_1,
+		# 	create_address_mosaic_restriction_2,
+		# 	create_address_mosaic_restriction_3,
+		# 	create_global_mosaic_restriction_modify
+		# ]),
 		('BASIC (LINKS)', [
-			create_account_key_link,
-			create_vrf_key_link,
-			create_voting_key_link,
-			create_node_key_link,
+			# create_account_key_link,
+			# create_vrf_key_link,
+			# create_voting_key_link,
+			# create_node_key_link,
 
-			create_account_key_unlink,
-			create_vrf_key_unlink,
-			create_voting_key_unlink,
-			create_node_key_unlink
+			create_harvesting_delegation_message,
+
+			# create_account_key_unlink,
+			# create_vrf_key_unlink,
+			# create_voting_key_unlink,
+			# create_node_key_unlink
 		]),
-		('MULTISIG (COMPLETE)', [
-			create_multisig_account_modification_new_account,
-			create_multisig_account_modification_modify_account
-		]),
-		('MULTISIG (BONDED)', [
-			create_multisig_account_modification_new_account_bonded
-		])
+		# ('MULTISIG (COMPLETE)', [
+		# 	create_multisig_account_modification_new_account,
+		# 	create_multisig_account_modification_modify_account
+		# ]),
+		# ('MULTISIG (BONDED)', [
+		# 	create_multisig_account_modification_new_account_bonded
+		# ])
 	]
 	for (group_name, functions) in function_groups:
 		print_banner(f'CREATING SIGNER ACCOUNT FOR {group_name} TRANSACTION CREATION EXAMPLES')
