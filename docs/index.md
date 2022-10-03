@@ -91,6 +91,8 @@ private key: 984D4E4EC6AB5C772876135D88DF40F13B7B5880324A6D7F19E16DB292F8C443
 
 ### Tutorial: Key Derivation and Verification
 
+:warning: what examples here?
+
 ### Tutorial: Create an Account and Fund via Faucet
 
 ```python
@@ -291,8 +293,6 @@ async def create_account_metadata_new(facade, signer_key_pair):  # pylint: disab
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='account metadata (new) transaction')
 ```
 
-Corresponding transaction: [E14…C901](https://testnet.symbol.fyi/transactions/E14F3658477C177C64E9CC070D878F07408877783729C1E5567D96B65441C901)
-
 **Modifying existing metadata:**
 
 When changing/updating existing data, passed value needs to be "xor" result of old and new values, there's a helper for that
@@ -367,8 +367,6 @@ async def create_account_metadata_modify(facade, signer_key_pair):  # pylint: di
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='account metadata (modify) transaction')
 ```
-
-Corresponding transaction: [2422…3709](https://testnet.symbol.fyi/transactions/2422FEB2A935B34B1A926650F9B0910C44568B6282AF4FAACFE8456AC8E73709)
 
 ### Tutorial: Adding, Modifying or Removing a Cosignatory
 
@@ -454,9 +452,6 @@ async def create_multisig_account_modification_new_account(facade, signer_key_pa
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='multisig account (create) transaction')
 ```
-
-Corresponding transaction [2914…A144](https://testnet.symbol.fyi/transactions/29149344AA870A37242D8649659D09A20523BFB8FFC546626A1099B07811A144)
-
 
 After this transaction 2-of-3 cosignatories are required to make any transaction, same goes for removal from multisig, due to `min_removal_delta`.
 
@@ -549,9 +544,6 @@ async def create_multisig_account_modification_modify_account(facade, signer_key
 Note, that the aggregate transaction is signed by `cosignatory[0]` key pair, but "signer" (or rather _sender_) of the modification transaction is `multisig_key_pair`.
 
 Cosignature of a cosignatory that is added to multisig is ALWAYS required, independent of current settings of `min_approval` or `min_removal`. Reason for this is pretty straight-forward, newly added account must "agree" to actually become cosignatory.
-
-Modification transaction: [F39F…C877](https://testnet.symbol.fyi/transactions/F39F431DCEF733A4FC5412246788AC24D83E71477512DE2CDB088A3A8437C877)
-
 
 ### Tutorial: Vanity Generation and You
 
@@ -695,8 +687,6 @@ async def create_namespace_registration_root(facade, signer_key_pair):  # pylint
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace (root) registration transaction')
 ```
 
-Corresponding transaction: [D709…AFE7](https://testnet.symbol.fyi/transactions/D709B77D3AE1AF4A264711ED71AFD9D5997AEB93693C37C017E1ED2715ECAFE7).
-
 Registration of root namespace generates `BalanceTransferReceipt` with type `NamespaceRentalFee`.
 
 Child namespace:
@@ -749,8 +739,6 @@ async def create_namespace_registration_child(facade, signer_key_pair):  # pylin
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace (child) registration transaction')
 ```
-
-Corresponding transaction: [C537…A556](https://testnet.symbol.fyi/transactions/C5374DBCBC0BF9BE287F5110566494148CA40907F9C95C95BAEA60C8DD29A556).
 
 Registration of child namespace also generates `BalanceTransferReceipt` with type `NamespaceRentalFee`.
 
@@ -902,8 +890,6 @@ async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint: 
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace metadata (modify) transaction')
 ```
 
-[C9EE…79BC1](https://testnet.symbol.fyi/transactions/C9EE0F9318EC3F2BAB3CC20601D13E9687A881F1ABD084B1A52A283566879BC1)
-
 Query namespace metadata:
 ```sh
 curl https://${SYMBOL_API_NODE}:3001/metadata?targetId=D51E852A906C2DFA&scopedMetadataKey=00000000656D616E`
@@ -988,8 +974,6 @@ async def create_mosaic_definition_new(facade, signer_key_pair):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic definition transaction')
 ```
 
-Corresponding transaction: [9BDA…78A8](https://testnet.symbol.fyi/transactions/9BDA55FADF7C34B854C5ABB9535944ECF75AB508E367F1A25D070507CD8078A8)
-
 **Create a supply:**
 
 Mosaic above has id `0x1788BA84888894EB`, following transaction will increase it's supply. Supply needs to be specified in atomic unis. Mosaic has divisibility set to 2, so to create 123 mosaics `12300` needs to be specified as number of units.
@@ -1048,10 +1032,7 @@ async def create_mosaic_supply(facade, signer_key_pair):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic supply transaction')
 ```
 
-Corresponding transaction: [6115…142E](https://testnet.symbol.fyi/transactions/6115527581BC9874B51967EB8E5574D2B6CEA82463A7892190555E215910142E)
-
 TODO: should there be namespace link here as well?
-
 
 ### Tutorial: Working with Rules (restrictions?)
 
@@ -1118,8 +1099,6 @@ async def create_global_mosaic_restriction_new(facade, signer_key_pair):  # pyli
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='global mosaic restriction (new) transaction')
 ```
-
-Corresponding transaction: [8F93…F306](https://testnet.symbol.fyi/transactions/8F938362633A3CDE06F5599E70FCFF19202C87DB6F03C06DE058D4D34B27F306)
 
 After this transaction in order to be able to send mosaic to anyone,
 owner first need to set mosaic address restrictions **including own account**.
@@ -1279,10 +1258,7 @@ async def create_address_mosaic_restriction_3(facade, signer_key_pair):  # pylin
 
 Notice, that **TBOBBY** account has value set to 1, while **TALICE** set to 2, this will be used later.
 
-Corresponding transactions: [F5B4…EC7C](https://testnet.symbol.fyi/transactions/F5B492307C21BE7F9017728BDF881734527E5A0658F1EAFFB30B35F00411EC7C), [1621…7CEB](https://testnet.symbol.fyi/transactions/1621B322FE288DF1202F1EA7F433373374CB6E5284BB779803359EDCC5197CEB), [5154…6A7F](https://testnet.symbol.fyi/transactions/515431554B5A971CB0D77BE9393F327E2CA4A9F888FA1D40CF563493C2CE6A7F)
-
 Owner can send some `0x1788BA84888894EB` mosaic to two other accounts, both can transfer it as well.
-Corresponding transactions: [25BE…918F](https://testnet.symbol.fyi/transactions/25BEC04709D95202460795A229DE3879BBAB623529B0E546889027207931918F), [9539…7E1A](https://testnet.symbol.fyi/transactions/95399DDC03DF52C2C9F63A855C7F7C975FB60A7362BD5FCB92DFDACE1C5E7E1A), [E8D2…316C](https://testnet.symbol.fyi/transactions/E8D24F266FBABD828219D7DE6FBA5B36C7378D09FB365E0AD77528C359A1316C), [C5B5…095E](https://testnet.symbol.fyi/transactions/C5B5BF7A7A32AD6D8B474153BA86851F874D785EC99A29C282AAEC47B6BE095E)
 
 ```python
 async def create_global_mosaic_restriction_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
@@ -1338,12 +1314,8 @@ async def create_global_mosaic_restriction_modify(facade, signer_key_pair):  # p
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='global mosaic restriction (modify) transaction')
 ```
 
-Corresponding transaction: [4B67…2654](https://testnet.symbol.fyi/transactions/4B67957FFEC54D0011E79DCB3612D6C92DC0205299CC57CC54E93CD830EC2654)
-
 After this transaction **TALICE** can send and receive transaction, but **TBOBBY** cannot.
 **TBOBBY** will get `Failure_RestrictionMosaic_Account_Unauthorized` as a transaction status when trying to send the mosaic.
-
-Corresponding transaction (from **TALICE**): [70E5…5EC6](https://testnet.symbol.fyi/transactions/70E50F659CAE226917A91197CA76C9624254047F0FB956349CD28701A7EA5EC6)
 
 ### Tutorial: Adding, Modifying or Querying (Mosaic) Metadata
 
@@ -1429,8 +1401,6 @@ async def create_mosaic_metadata_new(facade, signer_key_pair):  # pylint: disabl
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic metadata (new) transaction')
 ```
 
-Corresponding transaction [3805…D98B](https://testnet.symbol.fyi/transactions/38057E848B2669B05EF61DF53BBF3658340959D212D14E898181DA0363A0D98B)
-
 **Attaching metadata to mosaic via third party:**
 
 ```python
@@ -1512,8 +1482,6 @@ async def create_mosaic_metadata_cosigned_1(facade, signer_key_pair):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic metadata (cosigned 1) transaction')
 ```
 
-Corresponding transaction [A31C…3365](https://testnet.symbol.fyi/transactions/A31CA406F225370C835889B1A726BD26DBB3CF73EA89F658C475409624363365)
-
 **Modify metadata to mosaic via third party:**
 
 ```python
@@ -1594,8 +1562,6 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 	# wait for the transaction to be confirmed
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic metadata (cosigned 2) transaction')
 ```
-
-Corresponding transaction [3F4C…BA43](https://testnet.symbol.fyi/transactions/3F4CBD0B6392DE5553A4217F72DA640F78256A92D5A1FF54E9414D676941BA43)
 
 **Quering mosaic state:**
 
@@ -1720,17 +1686,14 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='mosaic swap transaction')
 ```
 
-Corresponding transaction:
-[F6D1…BC55](https://testnet.symbol.fyi/transactions/F6D1E60A7FC47B88D16D3B8358D79EAE5EAAB328F4D988DE45669BD013C8BC55)
-
-
-
 ### Tutorial: Querying State of a Mosaic (Current, Historical, Namespace)
 
 Query mosaic state:
 ```sh
 curl https://${SYMBOL_API_NODE}:3001/mosaics/1788BA84888894EB
 ```
+
+:warning: we don't have historical support currently
 
 ## Transactions
 
@@ -1929,6 +1892,9 @@ async def create_harvesting_delegation_message(facade, signer_key_pair):  # pyli
 ```
 
 ### Tutorial: Querying or Modifying Deadlines
+
+:warning: not sure what this means?
+
 ### Tutorial: Signing Simple, Aggregate or Multisignature Transactions
 *Manually, Automatically, Verification*
 
@@ -2556,6 +2522,7 @@ async def get_network_height():
 
 ### Tutorial: Working with Proofs
 
+:warning: what kind of examples are desired here?
 
 ## XYM
 
@@ -2611,7 +2578,12 @@ async def get_circulating_supply():
 ```
 
 ### Tutorial: Querying Current Block Rewards
+
+:warning: this is not currently supported by REST; best we can do is read reward from CURRENT block
+
 ### Tutorial: Querying Historical Block Rewards
+
+:warning: we can get this from block height, is that desire?
 
 ## Advanced topics
 
@@ -2667,7 +2639,7 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 	6. as can be seen in transaction logs, `contractId` (read: identifier of created lock) is `0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f`
 2. Bob creates lock inside Symbol:
 	1. First bob needs to turn Alice's timelock into secret lock duration.
-	2. Current testnet block at the time of writing is [697357](https://testnet.symbol.fyi/blocks/697357), with network timestamp: **25407256928**.
+	2. Current testnet block at the time of writing is **697357**, with network timestamp: **25407256928**.
 	3. Alice's unix epoch-based timestamp needs to be converted to Symbol network timestamp, additionally, we want to lower it by two hours, so that lock in Symbol expires prior to corresponding lock in eth (see explanation below)
 	   ```python
 	   timelock_datetime = datetime.fromtimestamp(unix_epoch_timelock, tz=timezone.utc)
@@ -2737,7 +2709,6 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 			# wait for the transaction to be confirmed
 			await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret lock transaction')
 		```
-	6. Secret lock transaction for your amusement: [B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B](https://testnet.symbol.fyi/transactions/B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B).
 3. Now Alice can claim the lock, that part is substantially easier:
 	1. create secret proof (withdraw)
 		```python
@@ -2796,12 +2767,11 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 			# wait for the transaction to be confirmed
 			await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='secret proof transaction')
 		```
-	2. Corresponding secret proof transaction: [40ACE09ADC8469A134E5CD136116A86B377FBA282EF6CB01A9E763592023E332](https://testnet.symbol.fyi/transactions/40ACE09ADC8469A134E5CD136116A86B377FBA282EF6CB01A9E763592023E332)
 4. Now that Bob has learned super complicated proof he can use contract's `withdraw` method:<br>`cast send 0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B 'withdraw(bytes32, bytes)' 0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f 636F727265637420686F727365206261747465727920737461706C65`
 	1. `0xd58e030bd21c7788897aE5Ea845DaBA936e91D2B` is a contract address, the same one as used by Alice,
 	2. `0x81b0f164348bb17de94cca31b8d41ce435321aa2bb5721eb5c90cadd886e4c3f` is a lock contract id (`contractId`),
-	3. `636F727265637420686F727365206261747465727920737461706C65` - i.e. found in Symbol's testnet explorer ([B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B](https://testnet.symbol.fyi/transactions/B01260807D9371698113002E771E09A62136EEC3CB5ECB9466078D9C36BE621B) from earlier),
-	4. corresponding transaction on Sepolia testnet: [0x14eef724a76ae2aa29b0c405cbc0da2af3c7827e198bfdbbdadbb27eb67a2c05](https://sepolia.etherscan.io/tx/0x14eef724a76ae2aa29b0c405cbc0da2af3c7827e198bfdbbdadbb27eb67a2c05).
+	3. `636F727265637420686F727365206261747465727920737461706C65` - i.e. found in Symbol's testnet explorer (from earlier),
+	4. corresponding transaction on Sepolia testnet: `0x14eef724a76ae2aa29b0c405cbc0da2af3c7827e198bfdbbdadbb27eb67a2c05`
 5. And they lived happily ever after.
 
 As mentioned in 2.3 lock created in symbol should be _slightly_ shorter. If it would be longer, or in general if ETH timelock will expire before Symbol's lock, Alice could cheat Bob, simply by waiting until eth timelock expires and then publishing both:
@@ -2819,6 +2789,8 @@ Catapult is the reference client for Symbol. Written in C++, Catapult's key inno
 ### Plugins
 
 Each feature that makes up Symbol is defined as a *plugin*. All nodes within same network need to share same set of plugins.
+
+:warning: what should go here?
 
 ### Transaction Plugins
 
@@ -2861,6 +2833,9 @@ Each feature that makes up Symbol is defined as a *plugin*. All nodes within sam
 ### Configuration
 ### Tutorial: Working with MongoDB
 ### Tutorial: Working with REST
+
+:warning: are existing REST docs good enough?
+
 ### Tutorial: Working with Websockets
 
 ## Catbuffer
@@ -3157,9 +3132,20 @@ using Height = uint64
 ## Analytics
 
 ### Querying Network Mosaics
+
+:warning: what examples are desired here?
+
 ### Tutorial: Querying Total Mosaics Issued on Symbol
+
+:warning: i don't think we can do this via REST but can via mongo
+
 ### Tutorial: Querying Total Nodes Active
+
+:warning: a node can only return nodes it knows about from its view. is that intent or should example crawl.
+
 ### Tutorial: Working with Block (.blk) Data
+
+:warning: assuming this is about tx + block formats? can we use diagrams and docs from techref?
 
 ```python
 async def create_mosaic_definition_modify(facade, signer_key_pair):
