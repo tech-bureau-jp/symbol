@@ -1000,7 +1000,7 @@ async def create_global_mosaic_restriction_modify(facade, signer_key_pair):  # p
 
 # region links
 
-{% macro create_account_key_link_transaction(action) -%}
+{% macro create_account_key_link(action) -%}
 async def create_account_key_{{ action }}(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
@@ -1024,7 +1024,7 @@ async def create_account_key_{{ action }}(facade, signer_key_pair):
 
 	{{ create_transaction_footer('account key link') }}
 {%- endmacro -%}
-{% macro create_vrf_key_link_transaction(action) -%}
+{% macro create_vrf_key_link(action) -%}
 async def create_vrf_key_{{ action }}(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
@@ -1049,7 +1049,7 @@ async def create_vrf_key_{{ action }}(facade, signer_key_pair):
 	{{ create_transaction_footer('vrf key link') }}
 
 {%- endmacro -%}
-{% macro create_voting_key_link_transaction(action) -%}
+{% macro create_voting_key_link(action) -%}
 async def create_voting_key_{{ action }}(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
@@ -1077,7 +1077,7 @@ async def create_voting_key_{{ action }}(facade, signer_key_pair):
 	{{ create_transaction_footer('node key link') }}
 
 {%- endmacro -%}
-{% macro create_node_key_link_transaction(action) -%}
+{% macro create_node_key_link(action) -%}
 async def create_node_key_{{ action }}(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
@@ -1103,21 +1103,21 @@ async def create_node_key_{{ action }}(facade, signer_key_pair):
 
 {%- endmacro -%}
 
-{{ create_account_key_link_transaction('link') }}
+{{ create_account_key_link('link') }}
 
-{{ create_vrf_key_link_transaction('link') }}
+{{ create_vrf_key_link('link') }}
 
-{{ create_voting_key_link_transaction('link') }}
+{{ create_voting_key_link('link') }}
 
-{{ create_node_key_link_transaction('link') }}
+{{ create_node_key_link('link') }}
 
-{{ create_account_key_link_transaction('unlink') }}
+{{ create_account_key_link('unlink') }}
 
-{{ create_vrf_key_link_transaction('unlink') }}
+{{ create_vrf_key_link('unlink') }}
 
-{{ create_voting_key_link_transaction('unlink') }}
+{{ create_voting_key_link('unlink') }}
 
-{{ create_node_key_link_transaction('unlink') }}
+{{ create_node_key_link('unlink') }}
 
 # endregion
 
