@@ -6,7 +6,7 @@ import hashlib
 import json
 import shutil
 import time
-from binascii import unhexlify
+from binascii import hexlify, unhexlify
 
 from aiohttp import ClientSession
 
@@ -15,6 +15,7 @@ from symbolchain.CryptoTypes import Hash256, PrivateKey, PublicKey
 from symbolchain.facade.SymbolFacade import SymbolFacade
 from symbolchain.sc import Amount
 from symbolchain.symbol.IdGenerator import generate_mosaic_alias_id, generate_mosaic_id, generate_namespace_id
+from symbolchain.symbol.MessageEncoder import MessageEncoder
 from symbolchain.symbol.Metadata import metadata_update_value
 from symbolchain.symbol.Network import NetworkTimestamp  # TODO_: should we link this to Facade or Network to avoid direct import?
 
@@ -252,6 +253,85 @@ async def get_account_balance():
 
 	print(account_balance)
 	return account_balance
+
+# endregion
+
+
+# region transfer transactions
+
+def decrypt_utf8_message(key_pair, public_key, encrypted_payload):
+	message_encoder = MessageEncoder(key_pair)
+	(is_decode_success, plain_message) = message_encoder.try_decode(public_key, encrypted_payload)
+	if is_decode_success:
+		print(f'decrypted message: {plain_message.decode("utf8")}')
+	else:
+		print(f'unable to decrypt message: {hexlify(encrypted_payload)}')
+
+
+async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	recipient_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	recipient_address = facade.network.public_key_to_address(recipient_key_pair.public_key)
+	print(f'recipient: {recipient_address}')
+
+	# encrypt a message using a signer's private key and recipient's public key
+	message_encoder = MessageEncoder(signer_key_pair)
+	encrypted_payload = message_encoder.encode(recipient_key_pair.public_key, 'this is a secret message'.encode('utf8'))
+	print(f'encrypted message: {hexlify(encrypted_payload)}')
+
+	# the same encoder can be used to decode a message
+	decrypt_utf8_message(signer_key_pair, recipient_key_pair.public_key, encrypted_payload)
+
+	# alternatively, an encoder around the recipient private key and signer public key can decode the message too
+	decrypt_utf8_message(recipient_key_pair, signer_key_pair.public_key, encrypted_payload)
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'transfer_transaction',
+		'recipient_address': recipient_address,
+		'mosaics': [
+			{'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 7_000000},  # send 7 of XYM to recipient
+		],
+		'message': encrypted_payload
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'transfer transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='transfer transaction')
+
 
 # endregion
 
@@ -2392,6 +2472,7 @@ async def run_account_query_examples():
 async def run_transaction_creation_examples(facade):
 	function_groups = [
 		('BASIC', [
+			create_transfer_with_encrypted_message
 			create_account_metadata_new,
 			create_account_metadata_modify,
 
