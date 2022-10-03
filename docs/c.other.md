@@ -1,16 +1,4 @@
-!example create_account_key_link
-!example create_account_key_unlink
-!example create_account_with_tokens_from_faucet
-!example create_hash_lock
 !example create_mosaic_definition_modify
 !example create_mosaic_revocation
 !example create_mosaic_transfer
-!example create_multisig_account_modification_new_account_bonded
-!example create_node_key_link
-!example create_node_key_unlink
-!example create_voting_key_link
-!example create_voting_key_unlink
-!example create_vrf_key_link
-!example create_vrf_key_unlink
 !example get_network_time
-!example wait_for_transaction_status
