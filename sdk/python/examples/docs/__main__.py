@@ -278,7 +278,7 @@ async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # py
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	recipient_address = facade.network.public_key_to_address(recipient_key_pair.public_key)
 	print(f'recipient: {recipient_address}')
@@ -487,7 +487,7 @@ async def create_secret_lock(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 
@@ -544,7 +544,7 @@ async def create_secret_proof(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 
@@ -1015,7 +1015,7 @@ async def create_mosaic_transfer(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 
@@ -1068,7 +1068,7 @@ async def create_mosaic_revocation(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic source (it insecurely deterministically generated for the benefit related tests)
+	# create a deterministic source (it insecurely deterministically generated for the benefit of related tests)
 	source_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'source: {source_address}')
 
@@ -1701,7 +1701,7 @@ async def create_account_key_link(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic remote account (insecurely deterministically generated for the benefit of related tests)
 	# this account will sign blocks on behalf of the (funded) signing account
 	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'remote public key: {remote_key_pair.public_key}')
@@ -1752,7 +1752,7 @@ async def create_vrf_key_link(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit of related tests)
 	# this account will inject randomness into blocks harvested by the (funded) signing account
 	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'VRF public key: {vrf_key_pair.public_key}')
@@ -1803,7 +1803,7 @@ async def create_voting_key_link(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic root voting public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic root voting public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be participate in voting on behalf of the (funded) signing account
 	voting_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	print(f'voting public key: {voting_public_key}')
@@ -1857,7 +1857,7 @@ async def create_node_key_link(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic node public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be asked to host delegated harvesting of the (funded) signing account
 	node_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	print(f'node public key: {node_public_key}')
@@ -1909,17 +1909,17 @@ async def create_harvesting_delegation_message(facade, signer_key_pair):  # pyli
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic remote account (insecurely deterministically generated for the benefit of related tests)
 	# this account will sign blocks on behalf of the (funded) signing account
 	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'remote public key: {remote_key_pair.public_key}')
 
-	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit of related tests)
 	# this account will inject randomness into blocks harvested by the (funded) signing account
 	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 1])))
 	print(f'VRF public key: {vrf_key_pair.public_key}')
 
-	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic node public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be asked to host delegated harvesting of the (funded) signing account
 	node_public_key = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 2]))).public_key
 	print(f'node public key: {node_public_key}')
@@ -1980,7 +1980,7 @@ async def create_account_key_unlink(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic remote account (insecurely deterministically generated for the benefit of related tests)
 	# this account will sign blocks on behalf of the (funded) signing account
 	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'remote public key: {remote_key_pair.public_key}')
@@ -2032,7 +2032,7 @@ async def create_vrf_key_unlink(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit of related tests)
 	# this account will inject randomness into blocks harvested by the (funded) signing account
 	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'VRF public key: {vrf_key_pair.public_key}')
@@ -2084,7 +2084,7 @@ async def create_voting_key_unlink(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic root voting public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic root voting public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be participate in voting on behalf of the (funded) signing account
 	voting_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	print(f'voting public key: {voting_public_key}')
@@ -2139,7 +2139,7 @@ async def create_node_key_unlink(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic node public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be asked to host delegated harvesting of the (funded) signing account
 	node_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	print(f'node public key: {node_public_key}')
@@ -2198,7 +2198,7 @@ async def create_multisig_account_modification_new_account(facade, signer_key_pa
 	network_time = network_time.add_hours(2)
 
 	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
-	# (they are insecurely deterministically generated for the benefit related tests)
+	# (they are insecurely deterministically generated for the benefit of related tests)
 	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(3)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
@@ -2424,7 +2424,7 @@ async def create_multisig_account_modification_new_account_bonded(facade, signer
 	network_time = network_time.add_hours(2)
 
 	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
-	# (they are insecurely deterministically generated for the benefit related tests)
+	# (they are insecurely deterministically generated for the benefit of related tests)
 	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(3)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
@@ -2501,7 +2501,7 @@ async def create_multisig_account_modification_new_account_bonded(facade, signer
 # region transaction proof
 
 async def _spam_transactions(facade, signer_key_pair, count):
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit `related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 
@@ -2561,7 +2561,7 @@ async def prove_confirmed_transaction(facade, signer_key_pair):  # pylint: disab
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit `related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 
