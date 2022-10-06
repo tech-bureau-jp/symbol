@@ -2522,7 +2522,93 @@ async def get_network_height():
 
 ### Tutorial: Working with Proofs
 
-:warning: what kind of examples are desired here?
+```python
+async def prove_confirmed_transaction(facade, signer_key_pair):  # pylint: disable=invalid-name
+	await _spam_transactions(facade, signer_key_pair, 10)
+
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit `related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'recipient: {recipient_address}')
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'transfer_transaction',
+		'recipient_address': recipient_address,
+		'mosaics': [
+			{'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 1_000000},  # send 1 of XYM to recipient
+		],
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'transfer transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='transfer transaction')
+
+	# create a connection to a node
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint to get information about the confirmed transaction
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/transactions/confirmed/{transaction_hash}') as response:
+			# extract the confirmed block height
+			response_json = await response.json()
+			confirmed_block_height = int(response_json['meta']['height'])
+			print(f'confirmed block height: {confirmed_block_height}')
+
+		# initiate a HTTP GET request to a Symbol REST endpoint to get information about the confirming block
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/blocks/{confirmed_block_height}') as response:
+			# extract the block transactions hash
+			response_json = await response.json()
+			block_transactions_hash = Hash256(response_json['block']['transactionsHash'])
+			print(f'block transactions hash: {block_transactions_hash}')
+
+		# initiate a HTTP GET request to a Symbol REST endpoint to get a transaction merkle proof
+		print(f'{SYMBOL_API_ENDPOINT}/blocks/{confirmed_block_height}/transactions/{transaction_hash}/merkle')
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/blocks/{confirmed_block_height}/transactions/{transaction_hash}/merkle') as response:
+			# extract the merkle proof path and transform it into format expected by sdk
+			response_json = await response.json()
+			print(response_json)
+			merkle_proof_path = list(map(
+				lambda part: MerklePart(Hash256(part['hash']), 'left' == part['position']),
+				response_json['merklePath']))
+			print(merkle_proof_path)
+
+			# perform the proof
+			if prove_merkle(transaction_hash, merkle_proof_path, block_transactions_hash):
+				print(f'transaction {transaction_hash} is proven to be in block {confirmed_block_height}')
+			else:
+				raise RuntimeError(f'transaction {transaction_hash} is NOT proven to be in block {confirmed_block_height}')
+```
 
 ## XYM
 

@@ -15,6 +15,7 @@ from symbolchain.CryptoTypes import Hash256, PrivateKey, PublicKey
 from symbolchain.facade.SymbolFacade import SymbolFacade
 from symbolchain.sc import Amount
 from symbolchain.symbol.IdGenerator import generate_mosaic_alias_id, generate_mosaic_id, generate_namespace_id
+from symbolchain.symbol.Merkle import MerklePart, prove_merkle
 from symbolchain.symbol.MessageEncoder import MessageEncoder
 from symbolchain.symbol.Metadata import metadata_update_value
 from symbolchain.symbol.Network import NetworkTimestamp  # TODO_: should we link this to Facade or Network to avoid direct import?
@@ -2497,6 +2498,147 @@ async def create_multisig_account_modification_new_account_bonded(facade, signer
 # endregion
 
 
+# region transaction proof
+
+async def _spam_transactions(facade, signer_key_pair, count):
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit `related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'recipient: {recipient_address}')
+
+	for i in range(1, count + 1):
+		# derive the signer's address
+		signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+		print(f'creating transaction with signer {signer_address}')
+
+		# get the current network time from the network, and set the transaction deadline two hours in the future
+		network_time = await get_network_time()
+		network_time = network_time.add_hours(2)
+
+		transaction = facade.transaction_factory.create({
+			'signer_public_key': signer_key_pair.public_key,
+			'deadline': network_time.timestamp,
+
+			'type': 'transfer_transaction',
+			'recipient_address': recipient_address,
+			'mosaics': [
+				{'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': i},  # send some xym
+			],
+		})
+
+		# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+		transaction.fee = Amount(100 * transaction.size)
+
+		# sign the transaction and attach its signature
+		signature = facade.sign_transaction(signer_key_pair, transaction)
+		facade.transaction_factory.attach_signature(transaction, signature)
+
+		# hash the transaction (this is dependent on the signature)
+		transaction_hash = facade.hash_transaction(transaction)
+		print(f'transfer transaction hash {transaction_hash}')
+
+		# finally, construct the over wire payload
+		json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+		# print the signed transaction, including its signature
+		print(transaction)
+
+		# submit the transaction to the network
+		async with ClientSession(raise_for_status=True) as session:
+			# initiate a HTTP PUT request to a Symbol REST endpoint
+			async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+				response_json = await response.json()
+				print(f'/transactions: {response_json}')
+
+
+async def prove_confirmed_transaction(facade, signer_key_pair):  # pylint: disable=invalid-name
+	await _spam_transactions(facade, signer_key_pair, 10)
+
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit `related tests)
+	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+	print(f'recipient: {recipient_address}')
+
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'transfer_transaction',
+		'recipient_address': recipient_address,
+		'mosaics': [
+			{'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 1_000000},  # send 1 of XYM to recipient
+		],
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'transfer transaction hash {transaction_hash}')
+
+	# finally, construct the over wire payload
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# submit the transaction to the network
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP PUT request to a Symbol REST endpoint
+		async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+			response_json = await response.json()
+			print(f'/transactions: {response_json}')
+
+	# wait for the transaction to be confirmed
+	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='transfer transaction')
+
+	# create a connection to a node
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint to get information about the confirmed transaction
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/transactions/confirmed/{transaction_hash}') as response:
+			# extract the confirmed block height
+			response_json = await response.json()
+			confirmed_block_height = int(response_json['meta']['height'])
+			print(f'confirmed block height: {confirmed_block_height}')
+
+		# initiate a HTTP GET request to a Symbol REST endpoint to get information about the confirming block
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/blocks/{confirmed_block_height}') as response:
+			# extract the block transactions hash
+			response_json = await response.json()
+			block_transactions_hash = Hash256(response_json['block']['transactionsHash'])
+			print(f'block transactions hash: {block_transactions_hash}')
+
+		# initiate a HTTP GET request to a Symbol REST endpoint to get a transaction merkle proof
+		print(f'{SYMBOL_API_ENDPOINT}/blocks/{confirmed_block_height}/transactions/{transaction_hash}/merkle')
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/blocks/{confirmed_block_height}/transactions/{transaction_hash}/merkle') as response:
+			# extract the merkle proof path and transform it into format expected by sdk
+			response_json = await response.json()
+			print(response_json)
+			merkle_proof_path = list(map(
+				lambda part: MerklePart(Hash256(part['hash']), 'left' == part['position']),
+				response_json['merklePath']))
+			print(merkle_proof_path)
+
+			# perform the proof
+			if prove_merkle(transaction_hash, merkle_proof_path, block_transactions_hash):
+				print(f'transaction {transaction_hash} is proven to be in block {confirmed_block_height}')
+			else:
+				raise RuntimeError(f'transaction {transaction_hash} is NOT proven to be in block {confirmed_block_height}')
+
+# endregion
+
+
 def print_banner(name):
 	console_width = shutil.get_terminal_size()[0]
 	print('*' * console_width)
@@ -2543,57 +2685,60 @@ async def run_account_query_examples():
 
 async def run_transaction_creation_examples(facade):
 	function_groups = [
-		# ('BASIC', [
-		# 	create_transfer_with_encrypted_message
-		# 	create_account_metadata_new,
-		# 	create_account_metadata_modify,
+		('BASIC', [
+			create_transfer_with_encrypted_message
+			create_account_metadata_new,
+			create_account_metadata_modify,
 
-		# 	create_secret_lock,
-		# 	create_secret_proof,
+			create_secret_lock,
+			create_secret_proof,
 
-		# 	create_namespace_registration_root,
-		# 	create_namespace_registration_child,
-		# 	create_namespace_metadata_new,
-		# 	create_namespace_metadata_modify,
+			create_namespace_registration_root,
+			create_namespace_registration_child,
+			create_namespace_metadata_new,
+			create_namespace_metadata_modify,
 
-		# 	create_mosaic_definition_new,
-		# 	create_mosaic_definition_modify,
-		# 	create_mosaic_supply,
-		# 	create_mosaic_transfer,
-		# 	create_mosaic_revocation,
-		# 	create_mosaic_atomic_swap,
+			create_mosaic_definition_new,
+			create_mosaic_definition_modify,
+			create_mosaic_supply,
+			create_mosaic_transfer,
+			create_mosaic_revocation,
+			create_mosaic_atomic_swap,
 
-		# 	create_mosaic_metadata_new,
-		# 	create_mosaic_metadata_cosigned_1,
-		# 	create_mosaic_metadata_cosigned_2,
-		# 	get_mosaic_metadata,
+			create_mosaic_metadata_new,
+			create_mosaic_metadata_cosigned_1,
+			create_mosaic_metadata_cosigned_2,
+			get_mosaic_metadata,
 
-		# 	create_global_mosaic_restriction_new,
-		# 	create_address_mosaic_restriction_1,
-		# 	create_address_mosaic_restriction_2,
-		# 	create_address_mosaic_restriction_3,
-		# 	create_global_mosaic_restriction_modify
-		# ]),
+			create_global_mosaic_restriction_new,
+			create_address_mosaic_restriction_1,
+			create_address_mosaic_restriction_2,
+			create_address_mosaic_restriction_3,
+			create_global_mosaic_restriction_modify
+		]),
 		('BASIC (LINKS)', [
-			# create_account_key_link,
-			# create_vrf_key_link,
-			# create_voting_key_link,
-			# create_node_key_link,
+			create_account_key_link,
+			create_vrf_key_link,
+			create_voting_key_link,
+			create_node_key_link,
 
 			create_harvesting_delegation_message,
 
-			# create_account_key_unlink,
-			# create_vrf_key_unlink,
-			# create_voting_key_unlink,
-			# create_node_key_unlink
+			create_account_key_unlink,
+			create_vrf_key_unlink,
+			create_voting_key_unlink,
+			create_node_key_unlink
 		]),
-		# ('MULTISIG (COMPLETE)', [
-		# 	create_multisig_account_modification_new_account,
-		# 	create_multisig_account_modification_modify_account
-		# ]),
-		# ('MULTISIG (BONDED)', [
-		# 	create_multisig_account_modification_new_account_bonded
-		# ])
+		('MULTISIG (COMPLETE)', [
+			create_multisig_account_modification_new_account,
+			create_multisig_account_modification_modify_account
+		]),
+		('MULTISIG (BONDED)', [
+			create_multisig_account_modification_new_account_bonded
+		])
+		('PROOFS', [
+			prove_confirmed_transaction
+		])
 	]
 	for (group_name, functions) in function_groups:
 		print_banner(f'CREATING SIGNER ACCOUNT FOR {group_name} TRANSACTION CREATION EXAMPLES')
@@ -2609,9 +2754,9 @@ async def run_transaction_creation_examples(facade):
 async def main():
 	facade = SymbolFacade('testnet')
 
-	run_offline_account_creation_examples(facade)
-	await run_network_query_examples()
-	await run_account_query_examples()
+	# run_offline_account_creation_examples(facade)
+	# await run_network_query_examples()
+	# await run_account_query_examples()
 	await run_transaction_creation_examples(facade)
 
 	print_banner('FIN')
