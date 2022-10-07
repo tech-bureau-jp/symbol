@@ -821,7 +821,7 @@ async def create_namespace_metadata_new(facade, signer_key_pair):
 
 Modify the above metadata.
 ```python
-async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint-disable: too-many-locals
+async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -2608,6 +2608,65 @@ async def prove_confirmed_transaction(facade, signer_key_pair):
 				print(f'transaction {transaction_hash} is proven to be in block {confirmed_block_height}')
 			else:
 				raise RuntimeError(f'transaction {transaction_hash} is NOT proven to be in block {confirmed_block_height}')
+```
+```python
+async def prove_xym_mosaic_state(facade, _):  # pylint: disable=too-many-locals
+	# determine the network currency mosaic
+	network_currency_id = await get_network_currency()
+	network_currency_id_formatted = f'{network_currency_id:08X}'
+
+	# look up the properties of the network currency mosaic
+	mosaic_properties_json = (await get_mosaic_properties(network_currency_id_formatted))['mosaic']
+	print(mosaic_properties_json)
+
+	# serialize and hash the mosaic properties
+	writer = BufferWriter()
+	writer.write_int(int(mosaic_properties_json['version']), 2)
+	writer.write_int(int(mosaic_properties_json['id'], 16), 8)
+	writer.write_int(int(mosaic_properties_json['supply']), 8)
+	writer.write_int(int(mosaic_properties_json['startHeight']), 8)
+	writer.write_bytes(facade.Address(unhexlify(mosaic_properties_json['ownerAddress'])).bytes)
+	writer.write_int(int(mosaic_properties_json['revision']), 4)
+	writer.write_int(int(mosaic_properties_json['flags']), 1)
+	writer.write_int(int(mosaic_properties_json['divisibility']), 1)
+	writer.write_int(int(mosaic_properties_json['duration']), 8)
+	mosaic_hashed_value = Hash256(sha3.sha3_256(writer.buffer).digest())
+	print(f'mosaic hashed value: {mosaic_hashed_value}')
+
+	# hash the mosaic id to get the key
+	writer = BufferWriter()
+	writer.write_int(int(mosaic_properties_json['id'], 16), 8)
+	mosaic_encoded_key = Hash256(sha3.sha3_256(writer.buffer).digest())
+	print(f'mosaic encoded key: {mosaic_encoded_key}')
+
+	# get the current network height
+	network_height = await get_network_height()
+
+	# create a connection to a node
+	async with ClientSession(raise_for_status=True) as session:
+		# initiate a HTTP GET request to a Symbol REST endpoint to get information about the last block
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/blocks/{network_height}') as response:
+			# extract the sub cache merkle roots and the stateHash
+			response_json = await response.json()
+			state_hash = Hash256(response_json['block']['stateHash'])
+			subcache_merkle_roots = [Hash256(root) for root in response_json['meta']['stateHashSubCacheMerkleRoots']]
+			print(f'state hash: {state_hash}')
+			print(f'subcache merkle roots: {subcache_merkle_roots}')
+
+		# initiate a HTTP GET request to a Symbol REST endpoint to get a state hash merkle proof
+		async with session.get(f'{SYMBOL_API_ENDPOINT}/mosaics/{network_currency_id_formatted}/merkle') as response:
+			# extract the merkle proof and transform it into format expected by sdk
+			response_json = await response.json()
+			merkle_proof_path = deserialize_patricia_tree_nodes(unhexlify(response_json['raw']))
+
+			# perform the proof
+			proof_result = prove_patricia_merkle(
+				mosaic_encoded_key,
+				mosaic_hashed_value,
+				merkle_proof_path,
+				state_hash,
+				subcache_merkle_roots)
+			print(f'mosaic {network_currency_id_formatted} proof concluded with {proof_result}')
 ```
 
 ## XYM
