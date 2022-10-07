@@ -21,6 +21,7 @@ from symbolchain.symbol.Merkle import MerklePart, deserialize_patricia_tree_node
 from symbolchain.symbol.MessageEncoder import MessageEncoder
 from symbolchain.symbol.Metadata import metadata_update_value
 from symbolchain.symbol.Network import NetworkTimestamp  # TODO_: should we link this to Facade or Network to avoid direct import?
+from symbolchain.symbol.VotingKeysGenerator import VotingKeysGenerator
 
 SYMBOL_API_ENDPOINT = 'https://sym-test-02.opening-line.jp:3001'
 SYMBOL_TOOLS_ENDPOINT = 'https://testnet.symbol.tools'
@@ -124,6 +125,29 @@ def create_random_bip32_account(facade):
 	print(f'    address: {address}')
 	print(f' public key: {key_pair.public_key}')
 	print(f'private key: {key_pair.private_key}')
+
+# endregion
+
+
+# region voting key file generation
+
+def create_voting_key_file(facade):
+	# create a voting key pair
+	voting_key_pair = facade.KeyPair(PrivateKey.random())
+
+	# create a file generator
+	generator = VotingKeysGenerator(voting_key_pair)
+
+	# generate voting key file for epochs 10-150
+	buffer = generator.generate(10, 150)
+
+	# store to file
+	# note: additional care should be taken to create file with proper permissions
+	with open('private_key_tree1.dat', 'wb') as output_file:
+		output_file.write(buffer)
+
+	# show voting key public key
+	print(f'voting key public key {voting_key_pair.public_key}')
 
 # endregion
 
@@ -2711,10 +2735,11 @@ def print_banner(name):
 	print('*' * console_width)
 
 
-def run_offline_account_creation_examples(facade):
+def run_offline_examples(facade):
 	functions = [
 		create_random_account,
-		create_random_bip32_account
+		create_random_bip32_account,
+		create_voting_key_file
 	]
 	for func in functions:
 		print_banner(func.__qualname__)
@@ -2817,7 +2842,7 @@ async def run_transaction_creation_examples(facade):
 async def main():
 	facade = SymbolFacade('testnet')
 
-	run_offline_account_creation_examples(facade)
+	run_offline_examples(facade)
 	await run_network_query_examples()
 	await run_account_query_examples()
 	await run_transaction_creation_examples(facade)

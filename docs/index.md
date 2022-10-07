@@ -2045,6 +2045,30 @@ charlie
 
 ### Tutorial: Key Rotation
 
+To provide some forward security, voters are required to register their voting keys via voting link (below).
+Voting link - besides voting public key - contains start and end epoch, when set of voting keys will be valid.
+
+Voting keys are generated upfront and needs to be rotated.
+
+```python
+def create_voting_key_file(facade):
+	# create a voting key pair
+	voting_key_pair = facade.KeyPair(PrivateKey.random())
+
+	# create a file generator
+	generator = VotingKeysGenerator(voting_key_pair)
+
+	# generate voting key file for epochs 10-150
+	buffer = generator.generate(10, 150)
+
+	# store to file
+	# note: additional care should be taken to create file with proper permissions
+	with open('private_key_tree1.dat', 'wb') as output_file:
+		output_file.write(buffer)
+
+	# show voting key public key
+	print(f'voting key public key {voting_key_pair.public_key}')
+```
 
 ### Harvesters
 ### Tutorial: Delegating your Stake
