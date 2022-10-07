@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, disable=invalid-name
 
 import asyncio
 import hashlib
@@ -58,7 +58,7 @@ async def wait_for_transaction_status(transaction_hash, desired_status, **kwargs
 		raise RuntimeError(f'{transaction_description} {transaction_hash} did not transition to {desired_status} in alloted time period')
 
 
-async def create_account_with_tokens_from_faucet(facade, amount=150, private_key=None):  # pylint: disable=invalid-name
+async def create_account_with_tokens_from_faucet(facade, amount=150, private_key=None):
 	# create a key pair that will be used to send transactions
 	# when the PrivateKey is known, pass the raw private key bytes or hex encoded string to the PrivateKey(...) constructor instead
 	key_pair = facade.KeyPair(PrivateKey.random()) if private_key is None else facade.KeyPair(private_key)
@@ -269,7 +269,7 @@ def decrypt_utf8_message(key_pair, public_key, encrypted_payload):
 		print(f'unable to decrypt message: {hexlify(encrypted_payload)}')
 
 
-async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_transfer_with_encrypted_message(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -339,7 +339,7 @@ async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # py
 
 # region account transactions
 
-async def create_account_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_account_metadata_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -405,7 +405,7 @@ async def create_account_metadata_new(facade, signer_key_pair):  # pylint: disab
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='account metadata (new) transaction')
 
 
-async def create_account_metadata_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_account_metadata_modify(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -596,7 +596,7 @@ async def create_secret_proof(facade, signer_key_pair):
 
 # region namespace transactions
 
-async def create_namespace_registration_root(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_registration_root(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -645,7 +645,7 @@ async def create_namespace_registration_root(facade, signer_key_pair):  # pylint
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace (root) registration transaction')
 
 
-async def create_namespace_registration_child(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_registration_child(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -694,7 +694,7 @@ async def create_namespace_registration_child(facade, signer_key_pair):  # pylin
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace (child) registration transaction')
 
 
-async def create_namespace_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_metadata_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -764,7 +764,7 @@ async def create_namespace_metadata_new(facade, signer_key_pair):  # pylint: dis
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='namespace metadata (new) transaction')
 
 
-async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint: disable=invalid-name,too-many-locals
+async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint-disable: too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1197,7 +1197,7 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 
 # region mosaic metadata
 
-async def create_mosaic_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_mosaic_metadata_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1429,7 +1429,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 
 # region mosaic restrictions transactions
 
-async def create_global_mosaic_restriction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_global_mosaic_restriction_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1484,7 +1484,7 @@ async def create_global_mosaic_restriction_new(facade, signer_key_pair):  # pyli
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='global mosaic restriction (new) transaction')
 
 
-async def create_address_mosaic_restriction_1(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_1(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1534,7 +1534,7 @@ async def create_address_mosaic_restriction_1(facade, signer_key_pair):  # pylin
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:1) transaction')
 
 
-async def create_address_mosaic_restriction_2(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_2(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1584,7 +1584,7 @@ async def create_address_mosaic_restriction_2(facade, signer_key_pair):  # pylin
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:2) transaction')
 
 
-async def create_address_mosaic_restriction_3(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_3(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1634,7 +1634,7 @@ async def create_address_mosaic_restriction_3(facade, signer_key_pair):  # pylin
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:3) transaction')
 
 
-async def create_global_mosaic_restriction_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_global_mosaic_restriction_modify(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1899,7 +1899,7 @@ async def create_node_key_link(facade, signer_key_pair):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='node key link transaction')
 
 
-async def create_harvesting_delegation_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_harvesting_delegation_message(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -2187,7 +2187,7 @@ async def create_node_key_unlink(facade, signer_key_pair):
 
 # region account multisig management transactions (complete)
 
-async def create_multisig_account_modification_new_account(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_new_account(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -2258,7 +2258,7 @@ async def create_multisig_account_modification_new_account(facade, signer_key_pa
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='multisig account (create) transaction')
 
 
-async def create_multisig_account_modification_modify_account(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_modify_account(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -2413,7 +2413,7 @@ async def create_hash_lock(facade, signer_key_pair, bonded_transaction_hash):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='hash lock transaction')
 
 
-async def create_multisig_account_modification_new_account_bonded(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_new_account_bonded(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -2550,7 +2550,7 @@ async def _spam_transactions(facade, signer_key_pair, count):
 				print(f'/transactions: {response_json}')
 
 
-async def prove_confirmed_transaction(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def prove_confirmed_transaction(facade, signer_key_pair):
 	await _spam_transactions(facade, signer_key_pair, 10)
 
 	# derive the signer's address
@@ -2650,7 +2650,7 @@ def print_banner(name):
 	print('*' * console_width)
 
 
-def run_offline_account_creation_examples(facade):  # pylint: disable=invalid-name
+def run_offline_account_creation_examples(facade):
 	functions = [
 		create_random_account,
 		create_random_bip32_account
@@ -2686,7 +2686,7 @@ async def run_account_query_examples():
 async def run_transaction_creation_examples(facade):
 	function_groups = [
 		('BASIC', [
-			create_transfer_with_encrypted_message
+			create_transfer_with_encrypted_message,
 			create_account_metadata_new,
 			create_account_metadata_modify,
 

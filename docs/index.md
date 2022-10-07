@@ -96,7 +96,7 @@ private key: 984D4E4EC6AB5C772876135D88DF40F13B7B5880324A6D7F19E16DB292F8C443
 ### Tutorial: Create an Account and Fund via Faucet
 
 ```python
-async def create_account_with_tokens_from_faucet(facade, amount=150, private_key=None):  # pylint: disable=invalid-name
+async def create_account_with_tokens_from_faucet(facade, amount=150, private_key=None):
 	# create a key pair that will be used to send transactions
 	# when the PrivateKey is known, pass the raw private key bytes or hex encoded string to the PrivateKey(...) constructor instead
 	key_pair = facade.KeyPair(PrivateKey.random()) if private_key is None else facade.KeyPair(private_key)
@@ -227,7 +227,7 @@ There might be better ways to store (or simply encode) the data that is not expe
 **Assigning metadata to own account:**
 
 ```python
-async def create_account_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_account_metadata_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -300,7 +300,7 @@ When changing/updating existing data, passed value needs to be "xor" result of o
 !js symbol.metadata.metadataUpdateValue
 
 ```python
-async def create_account_metadata_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_account_metadata_modify(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -382,7 +382,7 @@ Transaction preparation can be split into three phases:
  3. adding cosignatures - this part might look bit weird, that is because it needs to convert some of SDK types into low-level catbuffer types from `symbolchain.sc` module.
 
 ```python
-async def create_multisig_account_modification_new_account(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_new_account(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -393,7 +393,7 @@ async def create_multisig_account_modification_new_account(facade, signer_key_pa
 	network_time = network_time.add_hours(2)
 
 	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
-	# (they are insecurely deterministically generated for the benefit related tests)
+	# (they are insecurely deterministically generated for the benefit of related tests)
 	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(3)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
@@ -458,7 +458,7 @@ After this transaction 2-of-3 cosignatories are required to make any transaction
 Following example shows how two of cosignatories can swap third one for some other one. Additionally altering amount of cosignatories required for removal (`min_removal_delta`) - example is bit artificial, cause in effect single cosignatory can remove all others, which makes multisig account quite insecure.
 
 ```python
-async def create_multisig_account_modification_modify_account(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_modify_account(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -638,7 +638,7 @@ In 'mainnet' value of `childNamespaceRentalFee` is 10.
 Namespaces besides having maximal duration, also have minimal duration, in 'mainnet' that is 30d (2880 * 30 blocks).
 
 ```python
-async def create_namespace_registration_root(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_registration_root(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -691,7 +691,7 @@ Registration of root namespace generates `BalanceTransferReceipt` with type `Nam
 
 Child namespace:
 ```python
-async def create_namespace_registration_child(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_registration_child(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -749,7 +749,7 @@ Namespaces - like accounts - can have assigned metadata (compare with [Tutorial:
 Example below assumes signer is also owner of the namespace.
 
 ```python
-async def create_namespace_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_metadata_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -821,7 +821,7 @@ async def create_namespace_metadata_new(facade, signer_key_pair):  # pylint: dis
 
 Modify the above metadata.
 ```python
-async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint: disable=invalid-name,too-many-locals
+async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint-disable: too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1045,7 +1045,7 @@ Global restrictions allow to define global rules, that determine if account is a
 Mosaic from [creating a mosaic](#Tutorial:-Creating-a-Mosaic) example has id `0x1788BA84888894EB`.
 
 ```python
-async def create_global_mosaic_restriction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_global_mosaic_restriction_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1106,7 +1106,7 @@ owner first need to set mosaic address restrictions **including own account**.
 It's called restriction, but technically this is addresss-based mosaic-level metadata, that is accessed by global restriction rule.
 
 ```python
-async def create_address_mosaic_restriction_1(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_1(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1156,7 +1156,7 @@ async def create_address_mosaic_restriction_1(facade, signer_key_pair):  # pylin
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:1) transaction')
 ```
 ```python
-async def create_address_mosaic_restriction_2(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_2(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1206,7 +1206,7 @@ async def create_address_mosaic_restriction_2(facade, signer_key_pair):  # pylin
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='address mosaic restriction (new:2) transaction')
 ```
 ```python
-async def create_address_mosaic_restriction_3(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_3(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1261,7 +1261,7 @@ Notice, that **TBOBBY** account has value set to 1, while **TALICE** set to 2, t
 Owner can send some `0x1788BA84888894EB` mosaic to two other accounts, both can transfer it as well.
 
 ```python
-async def create_global_mosaic_restriction_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_global_mosaic_restriction_modify(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1330,7 +1330,7 @@ In future there some scoped keys might be standarized to be used across differen
 **Simple mosaic metadata assignment:**
 
 ```python
-async def create_mosaic_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_mosaic_metadata_new(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1751,7 +1751,7 @@ def decrypt_utf8_message(key_pair, public_key, encrypted_payload):
 ```
 
 ```python
-async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_transfer_with_encrypted_message(facade, signer_key_pair):
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
 	print(f'creating transaction with signer {signer_address}')
@@ -1760,7 +1760,7 @@ async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # py
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	recipient_address = facade.network.public_key_to_address(recipient_key_pair.public_key)
 	print(f'recipient: {recipient_address}')
@@ -1819,7 +1819,7 @@ async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # py
 ### Tutorial: Persistent Delegated Messages
 
 ```python
-async def create_harvesting_delegation_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_harvesting_delegation_message(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -1829,17 +1829,17 @@ async def create_harvesting_delegation_message(facade, signer_key_pair):  # pyli
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic remote account (insecurely deterministically generated for the benefit of related tests)
 	# this account will sign blocks on behalf of the (funded) signing account
 	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'remote public key: {remote_key_pair.public_key}')
 
-	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit of related tests)
 	# this account will inject randomness into blocks harvested by the (funded) signing account
 	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 1])))
 	print(f'VRF public key: {vrf_key_pair.public_key}')
 
-	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic node public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be asked to host delegated harvesting of the (funded) signing account
 	node_public_key = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 2]))).public_key
 	print(f'node public key: {node_public_key}')
@@ -1949,7 +1949,7 @@ async def create_hash_lock(facade, signer_key_pair, bonded_transaction_hash):
 	await wait_for_transaction_status(transaction_hash, 'confirmed', transaction_description='hash lock transaction')
 ```
 ```python
-async def create_multisig_account_modification_new_account_bonded(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_new_account_bonded(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	# derive the signer's address
 	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
@@ -1960,7 +1960,7 @@ async def create_multisig_account_modification_new_account_bonded(facade, signer
 	network_time = network_time.add_hours(2)
 
 	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
-	# (they are insecurely deterministically generated for the benefit related tests)
+	# (they are insecurely deterministically generated for the benefit of related tests)
 	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(3)]
 	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
 
@@ -2061,7 +2061,7 @@ async def create_account_key_link(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic remote account (insecurely deterministically generated for the benefit of related tests)
 	# this account will sign blocks on behalf of the (funded) signing account
 	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'remote public key: {remote_key_pair.public_key}')
@@ -2112,7 +2112,7 @@ async def create_vrf_key_link(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit of related tests)
 	# this account will inject randomness into blocks harvested by the (funded) signing account
 	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'VRF public key: {vrf_key_pair.public_key}')
@@ -2164,7 +2164,7 @@ async def create_account_key_unlink(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic remote account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic remote account (insecurely deterministically generated for the benefit of related tests)
 	# this account will sign blocks on behalf of the (funded) signing account
 	remote_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'remote public key: {remote_key_pair.public_key}')
@@ -2216,7 +2216,7 @@ async def create_vrf_key_unlink(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic VRF account (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic VRF account (insecurely deterministically generated for the benefit of related tests)
 	# this account will inject randomness into blocks harvested by the (funded) signing account
 	vrf_key_pair = facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'VRF public key: {vrf_key_pair.public_key}')
@@ -2271,7 +2271,7 @@ async def create_voting_key_link(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic root voting public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic root voting public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be participate in voting on behalf of the (funded) signing account
 	voting_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	print(f'voting public key: {voting_public_key}')
@@ -2325,7 +2325,7 @@ async def create_voting_key_unlink(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic root voting public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic root voting public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be participate in voting on behalf of the (funded) signing account
 	voting_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	print(f'voting public key: {voting_public_key}')
@@ -2383,7 +2383,7 @@ async def create_node_key_link(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic node public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be asked to host delegated harvesting of the (funded) signing account
 	node_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	print(f'node public key: {node_public_key}')
@@ -2434,7 +2434,7 @@ async def create_node_key_unlink(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic node public key (insecurely deterministically generated for the benefit related tests)
+	# create a deterministic node public key (insecurely deterministically generated for the benefit of related tests)
 	# this account will be asked to host delegated harvesting of the (funded) signing account
 	node_public_key = PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0]))
 	print(f'node public key: {node_public_key}')
@@ -2523,7 +2523,7 @@ async def get_network_height():
 ### Tutorial: Working with Proofs
 
 ```python
-async def prove_confirmed_transaction(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def prove_confirmed_transaction(facade, signer_key_pair):
 	await _spam_transactions(facade, signer_key_pair, 10)
 
 	# derive the signer's address
@@ -2534,7 +2534,7 @@ async def prove_confirmed_transaction(facade, signer_key_pair):  # pylint: disab
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit `related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 
@@ -2748,7 +2748,7 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 			network_time = await get_network_time()
 			network_time = network_time.add_hours(2)
 		
-			# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+			# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 			recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 			print(f'recipient: {recipient_address}')
 		
@@ -2807,7 +2807,7 @@ Alice will swap 0.2 ETH with Bob for 7887 XYM.
 			network_time = await get_network_time()
 			network_time = network_time.add_hours(2)
 		
-			# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+			# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 			recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 			print(f'recipient: {recipient_address}')
 		
@@ -3301,7 +3301,7 @@ async def create_mosaic_revocation(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic source (it insecurely deterministically generated for the benefit related tests)
+	# create a deterministic source (it insecurely deterministically generated for the benefit of related tests)
 	source_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'source: {source_address}')
 
@@ -3352,7 +3352,7 @@ async def create_mosaic_transfer(facade, signer_key_pair):
 	network_time = await get_network_time()
 	network_time = network_time.add_hours(2)
 
-	# create a deterministic recipient (it insecurely deterministically generated for the benefit related tests)
+	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
 	recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
 	print(f'recipient: {recipient_address}')
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, disable=invalid-name
 
 import asyncio
 import hashlib
@@ -109,7 +109,7 @@ async def wait_for_transaction_status(transaction_hash, desired_status, **kwargs
 		raise RuntimeError(f'{transaction_description} {transaction_hash} did not transition to {desired_status} in alloted time period')
 
 
-async def create_account_with_tokens_from_faucet(facade, amount=150, private_key=None):  # pylint: disable=invalid-name
+async def create_account_with_tokens_from_faucet(facade, amount=150, private_key=None):
 	# create a key pair that will be used to send transactions
 	# when the PrivateKey is known, pass the raw private key bytes or hex encoded string to the PrivateKey(...) constructor instead
 	key_pair = facade.KeyPair(PrivateKey.random()) if private_key is None else facade.KeyPair(private_key)
@@ -320,7 +320,7 @@ def decrypt_utf8_message(key_pair, public_key, encrypted_payload):
 		print(f'unable to decrypt message: {hexlify(encrypted_payload)}')
 
 
-async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_transfer_with_encrypted_message(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
@@ -358,7 +358,7 @@ async def create_transfer_with_encrypted_message(facade, signer_key_pair):  # py
 
 # region account transactions
 
-async def create_account_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_account_metadata_new(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	# metadata transaction needs to be wrapped in aggregate transaction
@@ -392,7 +392,7 @@ async def create_account_metadata_new(facade, signer_key_pair):  # pylint: disab
 
 	{{ create_transaction_footer('account metadata (new)') }}
 
-async def create_account_metadata_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_account_metadata_modify(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	# metadata transaction needs to be wrapped in aggregate transaction
@@ -487,7 +487,7 @@ async def create_secret_proof(facade, signer_key_pair):
 
 # region namespace transactions
 
-async def create_namespace_registration_root(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_registration_root(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	# create the transaction
@@ -504,7 +504,7 @@ async def create_namespace_registration_root(facade, signer_key_pair):  # pylint
 
 	{{ create_transaction_footer('namespace (root) registration') }}
 
-async def create_namespace_registration_child(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_registration_child(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	# create the transaction
@@ -521,7 +521,7 @@ async def create_namespace_registration_child(facade, signer_key_pair):  # pylin
 
 	{{ create_transaction_footer('namespace (child) registration') }}
 
-async def create_namespace_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_namespace_metadata_new(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	# metadata transaction needs to be wrapped in aggregate transaction
@@ -559,7 +559,7 @@ async def create_namespace_metadata_new(facade, signer_key_pair):  # pylint: dis
 
 	{{ create_transaction_footer('namespace metadata (new)') }}
 
-async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint: disable=invalid-name,too-many-locals
+async def create_namespace_metadata_modify(facade, signer_key_pair):  # pylint-disable: too-many-locals
 	{{ create_transaction_header() }}
 
 	# metadata transaction needs to be wrapped in aggregate transaction
@@ -763,7 +763,7 @@ async def create_mosaic_atomic_swap(facade, signer_key_pair):
 
 # region mosaic metadata
 
-async def create_mosaic_metadata_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_mosaic_metadata_new(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	# metadata transaction needs to be wrapped in aggregate transaction
@@ -899,7 +899,7 @@ async def create_mosaic_metadata_cosigned_2(facade, signer_key_pair):
 
 # region mosaic restrictions transactions
 
-async def create_global_mosaic_restriction_new(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_global_mosaic_restriction_new(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	transaction = facade.transaction_factory.create({
@@ -922,7 +922,7 @@ async def create_global_mosaic_restriction_new(facade, signer_key_pair):  # pyli
 
 	{{ create_transaction_footer('global mosaic restriction (new)') }}
 
-async def create_address_mosaic_restriction_1(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_1(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	transaction = facade.transaction_factory.create({
@@ -940,7 +940,7 @@ async def create_address_mosaic_restriction_1(facade, signer_key_pair):  # pylin
 
 	{{ create_transaction_footer('address mosaic restriction (new:1)') }}
 
-async def create_address_mosaic_restriction_2(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_2(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	transaction = facade.transaction_factory.create({
@@ -958,7 +958,7 @@ async def create_address_mosaic_restriction_2(facade, signer_key_pair):  # pylin
 
 	{{ create_transaction_footer('address mosaic restriction (new:2)') }}
 
-async def create_address_mosaic_restriction_3(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_address_mosaic_restriction_3(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	transaction = facade.transaction_factory.create({
@@ -976,7 +976,7 @@ async def create_address_mosaic_restriction_3(facade, signer_key_pair):  # pylin
 
 	{{ create_transaction_footer('address mosaic restriction (new:3)') }}
 
-async def create_global_mosaic_restriction_modify(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_global_mosaic_restriction_modify(facade, signer_key_pair):
 	{{ create_transaction_header() }}
 
 	transaction = facade.transaction_factory.create({
@@ -1113,7 +1113,7 @@ async def create_node_key_{{ action }}(facade, signer_key_pair):
 
 {{ create_node_key_link('link') }}
 
-async def create_harvesting_delegation_message(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_harvesting_delegation_message(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	{{ create_transaction_header() }}
 
@@ -1166,7 +1166,7 @@ async def create_harvesting_delegation_message(facade, signer_key_pair):  # pyli
 
 # region account multisig management transactions (complete)
 
-async def create_multisig_account_modification_new_account(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_new_account(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	{{ create_transaction_header() }}
 
@@ -1200,7 +1200,7 @@ async def create_multisig_account_modification_new_account(facade, signer_key_pa
 
 	{{ create_transaction_footer('multisig account (create)', 'cosignatory_key_pairs') }}
 
-async def create_multisig_account_modification_modify_account(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_modify_account(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	{{ create_transaction_header() }}
 
@@ -1291,7 +1291,7 @@ async def create_hash_lock(facade, signer_key_pair, bonded_transaction_hash):
 
 	{{ create_transaction_footer('hash lock') }}
 
-async def create_multisig_account_modification_new_account_bonded(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def create_multisig_account_modification_new_account_bonded(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
 	{{ create_transaction_header() }}
 
@@ -1387,7 +1387,7 @@ async def _spam_transactions(facade, signer_key_pair, count):
 
 		{{ create_transaction_footer('transfer', None, None, True) | indent('\t') }}
 
-async def prove_confirmed_transaction(facade, signer_key_pair):  # pylint: disable=invalid-name
+async def prove_confirmed_transaction(facade, signer_key_pair):
 	await _spam_transactions(facade, signer_key_pair, 10)
 
 	{{ create_transaction_header() }}
@@ -1455,7 +1455,7 @@ def print_banner(name):
 	print('*' * console_width)
 
 
-def run_offline_account_creation_examples(facade):  # pylint: disable=invalid-name
+def run_offline_account_creation_examples(facade):
 	functions = [
 		create_random_account,
 		create_random_bip32_account
@@ -1491,7 +1491,7 @@ async def run_account_query_examples():
 async def run_transaction_creation_examples(facade):
 	function_groups = [
 		('BASIC', [
-			create_transfer_with_encrypted_message
+			create_transfer_with_encrypted_message,
 			create_account_metadata_new,
 			create_account_metadata_modify,
 
