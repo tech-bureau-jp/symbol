@@ -3007,6 +3007,32 @@ Each feature that makes up Symbol is defined as a *plugin*. All nodes within sam
 
 ### Tutorial: Working with Websockets
 
+```python
+async def read_websocket_block(_, _1):
+	# connect to websocket endpoint
+	async with connect(SYMBOL_WEBSOCKET_ENDPOINT) as websocket:
+		# extract user id from connect response
+		result_json = json.loads(await websocket.recv())
+		user_id = result_json['uid']
+		print(f'established websocket connection with user id {user_id}')
+
+		# subscribe to block messages
+		subscribe_message = {'uid': user_id, 'subscribe': 'block'}
+		await websocket.send(json.dumps(subscribe_message))
+		print('subscribed to block messages')
+
+		# wait for the next block message
+		result_json = json.loads(await websocket.recv())
+		print(f'recieved message with topic: {result_json["topic"]}')
+		print(f'recieved block at height {result_json["data"]["block"]["height"]} with hash {result_json["data"]["meta"]["hash"]}')
+		print(result_json['data']['block'])
+
+		# unsubscribe from block messages
+		unsubscribe_message = {'uid': user_id, 'unsubscribe': 'block'}
+		await websocket.send(json.dumps(unsubscribe_message))
+		print('unsubscribed from block messages')
+```
+
 ## Catbuffer
 
 ### Introduction to DSLs

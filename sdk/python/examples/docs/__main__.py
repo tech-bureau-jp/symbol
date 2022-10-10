@@ -10,6 +10,7 @@ from binascii import hexlify, unhexlify
 
 import sha3
 from aiohttp import ClientSession
+from websockets import connect  # pylint: disable=no-name-in-module
 
 from symbolchain.Bip32 import Bip32
 from symbolchain.BufferWriter import BufferWriter
@@ -24,6 +25,7 @@ from symbolchain.symbol.Network import NetworkTimestamp  # TODO_: should we link
 from symbolchain.symbol.VotingKeysGenerator import VotingKeysGenerator
 
 SYMBOL_API_ENDPOINT = 'https://sym-test-02.opening-line.jp:3001'
+SYMBOL_WEBSOCKET_ENDPOINT = 'wss://sym-test-02.opening-line.jp:3001/ws'
 SYMBOL_TOOLS_ENDPOINT = 'https://testnet.symbol.tools'
 SYMBOL_EXPLORER_TRANSACTION_URL_PATTERN = 'https://testnet.symbol.fyi/transactions/{}'
 
@@ -2724,6 +2726,35 @@ async def prove_xym_mosaic_state(facade, _):  # pylint: disable=too-many-locals
 # endregion
 
 
+# region read_websocket_block
+
+async def read_websocket_block(_, _1):
+	# connect to websocket endpoint
+	async with connect(SYMBOL_WEBSOCKET_ENDPOINT) as websocket:
+		# extract user id from connect response
+		result_json = json.loads(await websocket.recv())
+		user_id = result_json['uid']
+		print(f'established websocket connection with user id {user_id}')
+
+		# subscribe to block messages
+		subscribe_message = {'uid': user_id, 'subscribe': 'block'}
+		await websocket.send(json.dumps(subscribe_message))
+		print('subscribed to block messages')
+
+		# wait for the next block message
+		result_json = json.loads(await websocket.recv())
+		print(f'recieved message with topic: {result_json["topic"]}')
+		print(f'recieved block at height {result_json["data"]["block"]["height"]} with hash {result_json["data"]["meta"]["hash"]}')
+		print(result_json['data']['block'])
+
+		# unsubscribe from block messages
+		unsubscribe_message = {'uid': user_id, 'unsubscribe': 'block'}
+		await websocket.send(json.dumps(unsubscribe_message))
+		print('unsubscribed from block messages')
+
+# endregion
+
+
 def print_banner(name):
 	console_width = shutil.get_terminal_size()[0]
 	print('*' * console_width)
@@ -2769,7 +2800,7 @@ async def run_account_query_examples():
 		await func()
 
 
-async def run_transaction_creation_examples(facade):
+async def run_transaction_examples(facade, group_filter=None):
 	function_groups = [
 		('BASIC', [
 			create_transfer_with_encrypted_message,
@@ -2825,14 +2856,19 @@ async def run_transaction_creation_examples(facade):
 		('PROOFS', [
 			prove_confirmed_transaction,
 			prove_xym_mosaic_state
+		]),
+		('WEBSOCKETS', [
+			read_websocket_block
 		])
 	]
 	for (group_name, functions) in function_groups:
+		if group_filter and group_filter != group_name:
+			continue
+
 		print_banner(f'CREATING SIGNER ACCOUNT FOR {group_name} TRANSACTION CREATION EXAMPLES')
 
 		# create a signing key pair that will be used to sign the created transaction(s) in this group
-		# signer_key_pair = await create_account_with_tokens_from_faucet(facade)
-		signer_key_pair = None
+		signer_key_pair = await create_account_with_tokens_from_faucet(facade)
 
 		for func in functions:
 			print_banner(func.__qualname__)
@@ -2845,7 +2881,7 @@ async def main():
 	run_offline_examples(facade)
 	await run_network_query_examples()
 	await run_account_query_examples()
-	await run_transaction_creation_examples(facade)
+	await run_transaction_examples(facade)
 
 	print_banner('FIN')
 
