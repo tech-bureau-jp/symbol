@@ -2493,6 +2493,7 @@ async def create_multisig_account_modification_new_account_bonded(facade, signer
 
 	# create a hash lock transaction to allow the network to collect cosignaatures for the aggregate
 	await create_hash_lock(facade, signer_key_pair, transaction_hash)
+
 	# submit the partial (bonded) transaction to the network
 	async with ClientSession(raise_for_status=True) as session:
 		# initiate a HTTP PUT request to a Symbol REST endpoint
@@ -2506,13 +2507,12 @@ async def create_multisig_account_modification_new_account_bonded(facade, signer
 		# submit the (detached) cosignatures to the network
 		for cosignatory_key_pair in cosignatory_key_pairs:
 			cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction, True)
-			cosignature_json_payload = f'''
-			{{
-				"version": "{cosignature.version}",
-				"signerPublicKey": "{cosignature.signer_public_key}",
-				"signature": "{cosignature.signature}",
-				"parentHash": "{cosignature.parent_hash}"
-			}}'''
+			cosignature_json_payload = json.dumps({
+				'version': str(cosignature.version),
+				'signerPublicKey': str(cosignature.signer_public_key),
+				'signature': str(cosignature.signature),
+				'parentHash': str(cosignature.parent_hash)
+			})
 			print(cosignature_json_payload)
 
 			# initiate a HTTP PUT request to a Symbol REST endpoint
@@ -2743,8 +2743,8 @@ async def read_websocket_block(_, _1):
 
 		# wait for the next block message
 		response_json = json.loads(await websocket.recv())
-		print(f'recieved message with topic: {response_json["topic"]}')
-		print(f'recieved block at height {response_json["data"]["block"]["height"]} with hash {response_json["data"]["meta"]["hash"]}')
+		print(f'received message with topic: {response_json["topic"]}')
+		print(f'received block at height {response_json["data"]["block"]["height"]} with hash {response_json["data"]["meta"]["hash"]}')
 		print(response_json['data']['block'])
 
 		# unsubscribe from block messages
@@ -2771,23 +2771,147 @@ async def read_websocket_transaction_flow(facade, signer_key_pair):
 
 		# subscribe to transaction messages associated with the signer
 		# * confirmedAdded - transaction was confirmed
-		# * unconfirmedAdded - transaction was added to confirmed cache
-		# * unconfirmedRemoved - transaction was added to unconfirmed cache
-		# * status - transaction status changed
+		# * unconfirmedAdded - transaction was added to unconfirmed cache
+		# * unconfirmedRemoved - transaction was removed from unconfirmed cache
 		# notice that all of these are scoped to a single address
-		for channel_name in ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved', 'status'):
+		for channel_name in ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved'):
 			subscribe_message = {'uid': user_id, 'subscribe': f'{channel_name}/{signer_address}'}
 			await websocket.send(json.dumps(subscribe_message))
 			print(f'subscribed to {channel_name} messages')
 
 		# send two transactions
-		await _spam_transactions(facade, signer_key_pair, 2)
+		unconfirmed_transactions_count = 2
+		await _spam_transactions(facade, signer_key_pair, unconfirmed_transactions_count)
 
 		# read messages from the websocket as the transactions move from unconfirmed to confirmed
 		# notice that "added" messages contain the full transaction payload whereas "removed" messages only contain the hash
-		for _ in range(0, 6):
+		# expected progression is unconfirmedAdded, unconfirmedRemoved, confirmedAdded
+		while True:
 			response_json = json.loads(await websocket.recv())
-			print(f'recieved message with topic {response_json["topic"]} for transaction {response_json["data"]["meta"]["hash"]}')
+			topic = response_json['topic']
+			print(f'received message with topic {topic} for transaction {response_json["data"]["meta"]["hash"]}')
+			if topic.startswith('confirmedAdded'):
+				unconfirmed_transactions_count -= 1
+				if 0 == unconfirmed_transactions_count:
+					print('all transactions confirmed')
+					break
+
+
+async def read_websocket_transaction_bonded_flow(facade, signer_key_pair):
+	# pylint: disable=too-many-locals
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# create cosignatory key pairs, where each cosignatory will be required to cosign initial modification
+	# (they are insecurely deterministically generated for the benefit of related tests)
+	cosignatory_key_pairs = [facade.KeyPair(PrivateKey(signer_key_pair.private_key.bytes[:-4] + bytes([0, 0, 0, i]))) for i in range(3)]
+	cosignatory_addresses = [facade.network.public_key_to_address(key_pair.public_key) for key_pair in cosignatory_key_pairs]
+
+	embedded_transactions = [
+		facade.transaction_factory.create_embedded({
+			'type': 'multisig_account_modification_transaction',
+			'signer_public_key': signer_key_pair.public_key,
+
+			'min_approval_delta': 2,  # number of signatures required to make any transaction
+			'min_removal_delta': 2,  # number of signatures needed to remove a cosignatory from multisig
+			'address_additions': cosignatory_addresses
+		})
+	]
+
+	# create the transaction, notice that signer account that will be turned into multisig is a signer of transaction
+	transaction = facade.transaction_factory.create({
+		'signer_public_key': signer_key_pair.public_key,
+		'deadline': network_time.timestamp,
+
+		'type': 'aggregate_bonded_transaction',
+		'transactions_hash': facade.hash_embedded_transactions(embedded_transactions),
+		'transactions': embedded_transactions
+	})
+
+	# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+	transaction.fee = Amount(100 * transaction.size)
+
+	# sign the transaction and attach its signature
+	signature = facade.sign_transaction(signer_key_pair, transaction)
+	json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+	# hash the transaction (this is dependent on the signature)
+	transaction_hash = facade.hash_transaction(transaction)
+	print(f'multisig account modification bonded (new) {transaction_hash}')
+
+	# print the signed transaction, including its signature
+	print(transaction)
+
+	# create a hash lock transaction to allow the network to collect cosignaatures for the aggregate
+	await create_hash_lock(facade, signer_key_pair, transaction_hash)
+
+	# connect to websocket endpoint
+	async with connect(SYMBOL_WEBSOCKET_ENDPOINT) as websocket:
+		# extract user id from connect response
+		response_json = json.loads(await websocket.recv())
+		user_id = response_json['uid']
+		print(f'established websocket connection with user id {user_id}')
+
+		# subscribe to transaction messages associated with the signer
+		# * confirmedAdded - transaction was confirmed
+		# * unconfirmedAdded - transaction was added to unconfirmed cache
+		# * unconfirmedRemoved - transaction was removed from unconfirmed cache
+		# * partialAdded - transaction was added to partial cache
+		# * partialRemoved - transaction was removed from partial cache
+		# * cosignature - cosignature was added
+		# notice that all of these are scoped to a single address
+		for channel_name in ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved', 'partialAdded', 'partialRemoved', 'cosignature'):
+			subscribe_message = {'uid': user_id, 'subscribe': f'{channel_name}/{signer_address}'}
+			await websocket.send(json.dumps(subscribe_message))
+			print(f'subscribed to {channel_name} messages')
+
+		# submit the partial (bonded) transaction to the network
+		async with ClientSession(raise_for_status=True) as session:
+			# initiate a HTTP PUT request to a Symbol REST endpoint
+			async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions/partial', json=json.loads(json_payload)) as response:
+				response_json = await response.json()
+				print(f'/transactions/partial: {response_json}')
+
+			# wait for the partial transaction to be cached by the network (this should be partialAdded)
+			response_json = json.loads(await websocket.recv())
+			print(f'received message with topic {response_json["topic"]} for transaction {response_json["data"]["meta"]["hash"]}')
+
+			# submit the (detached) cosignatures to the network
+			for cosignatory_key_pair in cosignatory_key_pairs:
+				cosignature = facade.cosign_transaction(cosignatory_key_pair, transaction, True)
+				cosignature_json_payload = json.dumps({
+					'version': str(cosignature.version),
+					'signerPublicKey': str(cosignature.signer_public_key),
+					'signature': str(cosignature.signature),
+					'parentHash': str(cosignature.parent_hash)
+				})
+				print(cosignature_json_payload)
+
+				# initiate a HTTP PUT request to a Symbol REST endpoint
+				async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions/cosignature', json=json.loads(cosignature_json_payload)) as response:
+					response_json = await response.json()
+					print(f'/transactions/cosignature: {response_json}')
+
+		# read messages from the websocket as the transaction moves from partial to unconfirmed to confirmed
+		# notice that "added" messages contain the full transaction payload whereas "removed" messages only contain the hash
+		# expected progression is cosignature, cosignature, partialRemoved, unconfirmedAdded, unconfirmedRemoved, confirmedAdded
+		while True:
+			response_json = json.loads(await websocket.recv())
+			topic = response_json['topic']
+			if topic.startswith('cosignature'):
+				cosignature = response_json['data']
+				print(f'received cosignature for transaction {cosignature["parentHash"]} from {cosignature["signerPublicKey"]}')
+			else:
+				print(f'received message with topic {topic} for transaction {response_json["data"]["meta"]["hash"]}')
+
+			if topic.startswith('confirmedAdded'):
+				print('transaction confirmed')
+				break
 
 # endregion
 
@@ -2895,8 +3019,11 @@ async def run_transaction_examples(facade, group_filter=None):
 			prove_xym_mosaic_state
 		]),
 		('WEBSOCKETS', [
-			# read_websocket_block,
+			read_websocket_block,
 			read_websocket_transaction_flow
+		]),
+		('WEBSOCKETS (PARTIAL)', [
+			read_websocket_transaction_bonded_flow
 		])
 	]
 	for (group_name, functions) in function_groups:
@@ -2906,8 +3033,7 @@ async def run_transaction_examples(facade, group_filter=None):
 		print_banner(f'CREATING SIGNER ACCOUNT FOR {group_name} TRANSACTION CREATION EXAMPLES')
 
 		# create a signing key pair that will be used to sign the created transaction(s) in this group
-		# signer_key_pair = await create_account_with_tokens_from_faucet(facade)
-		signer_key_pair = facade.KeyPair(PrivateKey('1BD0FAD6BC90549ECA180532922C92F7D67B732AC076FC5B40DC6566F8357370'))
+		signer_key_pair = await create_account_with_tokens_from_faucet(facade)
 
 		for func in functions:
 			print_banner(func.__qualname__)
