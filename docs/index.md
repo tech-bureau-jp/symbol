@@ -3012,8 +3012,8 @@ async def read_websocket_block(_, _1):
 	# connect to websocket endpoint
 	async with connect(SYMBOL_WEBSOCKET_ENDPOINT) as websocket:
 		# extract user id from connect response
-		result_json = json.loads(await websocket.recv())
-		user_id = result_json['uid']
+		response_json = json.loads(await websocket.recv())
+		user_id = response_json['uid']
 		print(f'established websocket connection with user id {user_id}')
 
 		# subscribe to block messages
@@ -3022,15 +3022,53 @@ async def read_websocket_block(_, _1):
 		print('subscribed to block messages')
 
 		# wait for the next block message
-		result_json = json.loads(await websocket.recv())
-		print(f'recieved message with topic: {result_json["topic"]}')
-		print(f'recieved block at height {result_json["data"]["block"]["height"]} with hash {result_json["data"]["meta"]["hash"]}')
-		print(result_json['data']['block'])
+		response_json = json.loads(await websocket.recv())
+		print(f'recieved message with topic: {response_json["topic"]}')
+		print(f'recieved block at height {response_json["data"]["block"]["height"]} with hash {response_json["data"]["meta"]["hash"]}')
+		print(response_json['data']['block'])
 
 		# unsubscribe from block messages
 		unsubscribe_message = {'uid': user_id, 'unsubscribe': 'block'}
 		await websocket.send(json.dumps(unsubscribe_message))
 		print('unsubscribed from block messages')
+```
+
+```python
+async def read_websocket_transaction_flow(facade, signer_key_pair):
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# connect to websocket endpoint
+	async with connect(SYMBOL_WEBSOCKET_ENDPOINT) as websocket:
+		# extract user id from connect response
+		response_json = json.loads(await websocket.recv())
+		user_id = response_json['uid']
+		print(f'established websocket connection with user id {user_id}')
+
+		# subscribe to transaction messages associated with the signer
+		# * confirmedAdded - transaction was confirmed
+		# * unconfirmedAdded - transaction was added to confirmed cache
+		# * unconfirmedRemoved - transaction was added to unconfirmed cache
+		# * status - transaction status changed
+		# notice that all of these are scoped to a single address
+		for channel_name in ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved', 'status'):
+			subscribe_message = {'uid': user_id, 'subscribe': f'{channel_name}/{signer_address}'}
+			await websocket.send(json.dumps(subscribe_message))
+			print(f'subscribed to {channel_name} messages')
+
+		# send two transactions
+		await _spam_transactions(facade, signer_key_pair, 2)
+
+		# read messages from the websocket as the transactions move from unconfirmed to confirmed
+		# notice that "added" messages contain the full transaction payload whereas "removed" messages only contain the hash
+		for _ in range(0, 6):
+			response_json = json.loads(await websocket.recv())
+			print(f'recieved message with topic {response_json["topic"]} for transaction {response_json["data"]["meta"]["hash"]}')
 ```
 
 ## Catbuffer
