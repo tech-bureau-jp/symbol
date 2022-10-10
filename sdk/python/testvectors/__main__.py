@@ -11,6 +11,7 @@ from symbolchain import nc, sc
 from symbolchain.ByteArray import ByteArray
 from symbolchain.facade.NemFacade import NemFacade
 from symbolchain.facade.SymbolFacade import SymbolFacade
+from symbolchain.symbol.BlockFactory import BlockFactory
 
 
 def get_modules(network_name):
@@ -82,8 +83,9 @@ class SymbolHelper:
 
 	def create_aggregate(self, test_name, original_descriptor):
 		factory = self.facade.transaction_factory
-		embedded_transactions = list(map(clone_descriptor, original_descriptor['embedded']))
 
+		# create almost-ready 'printable' descriptor
+		embedded_transactions = list(map(clone_descriptor, original_descriptor['embedded']))
 		printable_descriptor = clone_descriptor(original_descriptor['aggregate'])
 		printable_descriptor['transactions'] = embedded_transactions
 		self.set_common_fields(printable_descriptor, test_name)
@@ -91,14 +93,38 @@ class SymbolHelper:
 			self.create_cosignature_descriptor(test_name, i) for i in range(original_descriptor.get('num_cosignatures', 0))
 		]
 
+		# fix descriptor a bit before creating transaction
 		descriptor = copy.copy(printable_descriptor)
 		descriptor['transactions'] = list(map(factory.create_embedded, embedded_transactions))
 		descriptor['transactions_hash'] = SymbolFacade.hash_embedded_transactions(descriptor['transactions'])
 		descriptor['cosignatures'] = list(map(self.create_cosignature, printable_descriptor['cosignatures']))
 
+		# fill in printable transaction hash with proper hash (not really needed/required)
 		printable_descriptor['transactions_hash'] = descriptor['transactions_hash']
 
 		return factory.create(descriptor), printable_descriptor
+
+	def create_block(self, test_name, original_descriptor):
+		block_transactions = []
+		block_transaction_descriptors = []
+		for entry in original_descriptor['transactions']:
+			create_transaction = self.create_aggregate if 'aggregate' in entry else self.create
+			transaction, printable_descriptor = create_transaction(test_name, entry)
+			block_transactions.append(transaction)
+			block_transaction_descriptors.append(printable_descriptor)
+
+		printable_descriptor = clone_descriptor(original_descriptor)
+		printable_descriptor['transactions'] = block_transaction_descriptors
+
+		# boring fields
+		printable_descriptor['signature'] = self.Signature(sha3.sha3_512(test_name.encode('utf8')).hexdigest())
+		printable_descriptor['signer_public_key'] = sha3.sha3_256(test_name.encode('utf8')).hexdigest()
+		printable_descriptor['timestamp'] = 0x71E71E71E71E71E0
+
+		descriptor = copy.copy(printable_descriptor)
+		descriptor['transactions'] = block_transactions
+
+		return BlockFactory(self.facade.network).create(descriptor), printable_descriptor
 
 
 class NemHelper:
@@ -217,20 +243,54 @@ class VectorGenerator:
 
 		return test_cases
 
+	def create_blocks(self, module_descriptor, recipes):
+		test_cases = []
+
+		for index, entry in enumerate(recipes['descriptors']):
+			schema_name = entry['schema_name']
+			test_prefix = f'{schema_name}_{module_descriptor[0]}'
+			test_name = f'{test_prefix}_{index+1}'
+			test_cases.append(self.create_entry(schema_name, test_name, self.helper.create_block, entry['descriptor']))
+
+		return test_cases
+
 	def generate(self):
 		entries = []
 		for module_descriptor in self.modules:
+			processed = False
 			if hasattr(module_descriptor[1], 'aggregate_recipes'):
 				recipes = getattr(module_descriptor[1], 'aggregate_recipes')
 				entries.extend(self.create_aggregate_transactions(module_descriptor, recipes))
+				processed = True
 
 			if hasattr(module_descriptor[1], 'recipes'):
 				recipes = getattr(module_descriptor[1], 'recipes')
 				entries.extend(self.create_transactions(module_descriptor, recipes))
+				processed = True
 
-			print(f'[+] module {self.network_name}.{module_descriptor[0]}: ok')
+			if processed:
+				print(f'[+] module {self.network_name}.{module_descriptor[0]}: ok')
 
 		return entries
+
+	def generate_blocks(self):
+		entries = []
+		for module_descriptor in self.modules:
+			if hasattr(module_descriptor[1], 'block_recipes'):
+				recipes = getattr(module_descriptor[1], 'block_recipes')
+				entries.extend(self.create_blocks(module_descriptor, recipes))
+
+				print(f'[+] module {self.network_name}.{module_descriptor[0]}: ok')
+
+		return entries
+
+
+def save_entries(filepath, entries, ):
+	filepath.parent.mkdir(parents=True, exist_ok=True)
+
+	with open(filepath, 'wt', encoding='utf8') as outfile:
+		json.dump(entries, outfile, indent=2)
+		outfile.write('\n')
 
 
 def main():
@@ -245,12 +305,10 @@ def main():
 		generator = VectorGenerator(network_name)
 		entries = generator.generate()
 
-		filepath = Path(args.output) / network_name / 'models' / 'transactions.json'
-		filepath.parent.mkdir(parents=True, exist_ok=True)
+		save_entries(Path(args.output) / network_name / 'models' / 'transactions.json', entries)
 
-		with open(filepath, 'wt', encoding='utf8') as outfile:
-			json.dump(entries, outfile, indent=2)
-			outfile.write('\n')
+		entries = generator.generate_blocks()
+		save_entries(Path(args.output) / network_name / 'models' / 'blocks.json', entries)
 
 
 if '__main__' == __name__:
