@@ -1573,7 +1573,8 @@ async def read_websocket_transaction_flow(facade, signer_key_pair):
 		# * unconfirmedAdded - transaction was added to unconfirmed cache
 		# * unconfirmedRemoved - transaction was removed from unconfirmed cache
 		# notice that all of these are scoped to a single address
-		for channel_name in ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved'):
+		channel_names = ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved')
+		for channel_name in channel_names:
 			subscribe_message = {'uid': user_id, 'subscribe': f'{channel_name}/{signer_address}'}
 			await websocket.send(json.dumps(subscribe_message))
 			print(f'subscribed to {channel_name} messages')
@@ -1595,6 +1596,57 @@ async def read_websocket_transaction_flow(facade, signer_key_pair):
 					print('all transactions confirmed')
 					break
 
+		# unsubscribe from transaction messages
+		for channel_name in channel_names:
+			unsubscribe_message = {'uid': user_id, 'unsubscribe': f'{channel_name}/{signer_address}'}
+			await websocket.send(json.dumps(unsubscribe_message))
+			print(f'unsubscribed from {channel_name} messages')
+
+
+async def read_websocket_transaction_error(facade, signer_key_pair):
+	# pylint: disable=too-many-locals
+	{{ create_transaction_header() }}
+
+	{{ websocket_connect() }}
+
+		# subscribe to transaction messages associated with the signer
+		# * status - transaction was rejected
+		# notice that all of these are scoped to a single address
+		subscribe_message = {'uid': user_id, 'subscribe': f'status/{signer_address}'}
+		await websocket.send(json.dumps(subscribe_message))
+		print('subscribed to status messages')
+
+		# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
+		recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+		print(f'recipient: {recipient_address}')
+
+		{{ create_transaction_header() | indent('\t') }}
+
+		# prepare transaction that will be rejected (insufficient balance)
+		transaction = facade.transaction_factory.create({
+			'signer_public_key': signer_key_pair.public_key,
+			'deadline': network_time.timestamp,
+
+			'type': 'transfer_transaction',
+			'recipient_address': recipient_address,
+			'mosaics': [
+				{'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 1000_000000}
+			],
+		})
+
+		{{ create_transaction_footer('transfer', None, None, True) | indent('\t') }}
+		# read messages from the websocket as the transactions move from unconfirmed to confirmed
+		# notice that "added" messages contain the full transaction payload whereas "removed" messages only contain the hash
+		# expected progression is unconfirmedAdded, unconfirmedRemoved, confirmedAdded
+		response_json = json.loads(await websocket.recv())
+		print(f'received message with topic: {response_json["topic"]}')
+		print(f'transaction {response_json["data"]["hash"]} was rejected with {response_json["data"]["code"]}')
+
+		# unsubscribe from status messages
+		unsubscribe_message = {'uid': user_id, 'unsubscribe': f'status/{signer_address}'}
+		await websocket.send(json.dumps(unsubscribe_message))
+		print('unsubscribed from status messages')
+
 
 async def read_websocket_transaction_bonded_flow(facade, signer_key_pair):
 	{{ create_bonded_transaction_header() }}
@@ -1609,7 +1661,8 @@ async def read_websocket_transaction_bonded_flow(facade, signer_key_pair):
 		# * partialRemoved - transaction was removed from partial cache
 		# * cosignature - cosignature was added
 		# notice that all of these are scoped to a single address
-		for channel_name in ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved', 'partialAdded', 'partialRemoved', 'cosignature'):
+		channel_names = ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved', 'partialAdded', 'partialRemoved', 'cosignature')
+		for channel_name in channel_names:
 			subscribe_message = {'uid': user_id, 'subscribe': f'{channel_name}/{signer_address}'}
 			await websocket.send(json.dumps(subscribe_message))
 			print(f'subscribed to {channel_name} messages')
@@ -1650,6 +1703,12 @@ async def read_websocket_transaction_bonded_flow(facade, signer_key_pair):
 			if topic.startswith('confirmedAdded'):
 				print('transaction confirmed')
 				break
+
+		# unsubscribe from transaction messages
+		for channel_name in channel_names:
+			unsubscribe_message = {'uid': user_id, 'unsubscribe': f'{channel_name}/{signer_address}'}
+			await websocket.send(json.dumps(unsubscribe_message))
+			print(f'unsubscribed from {channel_name} messages')
 
 # endregion
 
@@ -1701,7 +1760,7 @@ async def run_account_query_examples():
 
 async def run_transaction_examples(facade, group_filter=None):
 	function_groups = [
-		('BASIC', [
+		('CREATE (BASIC)', [
 			create_transfer_with_encrypted_message,
 			create_account_metadata_new,
 			create_account_metadata_modify,
@@ -1732,7 +1791,7 @@ async def run_transaction_examples(facade, group_filter=None):
 			create_address_mosaic_restriction_3,
 			create_global_mosaic_restriction_modify
 		]),
-		('BASIC (LINKS)', [
+		('CREATE (LINKS)', [
 			create_account_key_link,
 			create_vrf_key_link,
 			create_voting_key_link,
@@ -1745,11 +1804,11 @@ async def run_transaction_examples(facade, group_filter=None):
 			create_voting_key_unlink,
 			create_node_key_unlink
 		]),
-		('MULTISIG (COMPLETE)', [
+		('CREATE MULTISIG (COMPLETE)', [
 			create_multisig_account_modification_new_account,
 			create_multisig_account_modification_modify_account
 		]),
-		('MULTISIG (BONDED)', [
+		('CREATE MULTISIG (BONDED)', [
 			create_multisig_account_modification_new_account_bonded
 		]),
 		('PROOFS', [
@@ -1758,7 +1817,8 @@ async def run_transaction_examples(facade, group_filter=None):
 		]),
 		('WEBSOCKETS', [
 			read_websocket_block,
-			read_websocket_transaction_flow
+			read_websocket_transaction_flow,
+			read_websocket_transaction_error
 		]),
 		('WEBSOCKETS (PARTIAL)', [
 			read_websocket_transaction_bonded_flow
@@ -1768,7 +1828,7 @@ async def run_transaction_examples(facade, group_filter=None):
 		if group_filter and group_filter != group_name:
 			continue
 
-		print_banner(f'CREATING SIGNER ACCOUNT FOR {group_name} TRANSACTION CREATION EXAMPLES')
+		print_banner(f'CREATING SIGNER ACCOUNT FOR TRANSACTION EXAMPLES - {group_name}')
 
 		# create a signing key pair that will be used to sign the created transaction(s) in this group
 		signer_key_pair = await create_account_with_tokens_from_faucet(facade)
@@ -1784,7 +1844,7 @@ async def main():
 	run_offline_examples(facade)
 	await run_network_query_examples()
 	await run_account_query_examples()
-	await run_transaction_examples(facade)
+	await run_transaction_examples(facade, 'WEBSOCKETS')
 
 	print_banner('FIN')
 

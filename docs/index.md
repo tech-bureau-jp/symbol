@@ -3032,7 +3032,6 @@ async def read_websocket_block(_, _1):
 		await websocket.send(json.dumps(unsubscribe_message))
 		print('unsubscribed from block messages')
 ```
-
 ```python
 async def read_websocket_transaction_flow(facade, signer_key_pair):
 	# derive the signer's address
@@ -3055,7 +3054,8 @@ async def read_websocket_transaction_flow(facade, signer_key_pair):
 		# * unconfirmedAdded - transaction was added to unconfirmed cache
 		# * unconfirmedRemoved - transaction was removed from unconfirmed cache
 		# notice that all of these are scoped to a single address
-		for channel_name in ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved'):
+		channel_names = ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved')
+		for channel_name in channel_names:
 			subscribe_message = {'uid': user_id, 'subscribe': f'{channel_name}/{signer_address}'}
 			await websocket.send(json.dumps(subscribe_message))
 			print(f'subscribed to {channel_name} messages')
@@ -3076,8 +3076,13 @@ async def read_websocket_transaction_flow(facade, signer_key_pair):
 				if 0 == unconfirmed_transactions_count:
 					print('all transactions confirmed')
 					break
-```
 
+		# unsubscribe from transaction messages
+		for channel_name in channel_names:
+			unsubscribe_message = {'uid': user_id, 'unsubscribe': f'{channel_name}/{signer_address}'}
+			await websocket.send(json.dumps(unsubscribe_message))
+			print(f'unsubscribed from {channel_name} messages')
+```
 ```python
 async def read_websocket_transaction_bonded_flow(facade, signer_key_pair):
 	# pylint: disable=too-many-locals
@@ -3147,7 +3152,8 @@ async def read_websocket_transaction_bonded_flow(facade, signer_key_pair):
 		# * partialRemoved - transaction was removed from partial cache
 		# * cosignature - cosignature was added
 		# notice that all of these are scoped to a single address
-		for channel_name in ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved', 'partialAdded', 'partialRemoved', 'cosignature'):
+		channel_names = ('confirmedAdded', 'unconfirmedAdded', 'unconfirmedRemoved', 'partialAdded', 'partialRemoved', 'cosignature')
+		for channel_name in channel_names:
 			subscribe_message = {'uid': user_id, 'subscribe': f'{channel_name}/{signer_address}'}
 			await websocket.send(json.dumps(subscribe_message))
 			print(f'subscribed to {channel_name} messages')
@@ -3194,6 +3200,97 @@ async def read_websocket_transaction_bonded_flow(facade, signer_key_pair):
 			if topic.startswith('confirmedAdded'):
 				print('transaction confirmed')
 				break
+
+		# unsubscribe from transaction messages
+		for channel_name in channel_names:
+			unsubscribe_message = {'uid': user_id, 'unsubscribe': f'{channel_name}/{signer_address}'}
+			await websocket.send(json.dumps(unsubscribe_message))
+			print(f'unsubscribed from {channel_name} messages')
+```
+```python
+async def read_websocket_transaction_error(facade, signer_key_pair):
+	# pylint: disable=too-many-locals
+	# derive the signer's address
+	signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+	print(f'creating transaction with signer {signer_address}')
+
+	# get the current network time from the network, and set the transaction deadline two hours in the future
+	network_time = await get_network_time()
+	network_time = network_time.add_hours(2)
+
+	# connect to websocket endpoint
+	async with connect(SYMBOL_WEBSOCKET_ENDPOINT) as websocket:
+		# extract user id from connect response
+		response_json = json.loads(await websocket.recv())
+		user_id = response_json['uid']
+		print(f'established websocket connection with user id {user_id}')
+
+		# subscribe to transaction messages associated with the signer
+		# * status - transaction was rejected
+		# notice that all of these are scoped to a single address
+		subscribe_message = {'uid': user_id, 'subscribe': f'status/{signer_address}'}
+		await websocket.send(json.dumps(subscribe_message))
+		print('subscribed to status messages')
+
+		# create a deterministic recipient (it insecurely deterministically generated for the benefit of related tests)
+		recipient_address = facade.network.public_key_to_address(PublicKey(signer_key_pair.public_key.bytes[:-4] + bytes([0, 0, 0, 0])))
+		print(f'recipient: {recipient_address}')
+
+		# derive the signer's address
+		signer_address = facade.network.public_key_to_address(signer_key_pair.public_key)
+		print(f'creating transaction with signer {signer_address}')
+
+		# get the current network time from the network, and set the transaction deadline two hours in the future
+		network_time = await get_network_time()
+		network_time = network_time.add_hours(2)
+
+		# prepare transaction that will be rejected (insufficient balance)
+		transaction = facade.transaction_factory.create({
+			'signer_public_key': signer_key_pair.public_key,
+			'deadline': network_time.timestamp,
+
+			'type': 'transfer_transaction',
+			'recipient_address': recipient_address,
+			'mosaics': [
+				{'mosaic_id': generate_mosaic_alias_id('symbol.xym'), 'amount': 1000_000000}
+			],
+		})
+
+		# set the maximum fee that the signer will pay to confirm the transaction; transactions bidding higher fees are generally prioritized
+		transaction.fee = Amount(100 * transaction.size)
+
+		# sign the transaction and attach its signature
+		signature = facade.sign_transaction(signer_key_pair, transaction)
+		facade.transaction_factory.attach_signature(transaction, signature)
+
+		# hash the transaction (this is dependent on the signature)
+		transaction_hash = facade.hash_transaction(transaction)
+		print(f'transfer transaction hash {transaction_hash}')
+
+		# finally, construct the over wire payload
+		json_payload = facade.transaction_factory.attach_signature(transaction, signature)
+
+		# print the signed transaction, including its signature
+		print(transaction)
+
+		# submit the transaction to the network
+		async with ClientSession(raise_for_status=True) as session:
+			# initiate a HTTP PUT request to a Symbol REST endpoint
+			async with session.put(f'{SYMBOL_API_ENDPOINT}/transactions', json=json.loads(json_payload)) as response:
+				response_json = await response.json()
+				print(f'/transactions: {response_json}')
+
+		# read messages from the websocket as the transactions move from unconfirmed to confirmed
+		# notice that "added" messages contain the full transaction payload whereas "removed" messages only contain the hash
+		# expected progression is unconfirmedAdded, unconfirmedRemoved, confirmedAdded
+		response_json = json.loads(await websocket.recv())
+		print(f'received message with topic: {response_json["topic"]}')
+		print(f'transaction {response_json["data"]["hash"]} was rejected with {response_json["data"]["code"]}')
+
+		# unsubscribe from status messages
+		unsubscribe_message = {'uid': user_id, 'unsubscribe': f'status/{signer_address}'}
+		await websocket.send(json.dumps(unsubscribe_message))
+		print('unsubscribed from status messages')
 ```
 
 ## Catbuffer
