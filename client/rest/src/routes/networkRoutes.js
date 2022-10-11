@@ -51,18 +51,16 @@ module.exports = {
 			contents => {
 				const inflationObject = ini.parse(contents).inflation;
 				const inflationInflectionPoints = Object.getOwnPropertyNames(inflationObject).map(key => ({
-					startHeight: key.substring(key.lastIndexOf('-') + 1),
-					rewardAmount: inflationObject[key]
+					startHeight: BigInt(key.substring(key.lastIndexOf('-') + 1)),
+					rewardAmount: BigInt(inflationObject[key])
 				}));
 
 				// sort by start height
 				inflationInflectionPoints.sort((lhs, rhs) => {
-					const lhsStartHeight = BigInt(lhs.startHeight);
-					const rhsStartHeight = BigInt(rhs.startHeight);
-					if (lhsStartHeight === rhsStartHeight)
+					if (lhs.startHeight === rhs.startHeight)
 						return 0;
 
-					return lhsStartHeight > rhsStartHeight ? 1 : -1;
+					return lhs.startHeight > rhs.startHeight ? 1 : -1;
 				});
 				return inflationInflectionPoints;
 			}
@@ -90,7 +88,11 @@ module.exports = {
 
 		server.get('/network/inflation', (req, res, next) => readAndParseInflationPropertiesFile()
 			.then(propertiesObject => {
-				res.send(propertiesObject);
+				res.send(propertiesObject.map(entry => ({
+					// send BigInts over network as strings
+					startHeight: entry.startHeight.toString(),
+					rewardAmount: entry.rewardAmount.toString()
+				})));
 				next();
 			}).catch(() => {
 				res.send(errors.createInvalidArgumentError('there was an error reading the inflation properties file'));

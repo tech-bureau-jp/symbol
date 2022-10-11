@@ -118,7 +118,7 @@ describe('network routes', () => {
 			});
 		});
 
-		describe('network inflation', () => {
+		describe.only('network inflation', () => {
 			const assertCanRetrieveInflationProperties = lines => {
 				const tempInflationFile = tmp.fileSync();
 				fs.writeFileSync(tempInflationFile.name, lines.join('\n'));
