@@ -87,12 +87,43 @@ module.exports = {
 			}));
 
 		server.get('/network/inflation', (req, res, next) => readAndParseInflationPropertiesFile()
-			.then(propertiesObject => {
-				res.send(propertiesObject.map(entry => ({
+			.then(inflationInflectionPoints => {
+				res.send(inflationInflectionPoints.map(point => ({
 					// send BigInts over network as strings
-					startHeight: entry.startHeight.toString(),
-					rewardAmount: entry.rewardAmount.toString()
+					startHeight: point.startHeight.toString(),
+					rewardAmount: point.rewardAmount.toString()
 				})));
+				next();
+			}).catch(() => {
+				res.send(errors.createInvalidArgumentError('there was an error reading the inflation properties file'));
+				next();
+			}));
+
+		server.get('/network/inflation/at/:height', (req, res, next) => readAndParseInflationPropertiesFile()
+			.then(inflationInflectionPoints => {
+				const height = BigInt(req.params.height);
+
+				const findMatchingPoint = () => {
+					for (let i = inflationInflectionPoints.length - 2; 0 <= i; --i) {
+						if (inflationInflectionPoints[i].startHeight < height)
+							return inflationInflectionPoints[i + 1];
+					}
+
+					const firstPoint = inflationInflectionPoints[0];
+					if (height < firstPoint.startHeight)
+						return { startHeight: 'N/A', rewardAmount: '0' };
+
+					if (height === firstPoint.startHeight)
+						return firstPoint;
+
+					return inflationInflectionPoints[inflationInflectionPoints.length - 1];
+				};
+
+				const point = findMatchingPoint();
+				res.send({
+					startHeight: point.startHeight.toString(),
+					rewardAmount: point.rewardAmount.toString()
+				});
 				next();
 			}).catch(() => {
 				res.send(errors.createInvalidArgumentError('there was an error reading the inflation properties file'));
