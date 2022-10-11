@@ -46,6 +46,28 @@ module.exports = {
 			contents => ini.parse(contents)
 		);
 
+		const readAndParseInflationPropertiesFile = () => fileLoader.readOnce(
+			services.config.apiNode.inflationPropertyFilePath,
+			contents => {
+				const inflationObject = ini.parse(contents).inflation;
+				const inflationInflectionPoints = Object.getOwnPropertyNames(inflationObject).map(key => ({
+					startHeight: key.substring(key.lastIndexOf('-') + 1),
+					rewardAmount: inflationObject[key]
+				}));
+
+				// sort by start height
+				inflationInflectionPoints.sort((lhs, rhs) => {
+					const lhsStartHeight = BigInt(lhs.startHeight);
+					const rhsStartHeight = BigInt(rhs.startHeight);
+					if (lhsStartHeight === rhsStartHeight)
+						return 0;
+
+					return lhsStartHeight > rhsStartHeight ? 1 : -1;
+				});
+				return inflationInflectionPoints;
+			}
+		);
+
 		const sanitizeInput = value => value.replace(/[^0-9]/g, '');
 
 		server.get('/network', (req, res, next) => {
@@ -63,6 +85,15 @@ module.exports = {
 				next();
 			}).catch(() => {
 				res.send(errors.createInvalidArgumentError('there was an error reading the network properties file'));
+				next();
+			}));
+
+		server.get('/network/inflation', (req, res, next) => readAndParseInflationPropertiesFile()
+			.then(propertiesObject => {
+				res.send(propertiesObject);
+				next();
+			}).catch(() => {
+				res.send(errors.createInvalidArgumentError('there was an error reading the inflation properties file'));
 				next();
 			}));
 
