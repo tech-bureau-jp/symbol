@@ -172,11 +172,14 @@ describe('network routes', () => {
 			]));
 
 			it('fails when file does not exist', () => {
+				// Arrange:
 				const mockServer = new MockServer();
 				networkRoutes.register(mockServer.server, {}, { config: { apiNode: { inflationPropertyFilePath: 'fake.dat' } } });
 
+				// Act:
 				const route = mockServer.getRoute('/network/inflation').get();
 				return mockServer.callRoute(route).then(() => {
+					// Assert:
 					expect(mockServer.next.calledOnce).to.equal(true);
 					expect(mockServer.send.firstCall.args[0].statusCode).to.equal(409);
 					expect(mockServer.send.firstCall.args[0].message).to.equal('there was an error reading the inflation properties file');
@@ -231,12 +234,40 @@ describe('network routes', () => {
 				it(`succeeds when ${testCase[2]}`, () => assertCanRetrievePointAtHeight(testCase[0], testCase[1]));
 			});
 
+			it('fails when height parameter is malformed', () => {
+				// Arrange:
+				const tempInflationFile = tmp.fileSync();
+				fs.writeFileSync(tempInflationFile.name, [
+					'[inflation]',
+					'starting-at-height-2 = 0'
+				].join('\n'));
+
+				const mockServer = new MockServer();
+				networkRoutes.register(mockServer.server, {}, {
+					config: { apiNode: { inflationPropertyFilePath: tempInflationFile.name } }
+				});
+
+				// Act:
+				const req = { params: { height: '10x000' } };
+				const route = mockServer.getRoute('/network/inflation/at/:height').get();
+				return mockServer.callRoute(route, req).then(() => {
+					// Assert:
+					expect(mockServer.next.calledOnce).to.equal(true);
+					expect(mockServer.send.firstCall.args[0].statusCode).to.equal(409);
+					expect(mockServer.send.firstCall.args[0].message).to.equal('there was an error reading the inflation properties file');
+				});
+			});
+
 			it('fails when file does not exist', () => {
+				// Arrange:
 				const mockServer = new MockServer();
 				networkRoutes.register(mockServer.server, {}, { config: { apiNode: { inflationPropertyFilePath: 'fake.dat' } } });
 
+				// Act:
+				const req = { params: { height: '10000' } };
 				const route = mockServer.getRoute('/network/inflation/at/:height').get();
-				return mockServer.callRoute(route).then(() => {
+				return mockServer.callRoute(route, req).then(() => {
+					// Assert:
 					expect(mockServer.next.calledOnce).to.equal(true);
 					expect(mockServer.send.firstCall.args[0].statusCode).to.equal(409);
 					expect(mockServer.send.firstCall.args[0].message).to.equal('there was an error reading the inflation properties file');
