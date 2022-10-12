@@ -11,7 +11,9 @@ from symbolchain import nc, sc
 from symbolchain.ByteArray import ByteArray
 from symbolchain.facade.NemFacade import NemFacade
 from symbolchain.facade.SymbolFacade import SymbolFacade
+from symbolchain.RuleBasedTransactionFactory import RuleBasedTransactionFactory
 from symbolchain.symbol.BlockFactory import BlockFactory
+from symbolchain.symbol.Network import Address
 
 
 def get_modules(network_name):
@@ -41,6 +43,42 @@ def clone_descriptor(descriptor):
 
 	return cloned_descriptor
 
+
+class ReceiptFactory:
+	"""Factory for creating Symbol receipts."""
+
+	def __init__(self, type_rule_overrides=None):
+		"""Creates a factory for the specified network."""
+		self.factory = self._build_rules(type_rule_overrides)
+
+	def create(self, receipt_descriptor):
+		"""Creates a receipt from a receipt_descriptor."""
+		return self.factory.create_from_factory(sc.ReceiptFactory.create_by_name, receipt_descriptor), receipt_descriptor
+
+	@staticmethod
+	def _symbol_type_converter(value):  # pylint: disable=useless-return
+		del value
+		return None
+
+	@staticmethod
+	def _build_rules(type_rule_overrides):
+		factory = RuleBasedTransactionFactory(sc, ReceiptFactory._symbol_type_converter, type_rule_overrides)
+		factory.autodetect()
+
+		factory.add_struct_parser('Mosaic')
+
+		sdk_type_mapping = {
+			'Address': Address,
+		}
+		for name, typename in sdk_type_mapping.items():
+			factory.add_pod_parser(name, typename)
+
+		return factory
+
+# endregion
+
+
+# region symbol helper
 
 class SymbolHelper:
 	AGGREGATE_SCHEMA_NAME = 'AggregateBondedTransactionV2'
@@ -106,15 +144,15 @@ class SymbolHelper:
 
 	def create_block(self, test_name, original_descriptor):
 		block_transactions = []
-		block_transaction_descriptors = []
+		transaction_descriptors = []
 		for entry in original_descriptor['transactions']:
 			create_transaction = self.create_aggregate if 'aggregate' in entry else self.create
 			transaction, printable_descriptor = create_transaction(test_name, entry)
 			block_transactions.append(transaction)
-			block_transaction_descriptors.append(printable_descriptor)
+			transaction_descriptors.append(printable_descriptor)
 
 		printable_descriptor = clone_descriptor(original_descriptor)
-		printable_descriptor['transactions'] = block_transaction_descriptors
+		printable_descriptor['transactions'] = transaction_descriptors
 
 		# boring fields
 		printable_descriptor['signature'] = self.Signature(sha3.sha3_512(test_name.encode('utf8')).hexdigest())
@@ -126,6 +164,15 @@ class SymbolHelper:
 
 		return BlockFactory(self.facade.network).create(descriptor), printable_descriptor
 
+	@staticmethod
+	def create_receipt(test_name, original_descriptor):
+		del test_name
+		return ReceiptFactory().create(original_descriptor)
+
+# endregion
+
+
+# region nem helper
 
 class NemHelper:
 	AGGREGATE_SCHEMA_NAME = 'MultisigTransactionV1'
@@ -178,6 +225,10 @@ class NemHelper:
 
 		return {'cosignature': descriptor}
 
+# endregion
+
+
+# region vector file generator
 
 class VectorGenerator:
 	def __init__(self, network_name):
@@ -254,6 +305,17 @@ class VectorGenerator:
 
 		return test_cases
 
+	def create_receipts(self, module_descriptor, receipts):
+		test_cases = []
+
+		for index, entry in enumerate(receipts):
+			schema_name = entry['schema_name']
+			test_prefix = f'{schema_name}_{module_descriptor[0]}'
+			test_name = f'{test_prefix}_{index+1}'
+			test_cases.append(self.create_entry(schema_name, test_name, self.helper.create_receipt, entry['descriptor']))
+
+		return test_cases
+
 	def generate(self):
 		entries = []
 		for module_descriptor in self.modules:
@@ -284,6 +346,17 @@ class VectorGenerator:
 
 		return entries
 
+	def generate_receipts(self):
+		entries = []
+		for module_descriptor in self.modules:
+			if hasattr(module_descriptor[1], 'receipts'):
+				receipts = getattr(module_descriptor[1], 'receipts')
+				entries.extend(self.create_receipts(module_descriptor, receipts))
+
+		return entries
+
+# endregion
+
 
 def save_entries(filepath, entries, ):
 	filepath.parent.mkdir(parents=True, exist_ok=True)
@@ -309,6 +382,9 @@ def main():
 
 		entries = generator.generate_blocks()
 		save_entries(Path(args.output) / network_name / 'models' / 'blocks.json', entries)
+
+		entries = generator.generate_receipts()
+		save_entries(Path(args.output) / network_name / 'models' / 'receipts.json', entries)
 
 
 if '__main__' == __name__:

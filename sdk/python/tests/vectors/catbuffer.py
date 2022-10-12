@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from symbolchain.symbol.BlockFactory import BlockFactory as SymbolBlockFactory
+from testvectors.__main__ import ReceiptFactory  # todo, move somewhere...
 
 # region common test utils
 
@@ -159,7 +160,6 @@ def assert_create_block_from_descriptor(item, module, facade_name, fixup_descrip
 	facade = facade_class('testnet')
 
 	descriptor = item['descriptor']
-	print(descriptor)
 	fixup_descriptor(descriptor, module, facade)
 
 	# Act:
@@ -171,12 +171,33 @@ def assert_create_block_from_descriptor(item, module, facade_name, fixup_descrip
 	assert all(is_key_in_formatted_string(block, key) for key in descriptor.keys()), comment
 
 
+def assert_create_receipt_from_descriptor(item, module, facade_name, fixup_descriptor):  # pylint: disable=invalid-name
+	# Arrange:
+	comment = item.get('comment', '')
+	payload_hex = item['payload']
+
+	facade_module = importlib.import_module(f'symbolchain.facade.{facade_name}')
+	facade_class = getattr(facade_module, facade_name)
+	facade = facade_class('testnet')
+
+	descriptor = item['descriptor']
+	fixup_descriptor(descriptor, module, facade)
+
+	# Act:
+	receipt, descriptor = ReceiptFactory().create(descriptor)
+	receipt_buffer = receipt.serialize()
+
+	# Assert:
+	assert payload_hex == to_hex_string(receipt_buffer), comment
+	assert all(is_key_in_formatted_string(receipt, key) for key in descriptor.keys()), comment
+
+
 @pytest.mark.parametrize('item', prepare_test_cases('nem'), ids=generate_pretty_id)
 def test_create_from_descriptor_nem(item):
 	assert_create_from_descriptor(item, importlib.import_module('symbolchain.nc'), 'NemFacade', fixup_descriptor_nem)
 
 
-@pytest.mark.parametrize('item', prepare_test_cases('symbol', excludes=['blocks']), ids=generate_pretty_id)
+@pytest.mark.parametrize('item', prepare_test_cases('symbol', includes=['transactions']), ids=generate_pretty_id)
 def test_create_from_descriptor_symbol(item):  # pylint: disable=invalid-name
 	assert_create_from_descriptor(item, importlib.import_module('symbolchain.sc'), 'SymbolFacade', fixup_descriptor_symbol)
 
@@ -184,6 +205,17 @@ def test_create_from_descriptor_symbol(item):  # pylint: disable=invalid-name
 @pytest.mark.parametrize('item', prepare_test_cases('symbol', includes=['blocks']), ids=generate_pretty_id)
 def test_create_blocks_from_descriptor_symbol(item):  # pylint: disable=invalid-name
 	assert_create_block_from_descriptor(item, importlib.import_module('symbolchain.sc'), 'SymbolFacade', fixup_block_descriptor_symbol)
+
+
+def no_fixup(descriptor, module, facade):
+	del descriptor
+	del module
+	del facade
+
+
+@pytest.mark.parametrize('item', prepare_test_cases('symbol', includes=['receipts']), ids=generate_pretty_id)
+def test_create_receipts_from_descriptor_symbol(item):  # pylint: disable=invalid-name
+	assert_create_receipt_from_descriptor(item, importlib.import_module('symbolchain.sc'), 'SymbolFacade', no_fixup)
 
 # endregion
 
