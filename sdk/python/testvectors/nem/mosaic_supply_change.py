@@ -1,19 +1,24 @@
-recipes = {
-	'schema_name': 'MosaicSupplyChangeTransactionV1',
-	'descriptors': [
-		# comment: increase
-		{
-			'type': 'mosaic_supply_change_transaction_v1',
+SCHEMA_NAME = 'MosaicSupplyChangeTransaction'
+
+transactions = [  # pylint: disable=duplicate-code
+	# comment: increase
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'mosaic_supply_change_transaction',
 			'mosaic_id': {
 				'namespace_id': {'name': b'banksters'},
 				'name': b'bailout'
 			},
 			'action': 'increase',
 			'delta': 0x000000000005464E
-		},
-		# comment: decrease
-		{
-			'type': 'mosaic_supply_change_transaction_v1',
+		}
+	},
+	# comment: decrease
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'mosaic_supply_change_transaction',
 			'mosaic_id': {
 				'namespace_id': {'name': b'banksters'},
 				'name': b'bailout',
@@ -21,5 +26,5 @@ recipes = {
 			'action': 'decrease',
 			'delta': 0x00000000001DCD65,
 		}
-	]
-}
+	}
+]

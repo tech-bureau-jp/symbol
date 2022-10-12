@@ -1,8 +1,10 @@
-recipes = {
-	'schema_name': 'MultisigAccountModificationTransactionV1',
-	'descriptors': [
-		# comment: v1, single add
-		{
+SCHEMA_NAME = 'MultisigAccountModificationTransactionV1'
+
+transactions = [  # pylint: disable=duplicate-code
+	# comment: v1, single add
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
 			'type': 'multisig_account_modification_transaction_v1',
 			'modifications': [
 				{
@@ -12,9 +14,12 @@ recipes = {
 					}
 				}
 			]
-		},
-		# comment: v1, add, add, delete
-		{
+		}
+	},
+	# comment: v1, add, add, delete
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
 			'type': 'multisig_account_modification_transaction_v1',
 			'modifications': [
 				{
@@ -36,10 +41,13 @@ recipes = {
 					}
 				}
 			]
-		},
-		# comment: v1, add, add, delete (out of order)
-		# sorting by (modification_type, ripemd_keccak_256(cosignatory_public_key))
-		{
+		}
+	},
+	# comment: v1, add, add, delete (out of order)
+	# sorting by (modification_type, ripemd_keccak_256(cosignatory_public_key))
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
 			'type': 'multisig_account_modification_transaction_v1',
 			'modifications': [
 				{
@@ -64,5 +72,5 @@ recipes = {
 				}
 			]
 		}
-	]
-}
+	}
+]

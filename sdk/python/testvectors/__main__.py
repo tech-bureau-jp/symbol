@@ -87,6 +87,42 @@ class SymbolHelper:
 	def __init__(self, network_name):
 		self.facade = SymbolFacade(network_name)
 
+	@staticmethod
+	def determine_type(descriptor):
+		if 'aggregate' in descriptor:
+			return 'aggregate'
+
+		if descriptor['type'].endswith('_block'):
+			return 'block'
+
+		if descriptor['type'].endswith('_receipt'):
+			return 'receipt'
+
+		if descriptor['type'].endswith('_transaction'):
+			return 'transaction'
+
+		return 'other'
+
+	@staticmethod
+	def get_test_name(object_name, test_prefix, index):
+		name_mapping = {
+			'transaction': lambda test_prefix, index: f'{test_prefix}_single_{index+1}',
+			'aggregate': lambda test_prefix, index: f'{test_prefix}_aggregate_{index+1}',
+			'receipt': lambda test_prefix, index: f'{test_prefix}_{index+1}',
+			'block': lambda test_prefix, index: f'{test_prefix}_{index+1}'
+		}
+
+		return name_mapping[object_name](test_prefix, index)
+
+	def get_handler(self, object_name):
+		handler_mapping = {
+			'transaction': self.create,
+			'aggregate': self.create_aggregate,
+			'receipt': self.create_receipt,
+			'block': self.create_block
+		}
+		return handler_mapping[object_name]
+
 	def set_common_fields(self, descriptor, test_name):
 		descriptor['signer_public_key'] = sha3.sha3_256(test_name.encode('utf8')).hexdigest().upper()
 		descriptor['signature'] = self.Signature(sha3.sha3_512(test_name.encode('utf8')).hexdigest())
@@ -181,6 +217,34 @@ class NemHelper:
 	def __init__(self, network_name):
 		self.facade = NemFacade(network_name)
 
+	@staticmethod
+	def determine_type(descriptor):
+		if 'aggregate' in descriptor:
+			return 'aggregate'
+
+		if descriptor['type'].endswith('_transaction') or descriptor['type'].endswith('_transaction_v1') or descriptor['type'] == 'cosignature':
+			return 'transaction'
+
+		return 'other'
+
+	@staticmethod
+	def get_test_name(object_name, test_prefix, index):
+		name_mapping = {
+			'transaction': lambda test_prefix, index: f'{test_prefix}_single_{index+1}',
+			'aggregate': lambda test_prefix, index: f'{test_prefix}_aggregate_{index+1}',
+			'receipt': lambda test_prefix, index: f'{test_prefix}_{index+1}',
+			'block': lambda test_prefix, index: f'{test_prefix}_{index+1}'
+		}
+
+		return name_mapping[object_name](test_prefix, index)
+
+	def get_handler(self, object_name):
+		handler_mapping = {
+			'transaction': self.create,
+			'aggregate': self.create_aggregate
+		}
+		return handler_mapping[object_name]
+
 	def set_common_fields(self, descriptor, test_name):
 		descriptor['signer_public_key'] = sha3.sha3_256(test_name.encode('utf8')).hexdigest().upper()
 		descriptor['signature'] = self.Signature(sha3.sha3_512(test_name.encode('utf8')).hexdigest())
@@ -264,94 +328,56 @@ class VectorGenerator:
 			'descriptor': self.fix_descriptor_before_storing(final_descriptor)
 		}
 
-	def create_transactions(self, module_descriptor, recipes):
+	def create_objects(self, module_descriptor, recipes):
 		test_cases = []
-		schema_name = recipes['schema_name']
-		test_prefix = f'{schema_name}_{module_descriptor[0]}'
-		for index, descriptor in enumerate(recipes['descriptors']):
-			test_name = f'{test_prefix}_single_{index+1}'
-			test_cases.append(self.create_entry(schema_name, test_name, self.helper.create, descriptor))
 
-		# only thing _not_ supporting wrapping in aggregates is NEM's Cosignature (transaction)
-		if recipes.get('single_only', False):
+		had_transaction = False
+		for index, entry in enumerate(recipes):
+			schema_name = entry['schema_name']
+			test_prefix = f'{schema_name}_{module_descriptor[0]}'
+
+			object_type = self.helper.determine_type(entry['descriptor'])
+
+			if 'transaction' == object_type:
+				had_transaction = True
+
+			test_name = self.helper.get_test_name(object_type, test_prefix, index)
+			handler = self.helper.get_handler(object_type)
+
+			test_cases.append(self.create_entry(schema_name, test_name, handler, entry['descriptor']))
+
+		if not had_transaction:
 			return test_cases
 
-		for index, descriptor in enumerate(recipes['descriptors']):
+		# if there was a transaction, need to run loop once more to generate that transaction wrapped in an aggregate transaction
+		for index, entry in enumerate(recipes):
+			if 'transaction' != self.helper.determine_type(entry['descriptor']):
+				continue
+
+			# only thing _not_ supporting wrapping in aggregates is NEM's Cosignature (transaction)
+			if entry.get('single_only', False):
+				continue
+
+			test_prefix = f'{entry["schema_name"]}_{module_descriptor[0]}'
 			test_name = f'{test_prefix}_aggregate_{index+1}'
-			aggregate_schema_name = self.helper.AGGREGATE_SCHEMA_NAME
-			test_cases.append(self.create_entry(aggregate_schema_name, test_name, self.helper.create_aggregate_from_single, descriptor))
+
+			handler = self.helper.create_aggregate_from_single
+			test_cases.append(self.create_entry(self.helper.AGGREGATE_SCHEMA_NAME, test_name, handler, entry['descriptor']))
 
 		return test_cases
 
-	def create_aggregate_transactions(self, module_descriptor, recipes):
-		test_cases = []
-		schema_name = recipes['schema_name']
-		test_prefix = f'{schema_name}_{module_descriptor[0]}'
+	def generate(self, object_type):
+		# object_type = 'transactions' | 'blocks' | 'receipts' | 'other'
 
-		for index, descriptor in enumerate(recipes['descriptors']):
-			test_name = f'{test_prefix}_aggregate_{index+1}'
-			test_cases.append(self.create_entry(schema_name, test_name, self.helper.create_aggregate, descriptor))
-
-		return test_cases
-
-	def create_blocks(self, module_descriptor, recipes):
-		test_cases = []
-
-		for index, entry in enumerate(recipes['descriptors']):
-			schema_name = entry['schema_name']
-			test_prefix = f'{schema_name}_{module_descriptor[0]}'
-			test_name = f'{test_prefix}_{index+1}'
-			test_cases.append(self.create_entry(schema_name, test_name, self.helper.create_block, entry['descriptor']))
-
-		return test_cases
-
-	def create_receipts(self, module_descriptor, receipts):
-		test_cases = []
-
-		for index, entry in enumerate(receipts):
-			schema_name = entry['schema_name']
-			test_prefix = f'{schema_name}_{module_descriptor[0]}'
-			test_name = f'{test_prefix}_{index+1}'
-			test_cases.append(self.create_entry(schema_name, test_name, self.helper.create_receipt, entry['descriptor']))
-
-		return test_cases
-
-	def generate(self):
 		entries = []
 		for module_descriptor in self.modules:
-			processed = False
-			if hasattr(module_descriptor[1], 'aggregate_recipes'):
-				recipes = getattr(module_descriptor[1], 'aggregate_recipes')
-				entries.extend(self.create_aggregate_transactions(module_descriptor, recipes))
-				processed = True
+			if not hasattr(module_descriptor[1], object_type):
+				continue
 
-			if hasattr(module_descriptor[1], 'recipes'):
-				recipes = getattr(module_descriptor[1], 'recipes')
-				entries.extend(self.create_transactions(module_descriptor, recipes))
-				processed = True
+			recipes = getattr(module_descriptor[1], object_type)
+			entries.extend(self.create_objects(module_descriptor, recipes))
 
-			if processed:
-				print(f'[+] module {self.network_name}.{module_descriptor[0]}: ok')
-
-		return entries
-
-	def generate_blocks(self):
-		entries = []
-		for module_descriptor in self.modules:
-			if hasattr(module_descriptor[1], 'block_recipes'):
-				recipes = getattr(module_descriptor[1], 'block_recipes')
-				entries.extend(self.create_blocks(module_descriptor, recipes))
-
-				print(f'[+] module {self.network_name}.{module_descriptor[0]}: ok')
-
-		return entries
-
-	def generate_receipts(self):
-		entries = []
-		for module_descriptor in self.modules:
-			if hasattr(module_descriptor[1], 'receipts'):
-				receipts = getattr(module_descriptor[1], 'receipts')
-				entries.extend(self.create_receipts(module_descriptor, receipts))
+			print(f'[+] module {self.network_name}.{module_descriptor[0]}: ok')
 
 		return entries
 
@@ -376,15 +402,18 @@ def main():
 
 	for network_name in ['symbol', 'nem']:
 		generator = VectorGenerator(network_name)
-		entries = generator.generate()
 
+		entries = generator.generate('transactions')
 		save_entries(Path(args.output) / network_name / 'models' / 'transactions.json', entries)
 
-		entries = generator.generate_blocks()
+		entries = generator.generate('blocks')
 		save_entries(Path(args.output) / network_name / 'models' / 'blocks.json', entries)
 
-		entries = generator.generate_receipts()
+		entries = generator.generate('receipts')
 		save_entries(Path(args.output) / network_name / 'models' / 'receipts.json', entries)
+
+		# entries = generator.generate('other')
+		# save_entries(Path(args.output) / network_name / 'models' / 'other.json', entries)
 
 
 if '__main__' == __name__:

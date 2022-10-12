@@ -1,20 +1,22 @@
 from binascii import unhexlify
 
-aggregate_recipes = {
+SCHEMA_NAME = 'AggregateCompleteTransaction'
+
+transactions = [  # pylint: disable=duplicate-code
 	# comment: two transfers
-	'schema_name': 'AggregateCompleteTransactionV2',
-	'descriptors': [
-		{
-			'aggregate': {'type': 'aggregate_complete_transaction_v2'},
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'aggregate': {'type': 'aggregate_complete_transaction'},
 			'embedded': [
 				{
-					'type': 'transfer_transaction_v1',
+					'type': 'transfer_transaction',
 					'recipient_address': 'TBA6LOHEA6A465G2X5MSQF66JBYR254GJDPK7MQ',
 					'mosaics': [],
 					'message': 'Hello 👋'
 				},
 				{
-					'type': 'transfer_transaction_v1',
+					'type': 'transfer_transaction',
 					'recipient_address': 'TCIFSMQZAX3IDPHUP2RTXP26N6BJRNKEBBKP33I',
 					'mosaics': [
 						{'mosaic_id': 0x000056CE00002B67, 'amount': 0x0000000000000064},
@@ -25,5 +27,5 @@ aggregate_recipes = {
 			],
 			'num_cosignatures': 3
 		}
-	]
-}
+	}
+]

@@ -1,19 +1,21 @@
-aggregate_recipes = {
-	'schema_name': 'AggregateBondedTransactionV2',
-	'descriptors': [
-		# bonded aggregate, transfer + supply change
-		{
-			'aggregate': {'type': 'aggregate_bonded_transaction_v2'},
+SCHEMA_NAME = 'AggregateBondedTransaction'
+
+transactions = [  # pylint: disable=duplicate-code
+	# bonded aggregate, transfer + supply change
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'aggregate': {'type': 'aggregate_bonded_transaction'},
 			'embedded': [
 				{
-					'type': 'transfer_transaction_v1',
+					'type': 'transfer_transaction',
 					'recipient_address': 'TBA6LOHEA6A465G2X5MSQF66JBYR254GJDPK7MQ',
 					'mosaics': [
 						{'mosaic_id': 0x000056CE00002B67, 'amount': 0x0000000000000064}
 					],
 				},
 				{
-					'type': 'mosaic_supply_change_transaction_v1',
+					'type': 'mosaic_supply_change_transaction',
 					'mosaic_id': 0x57701A9B6E746988,
 					'action': 'increase',
 					'delta': 0xA
@@ -21,5 +23,5 @@ aggregate_recipes = {
 			],
 			'num_cosignatures': 2
 		}
-	]
-}
+	}
+]

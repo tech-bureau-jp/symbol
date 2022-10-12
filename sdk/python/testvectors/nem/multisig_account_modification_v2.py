@@ -1,15 +1,21 @@
-recipes = {
-	'schema_name': 'MultisigAccountModificationTransactionV2',
-	'descriptors': [
-		# comment: v2, no-op, increase min-approval
-		{
-			'type': 'multisig_account_modification_transaction_v2',
+SCHEMA_NAME = 'MultisigAccountModificationTransaction'
+
+
+transactions = [  # pylint: disable=duplicate-code
+	# comment: v2, no-op, increase min-approval
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'multisig_account_modification_transaction',
 			'modifications': [],
 			'min_approval_delta': 0x2
-		},
-		# comment: v2, add, decrease min-approval
-		{
-			'type': 'multisig_account_modification_transaction_v2',
+		}
+	},
+	# comment: v2, add, decrease min-approval
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'multisig_account_modification_transaction',
 			'modifications': [
 				{
 					'modification': {
@@ -20,10 +26,13 @@ recipes = {
 			],
 			# note: signed int
 			'min_approval_delta': -1,
-		},
-		# comment: v2, add, add, del, increase min-approval
-		{
-			'type': 'multisig_account_modification_transaction_v2',
+		}
+	},
+	# comment: v2, add, add, del, increase min-approval
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'multisig_account_modification_transaction',
 			'modifications': [
 				{
 					'modification': {
@@ -45,11 +54,14 @@ recipes = {
 				}
 			],
 			'min_approval_delta': 0x1
-		},
-		# comment: v2, add, add, del, increase min-approval (out of order)
-		# sorting by (modification_type, ripemd_keccak_256(cosignatory_public_key))
-		{
-			'type': 'multisig_account_modification_transaction_v2',
+		}
+	},
+	# comment: v2, add, add, del, increase min-approval (out of order)
+	# sorting by (modification_type, ripemd_keccak_256(cosignatory_public_key))
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'multisig_account_modification_transaction',
 			'modifications': [
 				{
 					'modification': {
@@ -74,5 +86,5 @@ recipes = {
 			],
 			'min_approval_delta': 0x1
 		}
-	]
-}
+	}
+]

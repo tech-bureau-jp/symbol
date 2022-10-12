@@ -1,16 +1,22 @@
 from binascii import unhexlify
 
-recipes = {
-	'schema_name': 'TransferTransactionV1',
-	'descriptors': [
-		# comment: v1, no-message
-		{
+SCHEMA_NAME = 'TransferTransactionV1'
+
+
+transactions = [  # pylint: disable=duplicate-code
+	# comment: v1, no-message
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
 			'type': 'transfer_transaction_v1',
 			'recipient_address': 'TACQ6J4XXABJ4FRQ63ZHQ7PGDDTZCBJYK4ANOE36',
 			'amount': 0x0000009858921E40,
-		},
-		# comment: v1, plain empty message
-		{
+		}
+	},
+	# comment: v1, plain empty message
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
 			'type': 'transfer_transaction_v1',
 			'recipient_address': 'TACQ6J4XXABJ4FRQ63ZHQ7PGDDTZCBJYK4ANOE36',
 			'amount': 0x0000009858921E40,
@@ -18,9 +24,12 @@ recipes = {
 				'message_type': 'plain',
 				'message': '',
 			}
-		},
-		# comment: v1, plain non-empty message
-		{
+		}
+	},
+	# comment: v1, plain non-empty message
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
 			'type': 'transfer_transaction_v1',
 			'recipient_address': 'TACQ6J4XXABJ4FRQ63ZHQ7PGDDTZCBJYK4ANOE36',
 			'amount': 0x0000009858921E40,
@@ -28,9 +37,12 @@ recipes = {
 				'message_type': 'plain',
 				'message': b'hi!'
 			}
-		},
-		# comment: v1, encrypted, non-empty message
-		{
+		}
+	},
+	# comment: v1, encrypted, non-empty message
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
 			'type': 'transfer_transaction_v1',
 			'recipient_address': 'TACQ6J4XXABJ4FRQ63ZHQ7PGDDTZCBJYK4ANOE36',
 			'amount': 0x0000009858921E40,
@@ -41,5 +53,5 @@ recipes = {
 					'8D198B4B79A33096C58977C9134FAEE74307A6E55156BF6C2718E2B0D44BE050'),
 			}
 		}
-	]
-}
+	}
+]

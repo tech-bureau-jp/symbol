@@ -1,9 +1,11 @@
-recipes = {
-	'schema_name': 'MosaicDefinitionTransactionV1',
-	'descriptors': [
-		# comment: without supply
-		{
-			'type': 'mosaic_definition_transaction_v1',
+SCHEMA_NAME = 'MosaicDefinitionTransaction'
+
+transactions = [  # pylint: disable=duplicate-code
+	# comment: without supply
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'mosaic_definition_transaction',
 			'mosaic_definition': {
 				'owner_public_key': '875BD953CB8EC0BDEAA01552E390B5E59DEAAD44D81BD7DEAF0C332F99AEECE8',
 				'id': {
@@ -20,10 +22,13 @@ recipes = {
 			},
 			'rental_fee_sink': 'TDX5YX2NJUSWXEKJ4UQN3WXUY3SCCAGWHHFJ3B5J',
 			'rental_fee': 0x0000000028697580
-		},
-		# comment: non-zero supply
-		{
-			'type': 'mosaic_definition_transaction_v1',
+		}
+	},
+	# comment: non-zero supply
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'mosaic_definition_transaction',
 			'mosaic_definition': {
 				'owner_public_key': 'F53B19CB1CAB394E22E3DDFA6D9B42DA87F37EB517EFA214433071E5619F898D',
 				'id': {
@@ -39,11 +44,14 @@ recipes = {
 				]
 			},
 			'rental_fee_sink': 'TCO5WSTHXII62V3MYWKBD7GOMCDRX35TFOZEX3BD',
-			'rental_fee': 0x0000000028697580,
-		},
-		# comment: supplyMutable
-		{
-			'type': 'mosaic_definition_transaction_v1',
+			'rental_fee': 0x0000000028697580
+		}
+	},
+	# comment: supplyMutable
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'mosaic_definition_transaction',
 			'mosaic_definition': {
 				'owner_public_key': '69AF8763FEECEF35E0AEF44A202EFAC4936532C202784CF85CBCD16BFC45F119',
 				'id': {
@@ -60,10 +68,13 @@ recipes = {
 			},
 			'rental_fee_sink': 'TARPSQFPJL6A2ORAQJ46GOZUDPNYVQJKGVT2NMG7',
 			'rental_fee': 0x0000000028697580
-		},
-		# comment: absolute levy
-		{
-			'type': 'mosaic_definition_transaction_v1',
+		}
+	},
+	# comment: absolute levy
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'mosaic_definition_transaction',
 			'mosaic_definition': {
 				'owner_public_key': 'B5B93DDE2D05D21D0A14E6F60DB33E983B88A99FB203916D408AF5749A396960',
 				'id': {
@@ -90,10 +101,13 @@ recipes = {
 			},
 			'rental_fee_sink': 'TD3M6P3CENCDVIC2GRJLQPLQXBX6MOB6FBQZOXM2',
 			'rental_fee': 0x0000000028697580,
-		},
-		# comment: percentile-based levy
-		{
-			'type': 'mosaic_definition_transaction_v1',
+		}
+	},
+	# comment: percentile-based levy
+	{
+		'schema_name': SCHEMA_NAME,
+		'descriptor': {
+			'type': 'mosaic_definition_transaction',
 			'mosaic_definition': {
 				'owner_public_key': 'D7F44870D24E7626DB24591452A2F7ECF6650B0D41D3BCB4FB4BA11B063B80AC',
 				'id': {
@@ -122,5 +136,5 @@ recipes = {
 			'rental_fee_sink': 'TA2ZI764OYY233XIKTETFPGCC2HKORQSHTCUGCHX',
 			'rental_fee': 0x0000000028697580
 		}
-	]
-}
+	}
+]
