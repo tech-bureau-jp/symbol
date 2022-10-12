@@ -278,7 +278,7 @@ def test_roundtrip_nem(item):
 	assert_roundtrip(item, importlib.import_module('symbolchain.nc'))
 
 
-@pytest.mark.parametrize('item', prepare_test_cases('symbol'), ids=generate_pretty_id)
+@pytest.mark.parametrize('item', prepare_test_cases('symbol', excludes=['other']), ids=generate_pretty_id)
 def test_roundtrip_symbol(item):
 	assert_roundtrip(item, importlib.import_module('symbolchain.sc'))
 

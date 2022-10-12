@@ -109,7 +109,8 @@ class SymbolHelper:
 			'transaction': lambda test_prefix, index: f'{test_prefix}_single_{index+1}',
 			'aggregate': lambda test_prefix, index: f'{test_prefix}_aggregate_{index+1}',
 			'receipt': lambda test_prefix, index: f'{test_prefix}_{index+1}',
-			'block': lambda test_prefix, index: f'{test_prefix}_{index+1}'
+			'block': lambda test_prefix, index: f'{test_prefix}_{index+1}',
+			'other': lambda test_prefix, index: f'{test_prefix}_other_{index+1}'
 		}
 
 		return name_mapping[object_name](test_prefix, index)
@@ -119,7 +120,8 @@ class SymbolHelper:
 			'transaction': self.create,
 			'aggregate': self.create_aggregate,
 			'receipt': self.create_receipt,
-			'block': self.create_block
+			'block': self.create_block,
+			'other': self.create_manually
 		}
 		return handler_mapping[object_name]
 
@@ -199,6 +201,11 @@ class SymbolHelper:
 		descriptor['transactions'] = block_transactions
 
 		return BlockFactory(self.facade.network).create(descriptor), printable_descriptor
+
+	@staticmethod
+	def create_manually(test_name, original_descriptor):
+		del test_name
+		return original_descriptor['object'], None
 
 	@staticmethod
 	def create_receipt(test_name, original_descriptor):
@@ -412,8 +419,8 @@ def main():
 		entries = generator.generate('receipts')
 		save_entries(Path(args.output) / network_name / 'models' / 'receipts.json', entries)
 
-		# entries = generator.generate('other')
-		# save_entries(Path(args.output) / network_name / 'models' / 'other.json', entries)
+		entries = generator.generate('other')
+		save_entries(Path(args.output) / network_name / 'models' / 'other.json', entries)
 
 
 if '__main__' == __name__:
