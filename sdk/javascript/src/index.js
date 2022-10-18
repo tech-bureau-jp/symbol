@@ -7,11 +7,11 @@ import NemFacade from './facade/NemFacade.js';
 import SymbolFacade from './facade/SymbolFacade.js';
 import * as NemKeyPair from './nem/KeyPair.js';
 import * as NemNetwork from './nem/Network.js';
-import * as NemTransactionFactory from './nem/TransactionFactory.js';
+import { default as NemTransactionFactory } from './nem/TransactionFactory.js';
 import * as NemModels from './nem/models.js';
 import * as SymbolKeyPair from './symbol/KeyPair.js';
 import * as SymbolNetwork from './symbol/Network.js';
-import * as SymbolTransactionFactory from './symbol/TransactionFactory.js';
+import { default as SymbolTransactionFactory } from './symbol/TransactionFactory.js';
 import * as SymbolIdGenerator from './symbol/idGenerator.js';
 import * as SymbolMerkle from './symbol/merkle.js';
 import * as SymbolModels from './symbol/models.js';
@@ -34,7 +34,7 @@ const sdk = {
 
 		...NemKeyPair,
 		...NemNetwork,
-		...NemTransactionFactory
+		NemTransactionFactory
 	},
 
 	symbol: {
@@ -42,7 +42,7 @@ const sdk = {
 
 		...SymbolKeyPair,
 		...SymbolNetwork,
-		...SymbolTransactionFactory,
+		SymbolTransactionFactory,
 		...SymbolIdGenerator,
 		...SymbolMerkle
 	},
