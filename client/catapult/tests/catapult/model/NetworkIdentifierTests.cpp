@@ -40,8 +40,12 @@ namespace catapult { namespace model {
 		};
 
 		// Assert:
-		assertSuccessfulParse("mainnet", NetworkIdentifier::Mainnet);
-		assertSuccessfulParse("testnet", NetworkIdentifier::Testnet);
+		assertSuccessfulParse("mijin", NetworkIdentifier::Mijin);
+		assertSuccessfulParse("public", NetworkIdentifier::Public);
+		assertSuccessfulParse("private", NetworkIdentifier::Private);
+		assertSuccessfulParse("mijin-test", NetworkIdentifier::Mijin_Test);
+		assertSuccessfulParse("public-test", NetworkIdentifier::Public_Test);
+		assertSuccessfulParse("private-test", NetworkIdentifier::Private_Test);
 
 		assertSuccessfulParse("0", static_cast<NetworkIdentifier>(0));
 		assertSuccessfulParse("17", static_cast<NetworkIdentifier>(17));
@@ -49,10 +53,10 @@ namespace catapult { namespace model {
 	}
 
 	TEST(TEST_CLASS, CannotParseInvalidNetworkIdentifierValue) {
-		test::AssertEnumParseFailure("private", NetworkIdentifier::Mainnet, [](const auto& str, auto& parsedValue) {
+		test::AssertEnumParseFailure("private", NetworkIdentifier::Public, [](const auto& str, auto& parsedValue) {
 			return TryParseValue(str, parsedValue);
 		});
-		test::AssertFailedParse("256", NetworkIdentifier::Mainnet, [](const auto& str, auto& parsedValue) {
+		test::AssertFailedParse("256", NetworkIdentifier::Public, [](const auto& str, auto& parsedValue) {
 			return TryParseValue(str, parsedValue);
 		});
 	}
@@ -99,11 +103,11 @@ namespace catapult { namespace model {
 
 		std::unordered_map<std::string, UniqueNetworkFingerprint> GenerateEqualityInstanceMap() {
 			return {
-				{ "default", { NetworkIdentifier::Testnet, GenerationHashSeed{ { 1, 2, 3 } } } },
-				{ "copy", { NetworkIdentifier::Testnet, GenerationHashSeed{ { 1, 2, 3 } } } },
+				{ "default", { NetworkIdentifier::Private, GenerationHashSeed{ { 1, 2, 3 } } } },
+				{ "copy", { NetworkIdentifier::Private, GenerationHashSeed{ { 1, 2, 3 } } } },
 
-				{ "diff-identifier", { NetworkIdentifier::Mainnet, GenerationHashSeed{ { 1, 2, 3 } } } },
-				{ "diff-hash", { NetworkIdentifier::Testnet, GenerationHashSeed{ { 1, 2, 4 } } } }
+				{ "diff-identifier", { NetworkIdentifier::Private_Test, GenerationHashSeed{ { 1, 2, 3 } } } },
+				{ "diff-hash", { NetworkIdentifier::Private, GenerationHashSeed{ { 1, 2, 4 } } } }
 			};
 		}
 	}
@@ -124,14 +128,14 @@ namespace catapult { namespace model {
 		// Arrange:
 		constexpr auto Generation_Hash_Seed_String = "272C4ECC55B7A42A07478A9550543C62673D1599A8362CC662E019049B76B7F2";
 		auto fingerprint = UniqueNetworkFingerprint(
-				NetworkIdentifier::Testnet,
+				NetworkIdentifier::Private_Test,
 				utils::ParseByteArray<GenerationHashSeed>(Generation_Hash_Seed_String));
 
 		// Act:
 		auto str = test::ToString(fingerprint);
 
 		// Assert:
-		EXPECT_EQ("Testnet::272C4ECC55B7A42A07478A9550543C62673D1599A8362CC662E019049B76B7F2", str);
+		EXPECT_EQ("Private_Test::272C4ECC55B7A42A07478A9550543C62673D1599A8362CC662E019049B76B7F2", str);
 	}
 
 	// endregion

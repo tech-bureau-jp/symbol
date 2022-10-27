@@ -63,7 +63,7 @@ namespace catapult { namespace model {
 					{
 						"network",
 						{
-							{ "identifier", "testnet" },
+							{ "identifier", "public-test" },
 							{ "nodeEqualityStrategy", "host" },
 							{ "nemesisSignerPublicKey", Nemesis_Signer_Public_Key },
 							{ "generationHashSeed", Nemesis_Generation_Hash_Seed },
@@ -213,7 +213,7 @@ namespace catapult { namespace model {
 
 			static void AssertCustom(const BlockchainConfiguration& config) {
 				// Assert: notice that ParseKey also works for Hash256 because it is the same type as Key
-				EXPECT_EQ(NetworkIdentifier::Testnet, config.Network.Identifier);
+				EXPECT_EQ(NetworkIdentifier::Public_Test, config.Network.Identifier);
 				EXPECT_EQ(NodeIdentityEqualityStrategy::Host, config.Network.NodeEqualityStrategy);
 				EXPECT_EQ(utils::ParseByteArray<Key>(Nemesis_Signer_Public_Key), config.Network.NemesisSignerPublicKey);
 				EXPECT_EQ(utils::ParseByteArray<GenerationHashSeed>(Nemesis_Generation_Hash_Seed), config.Network.GenerationHashSeed);

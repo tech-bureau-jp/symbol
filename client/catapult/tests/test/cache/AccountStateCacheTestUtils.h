@@ -30,7 +30,7 @@ namespace catapult { namespace test {
 			MosaicId currencyMosaicId,
 			MosaicId harvestingMosaicId) {
 		return {
-			model::NetworkIdentifier::Testnet,
+			model::NetworkIdentifier::Private_Test,
 			333,
 			222,
 			Amount(),

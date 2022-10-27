@@ -27,7 +27,7 @@
 namespace catapult { namespace test {
 
 	Address GenerateRandomAddress() {
-		return GenerateRandomAddress(model::NetworkIdentifier::Testnet);
+		return GenerateRandomAddress(model::NetworkIdentifier::Private_Test);
 	}
 
 	Address GenerateRandomAddress(model::NetworkIdentifier networkIdentifier) {

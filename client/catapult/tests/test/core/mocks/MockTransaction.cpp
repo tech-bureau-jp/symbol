@@ -129,7 +129,7 @@ namespace catapult { namespace mocks {
 		pTransaction->SignerPublicKey = signer;
 		pTransaction->RecipientPublicKey = recipient;
 		pTransaction->Version = 1;
-		pTransaction->Network = NetworkIdentifier::Testnet;
+		pTransaction->Network = NetworkIdentifier::Private_Test;
 		return pTransaction;
 	}
 

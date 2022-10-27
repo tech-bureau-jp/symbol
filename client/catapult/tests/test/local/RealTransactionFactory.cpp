@@ -40,7 +40,7 @@
 namespace catapult { namespace test {
 
 	namespace {
-		constexpr auto Network_Identifier = model::NetworkIdentifier::Testnet;
+		constexpr auto Network_Identifier = model::NetworkIdentifier::Private_Test;
 	}
 
 	// region transfer transaction

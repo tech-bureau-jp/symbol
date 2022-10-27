@@ -36,7 +36,7 @@
 
 namespace catapult { namespace test {
 
-	constexpr auto Mock_Execution_Configuration_Network_Identifier = model::NetworkIdentifier::Testnet;
+	constexpr auto Mock_Execution_Configuration_Network_Identifier = model::NetworkIdentifier::Private_Test;
 
 	// region MockNotificationPublisher
 
