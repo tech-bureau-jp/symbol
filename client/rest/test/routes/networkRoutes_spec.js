@@ -81,7 +81,7 @@ describe('network routes', () => {
 					// Assert:
 					expect(mockServer.next.calledOnce).to.equal(true);
 					expect(mockServer.send.firstCall.args[0]).to.deep.equal({
-						network: { identifier: 'testnet' },
+						network: { identifier: 'mijin-test' },
 						chain: { enableVerifiableState: true },
 						plugins: { aggregate: { maxTransactionsPerAggregate: '1\'000' } }
 					});
