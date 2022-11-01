@@ -38,11 +38,11 @@ class OptionsManager(BasicBuildManager):
 		else:
 			name_parts = [self.operating_system, self.compilation_friendly_name]
 
-		return f'symbolplatform/symbol-server-build-base:{"-".join(name_parts)}'
+		return f'techbureauhd/catapult-server-build-base:{"-".join(name_parts)}'
 
 	@property
 	def prepare_base_image_name(self):
-		image_name = f'symbolplatform/symbol-server-test-base:{self.operating_system}'
+		image_name = f'techbureauhd/catapult-server-test-base:{self.operating_system}'
 		if self.sanitizers:
 			image_name += '-sanitizer'
 		return image_name
@@ -139,18 +139,21 @@ def prepare_docker_image(process_manager, container_id, prepare_replacements):
 	disposition_to_repository_map = {
 		'tests': 'symbol-server-test',
 		'private': 'symbol-server-private',
+    'mijin': 'catapult-server',
+    'mijintest': 'catapult-server-test',
 		'public': 'symbol-server'
+  
 	}
 	destination_repository = disposition_to_repository_map[build_disposition]
 
-	destination_image_name = f'symbolplatform/{destination_repository}:{destination_image_label}'
+	destination_image_name = f'techbureauhd/{destination_repository}:{destination_image_label}'
 	script_path = prepare_replacements['script_path']
 	process_manager.dispatch_subprocess([
 		'docker', 'run',
 		f'--cidfile={cid_filepath}',
 		f'--volume={script_path}:{EnvironmentManager.root_directory("scripts")}',
 		f'--volume={OUTPUT_DIR}:{EnvironmentManager.root_directory("data")}',
-		f'registry.hub.docker.com/{prepare_replacements["base_image_name"]}',
+		f'{prepare_replacements["base_image_name"]}',
 		'python3', '/scripts/runDockerBuildInnerPrepare.py',
 		f'--disposition={build_disposition}'
 	])

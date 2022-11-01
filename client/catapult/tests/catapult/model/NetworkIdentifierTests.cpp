@@ -41,8 +41,8 @@ namespace catapult { namespace model {
 
 		// Assert:
 		assertSuccessfulParse("mijin", NetworkIdentifier::Mijin);
-		assertSuccessfulParse("public", NetworkIdentifier::Public);
-		assertSuccessfulParse("private", NetworkIdentifier::Private);
+		assertSuccessfulParse("mainnet", NetworkIdentifier::Mainnet);
+		assertSuccessfulParse("testnet", NetworkIdentifier::Testnet);
 		assertSuccessfulParse("mijin-test", NetworkIdentifier::Mijin_Test);
 		assertSuccessfulParse("public-test", NetworkIdentifier::Public_Test);
 		assertSuccessfulParse("private-test", NetworkIdentifier::Private_Test);
@@ -53,10 +53,10 @@ namespace catapult { namespace model {
 	}
 
 	TEST(TEST_CLASS, CannotParseInvalidNetworkIdentifierValue) {
-		test::AssertEnumParseFailure("private", NetworkIdentifier::Public, [](const auto& str, auto& parsedValue) {
+		test::AssertEnumParseFailure("private", NetworkIdentifier::Mainnet, [](const auto& str, auto& parsedValue) {
 			return TryParseValue(str, parsedValue);
 		});
-		test::AssertFailedParse("256", NetworkIdentifier::Public, [](const auto& str, auto& parsedValue) {
+		test::AssertFailedParse("256", NetworkIdentifier::Mainnet, [](const auto& str, auto& parsedValue) {
 			return TryParseValue(str, parsedValue);
 		});
 	}
@@ -103,11 +103,11 @@ namespace catapult { namespace model {
 
 		std::unordered_map<std::string, UniqueNetworkFingerprint> GenerateEqualityInstanceMap() {
 			return {
-				{ "default", { NetworkIdentifier::Private, GenerationHashSeed{ { 1, 2, 3 } } } },
-				{ "copy", { NetworkIdentifier::Private, GenerationHashSeed{ { 1, 2, 3 } } } },
+				{ "default", { NetworkIdentifier::Testnet, GenerationHashSeed{ { 1, 2, 3 } } } },
+				{ "copy", { NetworkIdentifier::Testnet, GenerationHashSeed{ { 1, 2, 3 } } } },
 
 				{ "diff-identifier", { NetworkIdentifier::Private_Test, GenerationHashSeed{ { 1, 2, 3 } } } },
-				{ "diff-hash", { NetworkIdentifier::Private, GenerationHashSeed{ { 1, 2, 4 } } } }
+				{ "diff-hash", { NetworkIdentifier::Testnet, GenerationHashSeed{ { 1, 2, 4 } } } }
 			};
 		}
 	}

@@ -32,8 +32,8 @@ describe('network info', () => {
 			expect(knownNetworks).to.deep.equal([
 				'mijin',
 				'mijinTest',
-				'public',
-				'publicTest',
+				'mainnet',
+				'testnet',
 				'private',
 				'privateTest'
 			]);
@@ -51,12 +51,12 @@ describe('network info', () => {
 
 		it('defines public network', () => {
 			// Assert:
-			expect(networkInfo.networks.public).to.deep.equal({ id: 0x68, bytePrefix: '68', charPrefix: 'N' });
+			expect(networkInfo.networks.mainnet).to.deep.equal({ id: 0x68, bytePrefix: '68', charPrefix: 'N' });
 		});
 
 		it('defines public test network', () => {
 			// Assert:
-			expect(networkInfo.networks.publicTest).to.deep.equal({ id: 0x98, bytePrefix: '98', charPrefix: 'T' });
+			expect(networkInfo.networks.testnet).to.deep.equal({ id: 0x98, bytePrefix: '98', charPrefix: 'T' });
 		});
 
 		it('defines private network', () => {

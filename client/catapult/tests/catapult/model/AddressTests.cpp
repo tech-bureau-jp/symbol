@@ -111,13 +111,13 @@ namespace catapult { namespace model {
 		// Arrange:
 		auto expected = utils::ParseByteArray<Address>("78000D73966083A4DCCD84E0783A5CECCC129795D3878B85");
 		auto publicKey = utils::ParseByteArray<Key>(Public_Key);
-		auto networkIdentifier = NetworkIdentifier::Private;
+		auto networkIdentifier = NetworkIdentifier::Testnet;
 
 		// Act:
 		auto decoded = PublicKeyToAddress(publicKey, networkIdentifier);
 
 		// Assert:
-		EXPECT_TRUE(IsValidAddress(decoded, NetworkIdentifier::Private));
+		EXPECT_TRUE(IsValidAddress(decoded, NetworkIdentifier::Testnet));
 		EXPECT_EQ(decoded[0], utils::to_underlying_type(networkIdentifier));
 		EXPECT_EQ(expected, decoded);
 	}
@@ -170,11 +170,11 @@ namespace catapult { namespace model {
 		auto pubKey = test::GenerateRandomByteArray<Key>();
 
 		// Act:
-		auto decoded1 = PublicKeyToAddress(pubKey, NetworkIdentifier::Public);
+		auto decoded1 = PublicKeyToAddress(pubKey, NetworkIdentifier::Mainnet);
 		auto decoded2 = PublicKeyToAddress(pubKey, NetworkIdentifier::Public_Test);
 
 		// Assert:
-		EXPECT_TRUE(IsValidAddress(decoded1, NetworkIdentifier::Public));
+		EXPECT_TRUE(IsValidAddress(decoded1, NetworkIdentifier::Mainnet));
 		EXPECT_TRUE(IsValidAddress(decoded2, NetworkIdentifier::Public_Test));
 		EXPECT_NE(decoded1, decoded2);
 	}

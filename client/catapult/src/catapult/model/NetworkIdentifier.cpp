@@ -38,8 +38,8 @@ namespace catapult { namespace model {
 	namespace {
 		const std::array<std::pair<const char*, NetworkIdentifier>, 6> String_To_Network_Identifier_Pairs{{
 			{ "mijin", NetworkIdentifier::Mijin },
-			{ "public", NetworkIdentifier::Public },
-			{ "private", NetworkIdentifier::Private },
+			{ "public", NetworkIdentifier::Mainnet },
+			{ "private", NetworkIdentifier::Testnet },
 			{ "mijin-test", NetworkIdentifier::Mijin_Test },
 			{ "public-test", NetworkIdentifier::Public_Test },
 			{ "private-test", NetworkIdentifier::Private_Test }

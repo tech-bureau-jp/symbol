@@ -176,9 +176,9 @@ namespace catapult { namespace tools { namespace testvectors {
 			auto expectedAddressPrivateTest = ParseAddress(Get<>(testCase, "address_PrivateTest"), testCaseNumber);
 
 			// Act:
-			auto addressPublic = model::PublicKeyToAddress(publicKey, model::NetworkIdentifier::Public);
+			auto addressPublic = model::PublicKeyToAddress(publicKey, model::NetworkIdentifier::Mainnet);
 			auto addressPublicTest = model::PublicKeyToAddress(publicKey, model::NetworkIdentifier::Public_Test);
-			auto addressPrivate = model::PublicKeyToAddress(publicKey, model::NetworkIdentifier::Private);
+			auto addressPrivate = model::PublicKeyToAddress(publicKey, model::NetworkIdentifier::Testnet);
 			auto addressPrivateTest = model::PublicKeyToAddress(publicKey, model::NetworkIdentifier::Private_Test);
 
 			// Assert:

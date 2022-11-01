@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+import platform
 from configuration import load_compiler_configuration, load_versions_map
 from dependency_flags import get_dependency_flags
 
@@ -86,7 +87,7 @@ class OptionsManager:
 	@property
 	def base_image_name(self):
 		name_parts = [self.operating_system, self.compiler.c, str(self.compiler.version)]
-		return f'symbolplatform/symbol-server-compiler:{"-".join(name_parts)}'
+		return f'techbureauhd/catapult-server-compiler:{"-".join(name_parts)}'
 
 	def layer_image_name(self, layer):
 		name_parts = [self.operating_system, self.compiler.c, str(self.compiler.version)]
@@ -97,7 +98,7 @@ class OptionsManager:
 		if tag:
 			name_parts.append(tag)
 
-		return f'symbolplatform/symbol-server-build-base:{"-".join(name_parts)}'
+		return f'techbureauhd/catapult-server-build-base:{"-".join(name_parts)}'
 
 	def bootstrap(self):
 		options = []
@@ -355,8 +356,12 @@ class LinuxSystemGenerator:
 
 		self.system.add_base_os_packages()
 
+		machine = platform.machine()
+  
+	
+
 		cmake_version = self.options.versions['cmake']
-		cmake_script = f'cmake-{cmake_version}-Linux-x86_64.sh'
+		cmake_script = f'cmake-{cmake_version}-Linux-{machine}.sh'
 		cmake_uri = f'https://github.com/Kitware/CMake/releases/download/v{cmake_version}'
 		print_line([
 			'curl -o {CMAKE_SCRIPT} -SL "{CMAKE_URI}/{CMAKE_SCRIPT}"',
@@ -364,6 +369,7 @@ class LinuxSystemGenerator:
 			'./{CMAKE_SCRIPT} --skip-license --prefix=/usr',
 			'rm -rf {CMAKE_SCRIPT}'
 		], CMAKE_SCRIPT=cmake_script, CMAKE_URI=cmake_uri)
+  
 
 	def generate_phase_boost(self):
 		print(f'FROM {self.options.layer_image_name("os")}')

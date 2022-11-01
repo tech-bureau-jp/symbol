@@ -34,7 +34,7 @@ namespace catapult {
 		// Arrange:
 		for (auto i = 0u; i < 1000; ++i) {
 			auto kp = test::GenerateKeyPair();
-			auto rawAddress = model::PublicKeyToAddress(kp.publicKey(), model::NetworkIdentifier::Private);
+			auto rawAddress = model::PublicKeyToAddress(kp.publicKey(), model::NetworkIdentifier::Testnet);
 			auto address = model::AddressToString(rawAddress);
 			if (address[0] == 'P' && address[1] == 'A')
 				return;
