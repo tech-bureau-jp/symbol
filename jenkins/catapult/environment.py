@@ -29,17 +29,13 @@ class EnvironmentManager:
 
 		raise RuntimeError('unable to detect system bin path')
 
-	@property
-	def local_lib_path(self):
+	def get_env_var(self, key):
+		self._print_command('get_env_var', [key])
+
 		if self.dry_run:
-			return '<LOCAL_LIB_PATH>'
+			return f'env:{key}'
 
-		for descriptor in [('fedora', '/usr/local/lib64'), ('ubuntu', '/usr/local/lib')]:
-			if Path(descriptor[1]).exists():
-				self._print_command('local_lib_path', ['detected', descriptor[1], 'for', descriptor[0]])
-				return descriptor[1]
-
-		raise RuntimeError('unable to detect local lib path')
+		return os.environ[key]
 
 	def set_env_var(self, key, value):
 		self._print_command('set_env_var', [key, value])

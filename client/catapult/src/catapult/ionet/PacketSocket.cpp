@@ -142,8 +142,16 @@ namespace catapult { namespace ionet {
 			}
 
 		private:
+			static int OpensslErrorGetReason(unsigned long errcode) {
+				if (ERR_SYSTEM_ERROR(errcode))
+					return errcode & ERR_SYSTEM_MASK;
+
+				return errcode & ERR_REASON_MASK;
+			}
+
 			static bool IsProtocolShutdown(const boost::system::error_code& ec) {
-				return boost::asio::error::get_ssl_category() == ec.category() && SSL_R_PROTOCOL_IS_SHUTDOWN == ERR_GET_REASON(ec.value());
+				return boost::asio::error::get_ssl_category() == ec.category()
+						&& SSL_R_PROTOCOL_IS_SHUTDOWN == OpensslErrorGetReason(static_cast<unsigned long>(ec.value()));
 			}
 
 		private:
@@ -353,7 +361,7 @@ namespace catapult { namespace ionet {
 
 		namespace {
 			void ConfigureSslVerify(Socket& socket, Key& publicKey, const predicate<PacketSocketSslVerifyContext&>& verifyCallback) {
-				socket.set_verify_mode(boost::asio::ssl::verify_peer);
+				socket.set_verify_mode(boost::asio::ssl::verify_peer | boost::asio::ssl::verify_fail_if_no_peer_cert);
 				socket.set_verify_depth(1);
 				socket.set_verify_callback([&publicKey, verifyCallback](auto preverified, auto& asioVerifyContext) {
 					PacketSocketSslVerifyContext verifyContext(preverified, asioVerifyContext, publicKey);
