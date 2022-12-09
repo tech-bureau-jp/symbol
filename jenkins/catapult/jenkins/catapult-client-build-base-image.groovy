@@ -16,7 +16,7 @@ pipeline {
 			],
 			description: 'compiler configuration'
 		choice name: 'OPERATING_SYSTEM',
-			choices: ['ubuntu', 'fedora', 'debian', 'windows'],
+			choices: ['ubuntu', 'fedora', 'debian', 'windows', 'ubuntu_arm'],
 			description: 'operating system'
 
 		booleanParam name: 'SHOULD_BUILD_CONAN_LAYER', description: 'true to build conan layer', defaultValue: false

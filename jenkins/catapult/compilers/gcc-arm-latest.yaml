@@ -1,0 +1,10 @@
+c: gcc
+cpp: g++
+version: 12
+arch_type: aarch64
+
+stl:
+  version: ''
+  lib: libstdc++11
+
+deps: []

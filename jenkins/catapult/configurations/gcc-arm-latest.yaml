@@ -1,0 +1,2 @@
+compiler: ../compilers/gcc-arm-latest.yaml
+architecture: armv8-a

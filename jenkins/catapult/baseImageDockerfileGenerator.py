@@ -73,6 +73,7 @@ class OptionsManager:
 		self.sanitizers = compiler_configuration.sanitizers
 		self.architecture = compiler_configuration.architecture
 		self.stl = compiler_configuration.stl
+		self.arch_type = compiler_configuration.arch_type
 
 		self.versions = load_versions_map(versions_filepath)
 
@@ -347,7 +348,7 @@ class WindowsSystem:
 		])
 
 
-SYSTEMS = {'ubuntu': UbuntuSystem, 'debian': UbuntuSystem, 'fedora': FedoraSystem, 'windows': WindowsSystem}
+SYSTEMS = {'ubuntu': UbuntuSystem, 'debian': UbuntuSystem, 'fedora': FedoraSystem, 'windows': WindowsSystem, 'ubuntu_arm': UbuntuSystem,}
 
 
 class LinuxSystemGenerator:
@@ -426,7 +427,7 @@ class LinuxSystemGenerator:
 	@staticmethod
 	def add_openssl(options, configure):
 		version = options.versions['openssl_openssl']
-		compiler = 'linux-x86_64-clang' if options.is_clang else 'linux-x86_64'
+		compiler = 'linux-{}-clang'.format(options.arch_type) if options.is_clang else 'linux-{}'.format(options.arch_type)
 		openssl_destinations = [f'--{key}=/usr/catapult/deps' for key in ('prefix', 'openssldir', 'libdir')]
 		print_line([
 			'RUN git clone https://github.com/openssl/openssl.git -b {VERSION}',
