@@ -28,7 +28,8 @@ const connector = {
 		return MongoDb.MongoClient.connect(connectionString, {
 			minPoolSize: connectionPoolSize,
 			promoteLongs: false,
-			useNewUrlParser: true
+			useNewUrlParser: true,
+			serverSelectionTimeoutMS: 3000,
 		})
 			.then(client => {
 				winston.verbose(`connected to mongo at ${connectionString}`);

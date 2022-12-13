@@ -26,6 +26,8 @@ const nodePeersCodec = require('../sockets/nodePeersCodec');
 const nodeTimeCodec = require('../sockets/nodeTimeCodec');
 const fs = require('fs');
 const path = require('path');
+const CatapultDb = require('../db/CatapultDb');
+
 
 const packetHeader = catapult.packet.header;
 const { PacketType } = catapult.packet;
@@ -44,6 +46,12 @@ const buildResponse = (packet, codec, resultType) => {
 };
 
 module.exports = {
+	/**
+	 * 
+	 * @param {*} server 
+	 * @param {CatapultDb} db 
+	 * @param {*} services 
+	 */
 	register: (server, db, services) => {
 		const { connections } = services;
 		const { timeout } = services.config.apiNode;
@@ -62,10 +70,9 @@ module.exports = {
 
 			// Check database status
 			const dbStatusPromise = new Promise((resolve, reject) => {
-				if (db.database.serverConfig.isConnected())
-					resolve();
-				else
-					reject();
+				db.database.command({
+							ping: 1
+						}).then(() => resolve()).catch(() => reject());
 			});
 
 			// Check apiNode status
