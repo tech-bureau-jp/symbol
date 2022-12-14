@@ -132,6 +132,8 @@ def handle_core_file(process_manager, core_path, test_exe_filepath, base_output_
 
 
 def main():
+	# pylint: disable=too-many-locals
+
 	parser = argparse.ArgumentParser(description='catapult test runner')
 	parser.add_argument('--compiler-configuration', help='path to compiler configuration yaml', required=True)
 	parser.add_argument('--exe-path', help='path to executables', required=True)
@@ -156,7 +158,11 @@ def main():
 	process_manager.list_dir(args.source_path)
 	process_manager.list_dir(output_path)
 
-	environment_manager.set_env_var('LD_LIBRARY_PATH', f'{output_path}/lib:{output_path}/deps')
+	if EnvironmentManager.is_windows_platform():
+		path = environment_manager.get_env_var('PATH')
+		environment_manager.set_env_var('PATH', f'{path};{output_path}/lib;{output_path}/deps')
+	else:
+		environment_manager.set_env_var('LD_LIBRARY_PATH', f'{output_path}/lib:{output_path}/deps')
 	logs_path = Path(args.out_dir) / 'logs'
 
 	failed_test_suites = []

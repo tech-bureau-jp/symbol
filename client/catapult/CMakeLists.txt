@@ -51,7 +51,7 @@ endif()
 ### setup openssl
 message("--- locating openssl dependencies ---")
 
-find_package(OpenSSL 1.1.1 EXACT REQUIRED)
+find_package(OpenSSL 3.0.7 EXACT REQUIRED)
 message("OpenSSL   ver: ${OPENSSL_VERSION}")
 message("OpenSSL  root: ${OPENSSL_ROOT_DIR}")
 message("OpenSSL   inc: ${OPENSSL_INCLUDE_DIR}")
@@ -65,7 +65,7 @@ endfunction()
 
 ### setup rocksdb
 message("--- locating rocksdb dependencies ---")
-find_package(RocksDB 7.4.3 EXACT REQUIRED)
+find_package(RocksDB 7.7.3 EXACT REQUIRED)
 
 if(WIN32)
 	set(RocksDB_LIBRARY RocksDB::rocksdb)

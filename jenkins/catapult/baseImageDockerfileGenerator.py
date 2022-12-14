@@ -73,6 +73,7 @@ class OptionsManager:
 		self.sanitizers = compiler_configuration.sanitizers
 		self.architecture = compiler_configuration.architecture
 		self.stl = compiler_configuration.stl
+		self.arch_type = compiler_configuration.arch_type
 
 		self.versions = load_versions_map(versions_filepath)
 
@@ -136,11 +137,13 @@ class OptionsManager:
 
 	def mongo_c(self):
 		descriptor = self.OptionsDescriptor()
+		descriptor.options += ['-DOPENSSL_ROOT_DIR=/usr/catapult/deps']
 		descriptor.options += get_dependency_flags('mongodb_mongo-c-driver')
 		return self._cmake(descriptor)
 
 	def mongo_cxx(self):
 		descriptor = self.OptionsDescriptor()
+		descriptor.options += ['-DOPENSSL_ROOT_DIR=/usr/catapult/deps']
 		descriptor.options += get_dependency_flags('mongodb_mongo-cxx-driver')
 
 		if self.is_msvc:
@@ -183,6 +186,9 @@ class OptionsManager:
 		if self.compiler.c.startswith('gcc') and 12 == self.compiler.version:
 			descriptor.cxxflags += ['-Wno-error=maybe-uninitialized']
 
+		if self.compiler.c.startswith('clang') and 15 == self.compiler.version:
+			descriptor.cxxflags += ['-Wno-error=unused-but-set-variable']
+
 		return self._cmake(descriptor)
 
 	def googletest(self):
@@ -194,6 +200,9 @@ class OptionsManager:
 	def googlebench(self):
 		descriptor = self.OptionsDescriptor()
 		descriptor.options += get_dependency_flags('google_benchmark')
+		if self.compiler.c.startswith('clang') and 15 == self.compiler.version:
+			descriptor.cxxflags += ['-Wno-error=unused-but-set-variable']
+
 		return self._cmake(descriptor)
 
 	@property
@@ -339,7 +348,7 @@ class WindowsSystem:
 		])
 
 
-SYSTEMS = {'ubuntu': UbuntuSystem, 'debian': UbuntuSystem, 'fedora': FedoraSystem, 'windows': WindowsSystem}
+SYSTEMS = {'ubuntu': UbuntuSystem, 'debian': UbuntuSystem, 'fedora': FedoraSystem, 'windows': WindowsSystem, 'ubuntu_arm': UbuntuSystem,}
 
 
 class LinuxSystemGenerator:
@@ -418,16 +427,22 @@ class LinuxSystemGenerator:
 	@staticmethod
 	def add_openssl(options, configure):
 		version = options.versions['openssl_openssl']
-		compiler = 'linux-x86_64-clang' if options.is_clang else 'linux-x86_64'
+		compiler = 'linux-{}-clang'.format(options.arch_type) if options.is_clang else 'linux-{}'.format(options.arch_type)
+		openssl_destinations = [f'--{key}=/usr/catapult/deps' for key in ('prefix', 'openssldir', 'libdir')]
 		print_line([
 			'RUN git clone https://github.com/openssl/openssl.git -b {VERSION}',
 			'cd openssl',
-			'{OPEN_SSL_OPTIONS} perl ./Configure {COMPILER} {OPEN_SSL_CONFIGURE} --prefix=/usr/local --openssldir=/usr/local',
+			'{OPENSSL_OPTIONS} perl ./Configure {COMPILER} {OPENSSL_CONFIGURE} {OPENSSL_DESTINATIONS}',
 			'make -j 8',
 			'make install',
 			'cd ..',
 			'rm -rf openssl'
-		], OPEN_SSL_OPTIONS=' '.join(options.openssl()), OPEN_SSL_CONFIGURE=' '.join(configure), VERSION=version, COMPILER=compiler)
+		],
+			OPENSSL_OPTIONS=' '.join(options.openssl()),
+			OPENSSL_CONFIGURE=' '.join(configure),
+			OPENSSL_DESTINATIONS=' '.join(openssl_destinations),
+			VERSION=version,
+			COMPILER=compiler)
 
 	def generate_phase_deps(self):
 		print(f'FROM {self.options.layer_image_name("boost")}')
@@ -472,7 +487,7 @@ class WindowsSystemGenerator:
 	def __init__(self, system, options):
 		self.system = system
 		self.options = options
-		self.deps_path = Path('c:/deps')
+		self.deps_path = Path('c:/usr/catapult/deps')
 
 	def generate_phase_os(self):
 		print_lines([
@@ -534,16 +549,20 @@ class WindowsSystemGenerator:
 
 	def add_openssl(self, package_options, configure):
 		version = self.options.versions['openssl_openssl']
-		prefix_path = self.deps_path / 'openssl'
+		openssl_destinations = [f'--{key}={self.deps_path / "openssl"}' for key in ('prefix', 'openssldir')]
 		print_msvc_line([
 			'git clone https://github.com/openssl/openssl.git -b {VERSION}',
 			'cd openssl',
-			'{OPEN_SSL_OPTIONS} perl ./Configure VC-WIN64A {OPEN_SSL_CONFIGURE} --prefix={PREFIX_PATH} --openssldir={PREFIX_PATH}',
+			'{OPENSSL_OPTIONS} perl ./Configure VC-WIN64A {OPENSSL_CONFIGURE} {OPENSSL_DESTINATIONS}',
 			'nmake',
 			'nmake install_sw install_ssldirs',
 			'cd ..',
 			'rmdir /q /s openssl'
-		], OPEN_SSL_OPTIONS=' '.join(package_options), OPEN_SSL_CONFIGURE=' '.join(configure), VERSION=version, PREFIX_PATH=prefix_path)
+		],
+			OPENSSL_OPTIONS=' '.join(package_options),
+			OPENSSL_CONFIGURE=' '.join(configure),
+			OPENSSL_DESTINATIONS=' '.join(openssl_destinations),
+			VERSION=version)
 
 	def generate_phase_deps(self):
 		print('# escape=`')

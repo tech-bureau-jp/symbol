@@ -29,12 +29,16 @@ def load_compiler_configuration(filepath):
 				stl_keys = ['version', 'lib']
 				stl = namedtuple('Stl', stl_keys)(*[compiler_yaml['stl'][key] for key in stl_keys])
 
+			arch_type = 'x86_64'
+			if 'arch_type' in compiler_yaml:
+				arch_type = compiler_yaml['arch_type']
+
 		sanitizers = configuration_yaml['sanitizers'].split(',') if 'sanitizers' in configuration_yaml else []
 		architecture = configuration_yaml['architecture']
 		enable_code_coverage = configuration_yaml.get('enable_code_coverage', False)
 
-		configuration_keys = ['compiler', 'stl', 'sanitizers', 'architecture', 'enable_code_coverage']
-		return namedtuple('CompilerConfiguration', configuration_keys)(compiler, stl, sanitizers, architecture, enable_code_coverage)
+		configuration_keys = ['compiler', 'stl', 'sanitizers', 'architecture', 'enable_code_coverage', 'arch_type']
+		return namedtuple('CompilerConfiguration', configuration_keys)(compiler, stl, sanitizers, architecture, enable_code_coverage, arch_type)
 
 
 def load_build_configuration(filepath):
