@@ -1,9 +1,9 @@
 name: Upload pypi package release
 
 on:
-  release:
-    types:
-      - published
+  push:
+    - branches:
+        - pypi
 
 jobs:
   deploy:
@@ -23,7 +23,7 @@ jobs:
         run: |
           python3 setup.py sdist bdist_wheel
       - name: Publish a Python distribution
-        if: startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
+        if: github.event_name == 'push'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
