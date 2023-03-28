@@ -21,7 +21,6 @@
 
 const catapult = require('../catapult-sdk/index');
 const errors = require('../server/errors');
-const { sha3_256 } = require('@noble/hashes/sha3');
 const ini = require('ini');
 
 const { uint64 } = catapult.utils;
@@ -39,12 +38,51 @@ module.exports = {
 
 		const readAndParseNetworkPropertiesFile = () => fileLoader.readOnce(
 			services.config.apiNode.networkPropertyFilePath,
-			contents => ini.parse(contents)
+			contents => {
+				const propertiesObject = ini.parse(contents);
+				propertiesObject.parsed = {};
+
+				if (propertiesObject.treasury_reissuance_transaction_signatures) {
+					const signaturesMap = propertiesObject.treasury_reissuance_transaction_signatures;
+					propertiesObject.parsed.treasuryReissuanceTransactionSignatures = Object.keys(signaturesMap)
+						.filter(key => signaturesMap[key])
+						.sort();
+				}
+
+				if (propertiesObject.corrupt_aggregate_transaction_hashes) {
+					const hashesMap = propertiesObject.corrupt_aggregate_transaction_hashes;
+					propertiesObject.parsed.corruptAggregateTransactionHashes = Object.keys(hashesMap)
+						.map(key => `${key} = ${hashesMap[key]}`)
+						.sort();
+				}
+
+				return propertiesObject;
+			}
 		);
 
 		const readAndParseNodePropertiesFile = () => fileLoader.readNewer(
 			services.config.apiNode.nodePropertyFilePath,
 			contents => ini.parse(contents)
+		);
+
+		const readAndParseInflationPropertiesFile = () => fileLoader.readOnce(
+			services.config.apiNode.inflationPropertyFilePath,
+			contents => {
+				const inflationObject = ini.parse(contents).inflation;
+				const inflationInflectionPoints = Object.getOwnPropertyNames(inflationObject).map(key => ({
+					startHeight: BigInt(key.substring(key.lastIndexOf('-') + 1)),
+					rewardAmount: BigInt(inflationObject[key])
+				}));
+
+				// sort by start height
+				inflationInflectionPoints.sort((lhs, rhs) => {
+					if (lhs.startHeight === rhs.startHeight)
+						return 0;
+
+					return lhs.startHeight > rhs.startHeight ? 1 : -1;
+				});
+				return inflationInflectionPoints;
+			}
 		);
 
 		const sanitizeInput = value => value.replace(/[^0-9]/g, '');
@@ -64,26 +102,60 @@ module.exports = {
 				};
 
 				if (propertiesObject.treasury_reissuance_transaction_signatures) {
-					const signaturesMap = propertiesObject.treasury_reissuance_transaction_signatures;
-					networkProperties.treasuryReissuanceTransactionSignatures = Object.keys(signaturesMap)
-						.filter(key => signaturesMap[key])
-						.sort();
+					const key = 'treasuryReissuanceTransactionSignatures';
+					networkProperties[key] = propertiesObject.parsed[key];
 				}
 
 				if (propertiesObject.corrupt_aggregate_transaction_hashes) {
-					const hashesMap = propertiesObject.corrupt_aggregate_transaction_hashes;
-					const binaryHashesMap = catapult.utils.convert.hexToUint8(Object.keys(hashesMap)
-						.map(key => key + hashesMap[key])
-						.sort()
-						.reduce((lhs, rhs) => lhs + rhs));
-					const hashedValue = sha3_256(binaryHashesMap);
-					networkProperties.corruptAggregateTransactionHashes = catapult.utils.convert.uint8ToHex(hashedValue);
+					const key = 'corruptAggregateTransactionHashes';
+					networkProperties[key] = propertiesObject.parsed[key];
 				}
 
 				res.send(networkProperties);
 				next();
 			}).catch(() => {
 				res.send(errors.createInvalidArgumentError('there was an error reading the network properties file'));
+				next();
+			}));
+
+		server.get('/network/inflation', (req, res, next) => readAndParseInflationPropertiesFile()
+			.then(inflationInflectionPoints => {
+				res.send(inflationInflectionPoints.map(point => ({
+					// send BigInts over network as strings
+					startHeight: point.startHeight.toString(),
+					rewardAmount: point.rewardAmount.toString()
+				})));
+				next();
+			}).catch(() => {
+				res.send(errors.createInvalidArgumentError('there was an error reading the inflation properties file'));
+				next();
+			}));
+
+		server.get('/network/inflation/at/:height', (req, res, next) => readAndParseInflationPropertiesFile()
+			.then(inflationInflectionPoints => {
+				const height = BigInt(req.params.height);
+
+				const findMatchingPoint = () => {
+					const firstPoint = inflationInflectionPoints[0];
+					if (height < firstPoint.startHeight)
+						return { startHeight: 'N/A', rewardAmount: '0' };
+
+					for (let i = 1; i < inflationInflectionPoints.length; ++i) {
+						if (height < inflationInflectionPoints[i].startHeight)
+							return inflationInflectionPoints[i - 1];
+					}
+
+					return inflationInflectionPoints[inflationInflectionPoints.length - 1];
+				};
+
+				const point = findMatchingPoint();
+				res.send({
+					startHeight: point.startHeight.toString(),
+					rewardAmount: point.rewardAmount.toString()
+				});
+				next();
+			}).catch(() => {
+				res.send(errors.createInvalidArgumentError('there was an error reading the inflation properties file'));
 				next();
 			}));
 
