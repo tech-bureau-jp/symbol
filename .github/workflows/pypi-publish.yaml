@@ -2,8 +2,8 @@ name: Upload pypi package release
 
 on:
   push:
-    - branches:
-        - pypi
+    branches:
+      - pypi
 
 jobs:
   deploy:
