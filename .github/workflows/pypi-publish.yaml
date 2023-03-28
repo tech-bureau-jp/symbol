@@ -22,12 +22,12 @@ jobs:
         working-directory: ./sdk/python
         run: |
           python3 setup.py sdist bdist_wheel
-      - name: Publish a Python distribution to TestPyPI
+      - name: Publish a Python distribution
         if: github.event_name == 'push'
         # if: startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://test.pypi.org/legacy/
+          # repository-url: https://test.pypi.org/legacy/
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
           packages-dir: ./sdk/python/dist
