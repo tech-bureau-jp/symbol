@@ -29,3 +29,5 @@ jobs:
         working-directory: ./sdk/python
         with:
           repository-url: https://test.pypi.org/legacy/
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
