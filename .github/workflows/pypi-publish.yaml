@@ -26,7 +26,6 @@ jobs:
         if: github.event_name == 'push'
         # if: startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
         uses: pypa/gh-action-pypi-publish@release/v1
-        working-directory: ./sdk/python
         with:
           repository-url: https://test.pypi.org/legacy/
           user: __token__
