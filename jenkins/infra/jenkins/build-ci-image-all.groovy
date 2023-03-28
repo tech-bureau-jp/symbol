@@ -14,8 +14,7 @@ pipeline {
 	}
 
 	triggers {
-		// first of the month
-		cron('H 0 1 * *')
+		cron('@weekly')
 	}
 
 	stages {
@@ -28,63 +27,48 @@ pipeline {
 			}
 		}
 
-		stage('build compiler images') {
+		stage('build ci images') {
 			parallel {
-				stage('gcc prior') {
+				stage('cpp') {
 					steps {
 						script {
-							dispatchBuildCompilerImageJob('gcc-prior', 'ubuntu')
+							dispatchBuildCiImageJob('cpp')
 						}
 					}
 				}
-				stage('gcc latest') {
+				stage('java') {
 					steps {
 						script {
-							dispatchBuildCompilerImageJob('gcc-latest', 'ubuntu')
+							dispatchBuildCiImageJob('java')
 						}
 					}
 				}
-				stage('gcc [debian]') {
+				stage('javascript') {
 					steps {
 						script {
-							dispatchBuildCompilerImageJob('gcc-debian', 'debian')
+							dispatchBuildCiImageJob('javascript')
 						}
 					}
 				}
-				stage('gcc [fedora]') {
+				stage('linter') {
 					steps {
 						script {
-							dispatchBuildCompilerImageJob('gcc-latest', 'fedora')
+							dispatchBuildCiImageJob('linter')
 						}
 					}
 				}
-
-				stage('clang prior') {
+				stage('postgres') {
 					steps {
 						script {
-							dispatchBuildCompilerImageJob('clang-prior', 'ubuntu')
-						}
-					}
-				}
-				stage('clang latest') {
-					steps {
-						script {
-							dispatchBuildCompilerImageJob('clang-latest', 'ubuntu')
+							dispatchBuildCiImageJob('postgres')
 						}
 					}
 				}
 
-				stage('msvc latest') {
+				stage('python') {
 					steps {
 						script {
-							dispatchBuildCompilerImageJob('msvc-latest', 'windows')
-						}
-					}
-				}
-				stage('msvc prior') {
-					steps {
-						script {
-							dispatchBuildCompilerImageJob('msvc-prior', 'windows')
+							dispatchBuildCiImageJob('python')
 						}
 					}
 				}
@@ -96,7 +80,7 @@ pipeline {
 			script {
 				if (env.SHOULD_PUBLISH_JOB_STATUS?.toBoolean()) {
 					helper.sendDiscordNotification(
-						':confetti_ball: Compiler Image All Job Successfully completed',
+						':confetti_ball: CI Image All Job Successfully completed',
 						'Not much to see here, all is good',
 						env.BUILD_URL,
 						currentBuild.currentResult
@@ -108,7 +92,7 @@ pipeline {
 			script {
 				if (env.SHOULD_PUBLISH_JOB_STATUS?.toBoolean()) {
 					helper.sendDiscordNotification(
-						":worried: Compiler Image All Job Failed for ${currentBuild.fullDisplayName}",
+						":worried: CI Image All Job Failed for ${currentBuild.fullDisplayName}",
 						"At least one job failed for Build#${env.BUILD_NUMBER} which has a result of ${currentBuild.currentResult}.",
 						env.BUILD_URL,
 						currentBuild.currentResult
@@ -119,10 +103,9 @@ pipeline {
 	}
 }
 
-void dispatchBuildCompilerImageJob(String compilerConfiguration, String operatingSystem) {
-	build job: 'catapult-client-build-compiler-image', parameters: [
-		string(name: 'COMPILER_CONFIGURATION', value: "${compilerConfiguration}"),
-		string(name: 'OPERATING_SYSTEM', value: "${operatingSystem}"),
+void dispatchBuildCiImageJob(String ciImage) {
+	build job: 'build-ci-image', parameters: [
+		string(name: 'CI_IMAGE', value: "${ciImage}"),
 		string(name: 'MANUAL_GIT_BRANCH', value: "${params.MANUAL_GIT_BRANCH}"),
 		booleanParam(
 			name: 'SHOULD_PUBLISH_FAIL_JOB_STATUS',
