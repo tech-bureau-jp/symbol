@@ -69,4 +69,15 @@ Network.TESTNET = Network(
 	0x98,
 	datetime.datetime(2022, 10, 31, 21, 7, 47, tzinfo=datetime.timezone.utc),
 	Hash256('49D6E1CE276A85B70EAFE52349AACCA389302E7A9754BCF1221E79494FC665A4'))
-Network.NETWORKS = [Network.MAINNET, Network.TESTNET]
+Network.MIJINNET = Network(
+    'mijinnet',
+    0x60,
+    datetime.datetime(2021, 3, 16, 0, 6, 25, tzinfo=datetime.timezone.utc),
+    Hash256('4BF88474763412AAD36FA13CF7D04894CEE6A54D708053D48466288D5BBF7CA6'))
+Network.MIJINTESTNET = Network(
+    'mijintestnet',
+	0x90,
+    datetime.datetime(2021, 3, 16, 0, 6, 25, tzinfo=datetime.timezone.utc),
+    Hash256('4BF88474763412AAD36FA13CF7D04894CEE6A54D708053D48466288D5BBF7CA6'))
+
+Network.NETWORKS = [Network.MAINNET, Network.TESTNET, Network.MIJINNET, Network.MIJINTESTNET]
