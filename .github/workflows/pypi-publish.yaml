@@ -21,7 +21,7 @@ jobs:
       - name: Build
         working-directory: ./sdk/python
         run: |
-          python3 setup.py sdist --formats=zip
+          python3 setup.py sdist bdist_wheel
       - name: Publish a Python distribution to TestPyPI
         if: github.event_name == 'push'
         # if: startsWith(github.event.ref, 'refs/tags') || github.event_name == 'release'
