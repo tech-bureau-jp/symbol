@@ -2,6 +2,18 @@
 
 ## Generate catbuffer
 
+Run the `sdk/python` directory.
+
+### Set Up Python Env
+
+```sh
+python -m venv .venv
+source .venv/bin/activate
+pip install -r ../../catbuffer/parser/requirements.txt
+```
+
+Run Generate
+
 ```sh
 ./scripts/run_catbuffer_generator.sh
 ```

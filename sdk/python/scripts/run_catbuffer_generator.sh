@@ -8,8 +8,8 @@ function generate_code() {
 
 	local git_root
 	git_root="$(git rev-parse --show-toplevel)"
-
-	PYTHONPATH="${git_root}/catbuffer/parser" python3 -m catparser \
+	VENV_PATH="${VENV_PATH-.venv/bin}"
+	PYTHONPATH="${git_root}/catbuffer/parser" ${VENV_PATH}/python -m catparser \
 		--schema "${git_root}/catbuffer/schemas/$1/all_generated.cats"  \
 		--include "${git_root}/catbuffer/schemas/$1" \
 		--output "${git_root}/sdk/python/symbolchain/$2" \

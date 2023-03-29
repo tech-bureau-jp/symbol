@@ -481,6 +481,8 @@ class LinkAction(Enum):
 class NetworkType(Enum):
 	MAINNET = 104
 	TESTNET = 152
+	MIJIN = 96
+	MIJIN_TESTNET = 144
 
 	@property
 	def size(self) -> int:
