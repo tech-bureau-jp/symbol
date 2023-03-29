@@ -26,7 +26,7 @@ install_requires = \
 
 setup_kwargs = {
     'name': 'techbureau-symbol-sdk-python',
-    'version': '3.0.3.dev1',
+    'version': '3.0.3.dev2',
     'description': 'Symbol SDK',
     'long_description': 'This is symbol project core sdk python library.',
     'author': 'Techbureau Contributors',
