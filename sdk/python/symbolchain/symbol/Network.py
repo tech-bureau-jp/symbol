@@ -72,12 +72,12 @@ Network.TESTNET = Network(
 Network.MIJINNET = Network(
     'mijinnet',
     0x60,
-    datetime.datetime(2019, 1, 11, 23, 0, 0, tzinfo=datetime.timezone.utc),
+    datetime.datetime(2019, 6, 11, 23, 0, 0, tzinfo=datetime.timezone.utc),
     Hash256('4BF88474763412AAD36FA13CF7D04894CEE6A54D708053D48466288D5BBF7CA6'))
 Network.MIJINTESTNET = Network(
     'mijintestnet',
 	0x90,
-    datetime.datetime(2019, 1, 11, 23, 0, 0, tzinfo=datetime.timezone.utc),
+    datetime.datetime(2019, 6, 11, 23, 0, 0, tzinfo=datetime.timezone.utc),
     Hash256('4BF88474763412AAD36FA13CF7D04894CEE6A54D708053D48466288D5BBF7CA6'))
 
 Network.NETWORKS = [Network.MAINNET, Network.TESTNET, Network.MIJINNET, Network.MIJINTESTNET]
