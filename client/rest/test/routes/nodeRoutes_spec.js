@@ -24,7 +24,7 @@ const nodeRoutes = require('../../src/routes/nodeRoutes');
 const errors = require('../../src/server/errors');
 const { expect } = require('chai');
 
-const restVersion = '2.4.2-mijin';
+const restVersion = '2.4.3-mijin';
 
 describe('node routes', () => {
 	describe('get', () => {
@@ -72,10 +72,12 @@ describe('node routes', () => {
 			};
 
 			const createMockDb = status => ({
-				database: {
-					serverConfig: {
-						isConnected: () => status
-					}
+				client: {
+					db: () => ({
+						admin: () => ({
+							ping: () => (true === status ? Promise.resolve() : Promise.reject(new Error('db is down')))
+						})
+					})
 				}
 			});
 
