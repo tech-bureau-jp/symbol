@@ -14,19 +14,19 @@ package_data = \
 {'': ['*']}
 
 install_requires = \
-['cryptography==38.0.1',
+['cryptography==40.0.2',
     'mnemonic==0.20',
-    'Pillow==9.2.0',
+    'Pillow==9.5.0',
     'pynacl==1.5.0',
-    'pysha3==1.0.2',
+    'safe-pysha3==1.0.3',
     'PyYAML==6.0',
     'pyzbar==0.1.9',
     'ripemd-hash==1.0.0',
-    'qrcode==7.3.1']
+    'qrcode==7.4.2']
 
 setup_kwargs = {
     'name': 'techbureau-symbol-sdk-python',
-    'version': '3.0.3.dev2',
+    'version': '3.0.7.dev1',
     'description': 'Symbol SDK',
     'long_description': 'This is symbol project core sdk python library.',
     'author': 'Techbureau Contributors',
