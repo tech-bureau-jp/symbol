@@ -18,7 +18,7 @@ with open('requirements.txt') as f:
 
 setup_kwargs = {
     'name': 'techbureau-symbol-sdk-python',
-    'version': '3.0.3.dev3',
+    'version': '3.0.7.dev1',
     'description': 'Symbol SDK',
     'long_description': 'This is symbol project core sdk python library.',
     'author': 'Techbureau Contributors',
