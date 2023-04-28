@@ -5,7 +5,7 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 
 ## next
 
-## [3.0.4] - 12-Dec-2022
+## [3.0.6] - 14-Apr-2023
 
 ### Changed
  - Network
@@ -35,11 +35,13 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
  - Proper handling of catbuffer computed fields/properties
  - (NEM-only) Automatic population for fields levySize and messageEnvelopeSize
 
+### Fixed
+ - (NEM-only) Add NonVerifiableMultisigTransactionV1 model required for signing 'multisig_transaction_v1'
 
 ## [3.0.0] - 02-Mar-2022
 
 ### Changed
  - complete SDK rewrite, see details in [readme](README.md)
 
-[3.0.4]: https://github.com/symbol/sdk-python/compare/v3.0.0...v3.0.4
+[3.0.6]: https://github.com/symbol/sdk-python/compare/v3.0.0...v3.0.6
 [3.0.0]: https://github.com/symbol/sdk-python/releases/tag/v3.0.0
