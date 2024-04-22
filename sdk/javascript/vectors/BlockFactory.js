@@ -1,7 +1,12 @@
 import ByteArray from '../src/ByteArray.js';
 import { Hash256, PublicKey } from '../src/CryptoTypes.js';
 import RuleBasedTransactionFactory from '../src/RuleBasedTransactionFactory.js';
-import { Address } from '../src/symbol/Network.js';
+import {
+	Address,
+	/* eslint-disable no-unused-vars */
+	Network
+	/* eslint-enable no-unused-vars */
+} from '../src/symbol/Network.js';
 import * as sc from '../src/symbol/models.js';
 
 /**
@@ -9,6 +14,8 @@ import * as sc from '../src/symbol/models.js';
  */
 class ProofGamma extends ByteArray {
 	static SIZE = 32;
+
+	static NAME = 'ProofGamma';
 
 	/**
 	 * Creates a vrf proof gamma from bytes or a hex string.
@@ -25,6 +32,8 @@ class ProofGamma extends ByteArray {
 class ProofVerificationHash extends ByteArray {
 	static SIZE = 16;
 
+	static NAME = 'ProofVerificationHash';
+
 	/**
 	 * Creates a proof verification hash from bytes or a hex string.
 	 * @param {Uint8Array|string} proofVerificationHash Input string or byte array.
@@ -39,6 +48,8 @@ class ProofVerificationHash extends ByteArray {
  */
 class ProofScalar extends ByteArray {
 	static SIZE = 32;
+
+	static NAME = 'ProofScalar';
 
 	/**
 	 * Creates a vrf proof scalar from bytes or a hex string.
@@ -56,10 +67,10 @@ export default class BlockFactory {
 	/**
 	 * Creates a factory for the specified network.
 	 * @param {Network} network Symbol network.
-	 * @param {Map} typeRuleOverrides Type rule overrides.
+	 * @param {Map<string, Function>|undefined} typeRuleOverrides Type rule overrides.
 	 */
-	constructor(network, typeRuleOverrides) {
-		this.factory = BlockFactory.buildRules(typeRuleOverrides);
+	constructor(network, typeRuleOverrides = undefined) {
+		this.factory = BlockFactory._buildRules(typeRuleOverrides); // eslint-disable-line no-underscore-dangle
 		this.network = network;
 	}
 
@@ -88,12 +99,11 @@ export default class BlockFactory {
 		return undefined;
 	}
 
-	static buildRules(typeRuleOverrides) {
+	static _buildRules(typeRuleOverrides) {
 		const factory = new RuleBasedTransactionFactory(sc, this._symbolTypeConverter, typeRuleOverrides);
 		factory.autodetect();
 
-		// block.network (networkId)
-		['NetworkType'].forEach(name => { factory.addEnumParser(name); });
+		['BlockType', 'NetworkType'].forEach(name => { factory.addEnumParser(name); });
 
 		factory.addStructParser('VrfProof');
 

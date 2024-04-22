@@ -7,15 +7,13 @@
 //
 
 import { readContents, readPrivateKey } from './examples_utils.js';
-import symbolSdk from '../src/index.js';
+import { SymbolFacade } from '../src/symbol/index.js';
 import yargs from 'yargs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 (() => {
-	const { SymbolFacade } = symbolSdk.facade;
-
 	const addEmbeddedTransfers = (facade, publicKey) => {
 		const textEncoder = new TextEncoder();
 
@@ -44,13 +42,13 @@ import { fileURLToPath } from 'url';
 
 	const args = yargs(process.argv.slice(2))
 		.demandOption('private', 'path to file with private key')
-		.argv;
+		.parseSync();
 
 	const facade = new SymbolFacade('testnet');
 	const keyPair = readPrivateKey(args.private);
 
 	const embeddedTransactions = addEmbeddedTransfers(facade, keyPair.publicKey);
-	const merkleHash = facade.constructor.hashEmbeddedTransactions(embeddedTransactions);
+	const merkleHash = facade.static.hashEmbeddedTransactions(embeddedTransactions);
 
 	const aggregateTransaction = facade.transactionFactory.create({
 		type: 'aggregate_complete_transaction_v2',
@@ -62,7 +60,7 @@ import { fileURLToPath } from 'url';
 	});
 
 	const signature = facade.signTransaction(keyPair, aggregateTransaction);
-	facade.transactionFactory.constructor.attachSignature(aggregateTransaction, signature);
+	facade.transactionFactory.static.attachSignature(aggregateTransaction, signature);
 
 	console.log(`Hash: ${facade.hashTransaction(aggregateTransaction)}\n`);
 	console.log(aggregateTransaction.toString());

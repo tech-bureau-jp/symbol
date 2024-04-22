@@ -2,10 +2,20 @@ import ByteArray from './ByteArray.js';
 import crypto from 'crypto';
 
 /**
- *  Represents a 256-bit hash.
+ * Represents a 256-bit hash.
  */
 export class Hash256 extends ByteArray {
+	/**
+	 * Byte size of raw hash.
+	 * @type {number}
+	 */
 	static SIZE = 32;
+
+	/**
+	 * Byte array name (required because `constructor.name` is dropped during minification).
+	 * @type {string}
+	 */
+	static NAME = 'Hash256';
 
 	/**
 	 * Creates a hash from bytes or a hex string.
@@ -25,10 +35,20 @@ export class Hash256 extends ByteArray {
 }
 
 /**
- *  Represents a private key.
+ * Represents a private key.
  */
 export class PrivateKey extends ByteArray {
+	/**
+	 * Byte size of raw private key.
+	 * @type {number}
+	 */
 	static SIZE = 32;
+
+	/**
+	 * Byte array name (required because `constructor.name` is dropped during minification).
+	 * @type {string}
+	 */
+	static NAME = 'PrivateKey';
 
 	/**
 	 * Creates a private key from bytes or a hex string.
@@ -48,14 +68,24 @@ export class PrivateKey extends ByteArray {
 }
 
 /**
- *  Represents a public key.
+ * Represents a public key.
  */
 export class PublicKey extends ByteArray {
+	/**
+	 * Byte size of raw public key.
+	 * @type {number}
+	 */
 	static SIZE = 32;
 
 	/**
+	 * Byte array name (required because `constructor.name` is dropped during minification).
+	 * @type {string}
+	 */
+	static NAME = 'PublicKey';
+
+	/**
 	 * Creates a public key from bytes or a hex string.
-	 * @param {Uint8Array|string} publicKey Input string, byte array or public key.
+	 * @param {Uint8Array|string|PublicKey} publicKey Input string, byte array or public key.
 	 */
 	constructor(publicKey) {
 		super(PublicKey.SIZE, publicKey instanceof PublicKey ? publicKey.bytes : publicKey);
@@ -63,13 +93,23 @@ export class PublicKey extends ByteArray {
 }
 
 /**
- *  Represents a 256-bit symmetric encryption key.
+ * Represents a 256-bit symmetric encryption key.
  */
 export class SharedKey256 extends ByteArray {
+	/**
+	 * Byte size of raw shared key.
+	 * @type {number}
+	 */
 	static SIZE = 32;
 
 	/**
-	 * Creates a key from bytes or a hex string.
+	 * Byte array name (required because `constructor.name` is dropped during minification).
+	 * @type {string}
+	 */
+	static NAME = 'SharedKey256';
+
+	/**
+	 * Creates a shared key from bytes or a hex string.
 	 * @param {Uint8Array|string} sharedKey Input string or byte array.
 	 */
 	constructor(sharedKey) {
@@ -78,10 +118,20 @@ export class SharedKey256 extends ByteArray {
 }
 
 /**
- *  Represents a signature.
+ * Represents a signature.
  */
 export class Signature extends ByteArray {
+	/**
+	 * Byte size of raw signature.
+	 * @type {number}
+	 */
 	static SIZE = 64;
+
+	/**
+	 * Byte array name (required because `constructor.name` is dropped during minification).
+	 * @type {string}
+	 */
+	static NAME = 'Signature';
 
 	/**
 	 * Creates a signature from bytes or a hex string.

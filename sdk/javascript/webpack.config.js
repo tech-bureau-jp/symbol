@@ -8,7 +8,10 @@ const buildDirectory = path.resolve(path.dirname(URL.fileURLToPath(import.meta.u
 const distDirectory = path.resolve(path.dirname(URL.fileURLToPath(import.meta.url)), 'dist');
 
 export default {
-	entry: './src/index.js',
+	entry: {
+		main: './src/index.web.js'
+	},
+
 	mode: process.env.NODE_ENV || 'development',
 	target,
 	devtool: 'source-map',
@@ -29,7 +32,7 @@ export default {
 			outDir: `${buildDirectory}/wasm/${target}_webpack`
 		}),
 		new webpack.ProvidePlugin({
-			process: 'process/browser',
+			process: 'process/browser.js',
 			Buffer: ['buffer', 'Buffer']
 		}),
 		new webpack.NormalModuleReplacementPlugin(

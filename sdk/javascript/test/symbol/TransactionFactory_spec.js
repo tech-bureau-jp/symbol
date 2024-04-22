@@ -17,7 +17,15 @@ describe('transaction factory (Symbol)', () => {
 		expect(transaction.network).to.deep.equal(sc.NetworkType.TESTNET);
 	};
 
-	// region rules
+	// region constants + rules
+
+	it('has correct static accessor', () => {
+		// Arrange:
+		const factory = new TransactionFactory(Network.TESTNET);
+
+		// Assert:
+		expect(TransactionFactory).to.deep.equal(factory.static);
+	});
 
 	it('has rules with expected hints', () => {
 		// Act:
@@ -41,7 +49,24 @@ describe('transaction factory (Symbol)', () => {
 
 			'array[UnresolvedMosaicId]', 'array[TransactionType]', 'array[UnresolvedAddress]', 'array[UnresolvedMosaic]'
 		]);
-		expect(new Set(Array.from(factory.factory.rules.keys()))).to.deep.equal(expectedRuleNames);
+		const ruleNames = new Set(factory.ruleNames);
+		expect(ruleNames).to.deep.equal(expectedRuleNames);
+	});
+
+	// endregion
+
+	// region lookupTransactionName
+
+	describe('lookupTransactionName', () => {
+		it('can lookup known transaction', () => {
+			expect(TransactionFactory.lookupTransactionName(sc.TransactionType.TRANSFER, 1)).to.equal('transfer_transaction_v1');
+			expect(TransactionFactory.lookupTransactionName(sc.TransactionType.TRANSFER, 2)).to.equal('transfer_transaction_v2');
+			expect(TransactionFactory.lookupTransactionName(sc.TransactionType.HASH_LOCK, 1)).to.equal('hash_lock_transaction_v1');
+		});
+
+		it('cannot lookup unknown transaction', () => {
+			expect(() => TransactionFactory.lookupTransactionName(new sc.TransactionType(123), 1)).to.throw('invalid enum value 123');
+		});
 	});
 
 	// endregion
@@ -98,7 +123,7 @@ describe('transaction factory (Symbol)', () => {
 			});
 
 			// Assert:
-			const range = (start, end) => new Uint8Array(end - start).fill().map((_, i) => start + i);
+			const range = (start, end) => new Uint8Array(end - start).map((_, i) => start + i);
 			expect(transaction.restrictionAdditions).to.deep.equal([
 				new sc.UnresolvedAddress(range(1, 25)), new sc.UnresolvedAddress(range(26, 50))
 			]);
@@ -201,7 +226,7 @@ describe('transaction factory (Symbol)', () => {
 			});
 
 			// Assert:
-			const expectedId = generateMosaicId(factory.network.publicKeyToAddress(new PublicKey(TEST_SIGNER_PUBLIC_KEY)), 123);
+			const expectedId = generateMosaicId(Network.TESTNET.publicKeyToAddress(new PublicKey(TEST_SIGNER_PUBLIC_KEY)), 123);
 			expect(transaction.id.value).to.equal(expectedId);
 		});
 

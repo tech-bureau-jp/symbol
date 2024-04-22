@@ -1,63 +1,77 @@
 import BaseValue from './BaseValue.js';
-import Bip32 from './Bip32.js';
+import { Bip32 } from './Bip32.js';
 import ByteArray from './ByteArray.js';
-import * as CryptoTypes from './CryptoTypes.js';
+import {
+	Hash256,
+	PrivateKey,
+	PublicKey,
+	SharedKey256,
+	Signature
+} from './CryptoTypes.js';
 import { NetworkLocator } from './Network.js';
-import NemFacade from './facade/NemFacade.js';
-import SymbolFacade from './facade/SymbolFacade.js';
-import * as NemKeyPair from './nem/KeyPair.js';
-import NemMessageEncoder from './nem/MessageEncoder.js';
-import * as NemNetwork from './nem/Network.js';
-import * as NemTransactionFactory from './nem/TransactionFactory.js';
-import * as NemModels from './nem/models.js';
-import * as SymbolKeyPair from './symbol/KeyPair.js';
-import SymbolMessageEncoder from './symbol/MessageEncoder.js';
-import * as SymbolNetwork from './symbol/Network.js';
-import * as SymbolTransactionFactory from './symbol/TransactionFactory.js';
-import * as SymbolIdGenerator from './symbol/idGenerator.js';
-import * as SymbolMerkle from './symbol/merkle.js';
-import * as SymbolMetadata from './symbol/metadata.js';
-import * as SymbolModels from './symbol/models.js';
 import { hexToUint8, uint8ToHex } from './utils/converter.js';
 
-const sdk = {
+const utils = { hexToUint8, uint8ToHex };
+
+export {
+	/**
+	 * Represents a base integer.
+	 * @type {typeof BaseValue}
+	 */
 	BaseValue,
+
+	/**
+	 * Factory of BIP32 root nodes.
+	 * @type {typeof Bip32}
+	 */
 	Bip32,
+
+	/**
+	 * Represents a fixed size byte array.
+	 * @type {typeof ByteArray}
+	 */
 	ByteArray,
-	...CryptoTypes,
+
+	// region CryptoTypes
+
+	/**
+	 * Represents a 256-bit hash.
+	 * @type {typeof Hash256}
+	 */
+	Hash256,
+
+	/**
+	 * Represents a private key.
+	 * @type {typeof PrivateKey}
+	 */
+	PrivateKey,
+
+	/**
+	 * Represents a public key.
+	 * @type {typeof PublicKey}
+	 */
+	PublicKey,
+
+	/**
+	 * Represents a 256-bit symmetric encryption key.
+	 * @type {typeof SharedKey256}
+	 */
+	SharedKey256,
+
+	/**
+	 * Represents a signature.
+	 * @type {typeof Signature}
+	 */
+	Signature,
+
+	/**
+	 * Provides utility functions for finding a network.
+	 * @type {typeof NetworkLocator}
+	 */
 	NetworkLocator,
 
-	facade: {
-		NemFacade,
-		SymbolFacade
-	},
-
-	nem: {
-		...NemModels, // must be before Network to promote Address from Network
-
-		...NemKeyPair,
-		MessageEncoder: NemMessageEncoder,
-		...NemNetwork,
-		NemTransactionFactory
-	},
-
-	symbol: {
-		...SymbolModels, // must be before Network to promote Address from Network
-
-		...SymbolKeyPair,
-		MessageEncoder: SymbolMessageEncoder,
-		...SymbolNetwork,
-		SymbolTransactionFactory,
-
-		...SymbolIdGenerator,
-		...SymbolMerkle,
-		...SymbolMetadata
-	},
-
-	utils: {
-		hexToUint8,
-		uint8ToHex
-	}
+	/**
+	 * Network independent utilities.
+	 */
+	utils
 };
-
-export default sdk;

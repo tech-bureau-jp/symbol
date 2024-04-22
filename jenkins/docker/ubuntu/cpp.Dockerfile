@@ -1,8 +1,7 @@
-FROM symbolplatform/symbol-server-build-base:ubuntu-gcc-12-conan
+FROM symbolplatform/symbol-server-build-base:ubuntu-gcc-13-conan
 
-# install shellcheck and gitlint
+# install shellcheck
 RUN apt-get install -y shellcheck
-RUN pip install gitlint
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
@@ -15,11 +14,16 @@ RUN apt-get install -y wget gnupg \
 	&& apt-get update \
 	&& apt-get install -y mongodb-org
 
+RUN apt-get install -y python3-pip python3-venv
+
 # add ubuntu user (used by jenkins)
-RUN useradd --uid 1000 -ms /bin/bash ubuntu
+RUN id -u "ubuntu" || useradd --uid 1000 -ms /bin/bash ubuntu
 
 # Create the MongoDB data directory
 RUN mkdir -p /data/db \
 	&& chown -R ubuntu:ubuntu /data
-
+USER ubuntu
 WORKDIR /home/ubuntu
+
+# installl all pip packages as ubuntu user
+RUN pip install --upgrade colorama gitlint isort pycodestyle ply pylint PyYAML

@@ -5,6 +5,42 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 
 ## next
 
+## [3.2.0] - 09-Apr-2024
+
+### Added
+- add now() to facade for getting current timestamp
+- add alternative pure JavaScript implementation for all WASM logic
+- add static getter that can be used instead of constructor in TS
+- use exports in package.json
+
+### Changed
+- split single entry point into default, nem and symbol for better discoverability
+- make symbol-crypto-wasm-node an optional dependency
+
+### Fixed
+- improve codegen to significantly reduce size of generated models
+- use globalThis instead of global for WebAssembly for browser compatibility
+- mm-snap requires default export to be last
+- update Cipher.js to support ReactNative environment
+- update rust code to use dalek 4
+- prune customized tweetnacl implementation
+- search through nc module to find transaction class name to workaround minification dropping 'constructor.name'
+
+## [3.1.0] - 7-Aug-2023
+
+### Changed
+ - Sync major and minor version with Python SDK
+
+## [3.0.11] - 27-Jul-2023
+
+### Added
+ - TypeScript support via JSDoc documentation
+ - lookupTransactionName for generating friendly transaction name from transaction type and version
+ - (Symbol-only) special handling for encrypted messages created by Symbol wallets
+
+### Fixed
+ - (NEM-only) rename TransactionType enum value MULTISIG_TRANSACTION to MULTISIG
+
 ## [3.0.7] - 27-Apr-2023
 
 ### Changed
@@ -34,7 +70,7 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
    - Utility function metadataUpdateValue for simplifying update of metadata values
  - Proper handling of catbuffer computed fields/properties
  - (NEM-only) Automatic population for fields levySize and messageEnvelopeSize
- - Wasm crypto packages for node and browser 
+ - Wasm crypto packages for node and browser
 
 ### Fixed
  - (NEM-only) Add NonVerifiableMultisigTransactionV1 model required for signing 'multisig_transaction_v1'
@@ -44,5 +80,7 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 ### Changed
  - complete SDK rewrite, see details in [readme](README.md)
 
-[3.0.7]: https://github.com/symbol/sdk-python/compare/v3.0.0...v3.0.7
-[3.0.0]: https://github.com/symbol/sdk-python/releases/tag/v3.0.0
+[3.1.0]: https://github.com/symbol/symbol/compare/sdk%2Fjavascript%2Fv3.0.11...sdk%2Fjavascript%2Fv3.1.0
+[3.0.11]: https://github.com/symbol/symbol/compare/sdk%2Fjavascript%2Fv3.0.7...sdk%2Fjavascript%2Fv3.0.11
+[3.0.7]: https://github.com/symbol/symbol/compare/sdk%2Fjavascript%2Fv3.0.0...sdk%2Fjavascript%2Fv3.0.7
+[3.0.0]: https://github.com/symbol/symbol/releases/tag/sdk%2Fjavascript%2Fv3.0.0
