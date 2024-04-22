@@ -1,9 +1,8 @@
+import hashlib
 from binascii import hexlify
 from collections import namedtuple
 from enum import Enum
 from functools import reduce
-
-import sha3
 
 from ..BufferReader import BufferReader
 from ..CryptoTypes import Hash256
@@ -34,7 +33,7 @@ class MerkleHashBuilder:
 		while num_remaining_hashes > 1:
 			i = 0
 			while i < num_remaining_hashes:
-				hasher = sha3.sha3_256()
+				hasher = hashlib.sha3_256()
 				hasher.update(self.hashes[i])
 
 				if i + 1 < num_remaining_hashes:
@@ -63,7 +62,7 @@ def prove_merkle(leaf_hash, merkle_path, root_hash):
 	"""
 
 	def calculate_next_hash(working_hash, merkle_part):
-		hasher = sha3.sha3_256()
+		hasher = hashlib.sha3_256()
 		if merkle_part.is_left:
 			hasher.update(merkle_part.hash.bytes)
 			hasher.update(working_hash.bytes)
@@ -100,33 +99,46 @@ def _encode_path(path, is_leaf):
 	return bytes(buffer)
 
 
-class LeafNode:
+class TreeNode:
+	"""Node in a compact patricia tree."""
+
+	def __init__(self, path):
+		self.path = path
+
+	@property
+	def hex_path(self):
+		"""Gets hex representation of path."""
+
+		return hexlify(self.path.path).decode('utf8').upper()[:self.path.size]
+
+
+class LeafNode(TreeNode):
 	"""Leaf node in a compact patricia tree."""
 
 	def __init__(self, path, value):
-		self.path = path
+		super().__init__(path)
 		self.value = value
 
 	def calculate_hash(self):
 		"""Calculates node hash."""
 
-		hasher = sha3.sha3_256()
+		hasher = hashlib.sha3_256()
 		hasher.update(_encode_path(self.path, True))
 		hasher.update(self.value.bytes)
 		return Hash256(hasher.digest())
 
 
-class BranchNode:
+class BranchNode(TreeNode):
 	"""Branch node in a compact patricia tree."""
 
 	def __init__(self, path, links):
-		self.path = path
+		super().__init__(path)
 		self.links = links
 
 	def calculate_hash(self):
 		"""Calculates node hash."""
 
-		hasher = sha3.sha3_256()
+		hasher = hashlib.sha3_256()
 		hasher.update(_encode_path(self.path, False))
 		for link in self.links:
 			hasher.update((link if link else Hash256.zero()).bytes)
@@ -198,7 +210,7 @@ class PatriciaMerkleProofResult(Enum):
 
 
 def _check_state_hash(state_hash, subcache_merkle_roots):
-	hasher = sha3.sha3_256()
+	hasher = hashlib.sha3_256()
 	for root in subcache_merkle_roots:
 		hasher.update(root.bytes)
 
@@ -237,7 +249,7 @@ def prove_patricia_merkle(encoded_key, value_to_test, merkle_path, state_hash, s
 			formatted_link_index = f'{node.links.index(child_hash):01X}'
 
 		child_hash = node_hash
-		actual_path = f'{formatted_link_index}{hexlify(node.path.path).decode("utf8").upper()}{actual_path}'
+		actual_path = f'{formatted_link_index}{node.hex_path}{actual_path}'
 
 	if is_positive_proof:
 		# for positive proof, expected and calculated paths must match exactly

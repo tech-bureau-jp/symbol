@@ -4,6 +4,7 @@ import {
 } from '../../src/CryptoTypes.js';
 import NemFacade from '../../src/facade/NemFacade.js';
 import { Network } from '../../src/nem/Network.js';
+import TransactionFactory from '../../src/nem/TransactionFactory.js';
 import { expect } from 'chai';
 import crypto from 'crypto';
 
@@ -106,57 +107,99 @@ describe('NEM Facade', () => {
 		return transaction;
 	};
 
-	it('can hash transaction', () => {
-		// Arrange:
+	const addTransactionTests = descriptor => {
+		it(`can hash ${descriptor.name} transaction`, () => {
+			// Arrange:
+			const facade = new NemFacade('testnet');
+
+			const transaction = descriptor.createTransaction();
+
+			// Act:
+			const hashValue = facade.hashTransaction(transaction);
+
+			// Assert:
+			expect(hashValue).to.deep.equal(descriptor.transactionHash);
+		});
+
+		it(`can sign ${descriptor.name} transaction`, () => {
+			// Arrange:
+			const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
+			const facade = new NemFacade('testnet');
+
+			const transaction = descriptor.createTransaction();
+
+			// Sanity:
+			expect(transaction.signature).to.deep.equal(Signature.zero());
+
+			// Act:
+			const signature = facade.signTransaction(new NemFacade.KeyPair(privateKey), transaction);
+
+			// Assert:
+			expect(signature).to.deep.equal(descriptor.transactionSignature);
+		});
+
+		it(`can verify ${descriptor.name} transaction`, () => {
+			// Arrange:
+			const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
+			const facade = new NemFacade('testnet');
+
+			const transaction = descriptor.createTransaction();
+
+			// Sanity:
+			expect(transaction.signature).to.deep.equal(Signature.zero());
+
+			// Act:
+			const signature = facade.signTransaction(new NemFacade.KeyPair(privateKey), transaction);
+			const isVerified = facade.verifyTransaction(transaction, signature);
+
+			// Assert:
+			expect(isVerified).to.equal(true);
+		});
+	};
+
+	const transferTestDescriptor = {
+		name: 'normal',
+		createTransaction: createRealTransfer,
+		transactionHash: new Hash256('A7064DB890A4E7329AAB2AE7DCFA5EC76D7E374590C61EC85E03C698DF4EA79D'),
+		transactionSignature: new Signature([
+			'23A7B3433D16172E6C8659DB24233C5A8222C589098EA7A8FBBCB19691C67DB1',
+			'3FB2AB7BB215265A3E3D74D32683516B03785BFEB2A2DE6DAC09F5E34A793706'
+		].join(''))
+	};
+
+	addTransactionTests(transferTestDescriptor);
+
+	// endregion
+
+	// region multisig transaction
+
+	const createRealMultisigTransaction = () => {
 		const facade = new NemFacade('testnet');
+		const innerTransaction = TransactionFactory.toNonVerifiableTransaction(createRealTransfer());
 
-		const transaction = createRealTransfer();
+		const transaction = facade.transactionFactory.create({
+			type: 'multisig_transaction_v1',
+			signerPublicKey: 'A59277D56E9F4FA46854F5EFAAA253B09F8AE69A473565E01FD9E6A738E4AB74',
+			fee: 0x123456n,
+			timestamp: 191205516,
+			deadline: 191291916,
 
-		// Act:
-		const hashValue = facade.hashTransaction(transaction);
+			innerTransaction
+		});
+		return transaction;
+	};
 
-		// Assert:
-		expect(hashValue).to.deep.equal(new Hash256('F2D6DA7F121787B8322EE3491B47027E2E1754E35CA1D20298E73067CF2AC08C'));
-	});
+	const multisigTestDescriptor = {
+		name: 'multisig',
+		createTransaction: createRealMultisigTransaction,
+		transactionHash: new Hash256('B585BC092CDDDCBA535FD6C0DE38F26EB44E6BA638A0BA6DFAD4BAA7E7AAE1B8'),
+		transactionSignature: new Signature([
+			'E324CCA57275D9752A684E6A089733803423647B8DDF5C1627FC23218CC84287',
+			'EB7037AD4C6CB8CB37BBC9F5423FA73F431814A008400A756CFFE35F4533EB00'
+		].join(''))
+	};
 
-	it('can sign transaction', () => {
-		// Arrange:
-		const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
-		const facade = new NemFacade('testnet');
-
-		const transaction = createRealTransfer();
-
-		// Sanity:
-		expect(transaction.signature).to.deep.equal(Signature.zero());
-
-		// Act:
-		const signature = facade.signTransaction(new NemFacade.KeyPair(privateKey), transaction);
-
-		// Assert:
-		const expectedSignature = new Signature([
-			'D996CAB85AE6604053998837F0CC74ED23AA9BA3763E5A8619AB91AC786C4DC6',
-			'E3F7FB7DBE34E070468308A3A626E2A362939EF3F98CFE1B6BF817F6C968E20F'
-		].join(''));
-		expect(expectedSignature).to.deep.equal(signature);
-	});
-
-	it('can verify transaction', () => {
-		// Arrange:
-		const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
-		const facade = new NemFacade('testnet');
-
-		const transaction = createRealTransfer();
-
-		// Sanity:
-		expect(transaction.signature).to.deep.equal(Signature.zero());
-
-		// Act:
-		const signature = facade.signTransaction(new NemFacade.KeyPair(privateKey), transaction);
-		const isVerified = facade.verifyTransaction(transaction, signature);
-
-		// Assert:
-		expect(isVerified).to.equal(true);
-	});
+	addTransactionTests(multisigTestDescriptor);
 
 	// endregion
 
