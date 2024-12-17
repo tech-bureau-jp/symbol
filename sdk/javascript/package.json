@@ -1,49 +1,82 @@
 {
   "name": "symbol-sdk",
-  "version": "3.0.6",
+  "version": "3.2.0",
   "type": "module",
   "description": "JavaScript SDK for Symbol",
-  "main": "src/index.js",
+  "main": "./src/index.js",
+  "types": "./ts/src/index.d.ts",
+  "exports": {
+    ".": {
+      "default": "./src/index.js",
+      "types": "./ts/src/index.d.ts"
+    },
+    "./nem": {
+      "default": "./src/nem/index.js",
+      "types": "./ts/src/nem/index.d.ts"
+    },
+    "./symbol": {
+      "default": "./src/symbol/index.js",
+      "types": "./ts/src/symbol/index.d.ts"
+    }
+  },
   "scripts": {
     "lint": "eslint .",
     "test": "mocha --full-trace --recursive ./test",
-    "vectors": "node ./vectors/all.js --vectors $(git rev-parse --show-toplevel)/tests/vectors/${BLOCKCHAIN}/crypto --blockchain ${BLOCKCHAIN}",
+    "vectors": "bash -c 'node ./vectors/all.js --vectors $(git rev-parse --show-toplevel)/tests/vectors/${BLOCKCHAIN}/crypto --blockchain ${BLOCKCHAIN}'",
     "catvectors": "mocha --full-trace ./vectors/catbuffer.js",
     "lint:jenkins": "eslint -o lint.sdk.javascript.xml -f junit . || exit 0",
     "test:jenkins": "c8 --require mocha --no-clean  --reporter=lcov npm run test",
     "vectors:jenkins": "c8 --require mocha --no-clean  --reporter=lcov npm run vectors",
     "catvectors:jenkins": "c8 --require mocha --no-clean  --reporter=lcov npm run catvectors",
-    "bundle": "webpack",
-    "bundle:clean": "rimraf ./_build"
+    "bundle": "mkdirp ./dist && webpack",
+    "bundle:clean": "rimraf ./dist ./_build"
   },
   "keywords": [],
   "author": "Symbol Contributors <contributors@symbol.dev>",
   "license": "MIT",
+  "bugs": "https://github.com/symbol/symbol/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/symbol/symbol/tree/main/sdk/javascript"
+  },
+  "homepage": "https://github.com/symbol/symbol/blob/main/sdk/javascript#readme",
   "devDependencies": {
-    "@wasm-tool/wasm-pack-plugin": "^1.6.0",
-    "assert": "^2.0.0",
-    "buffer": "^6.0.3",
-    "c8": "^7.13.0",
-    "chai": "^4.3.7",
-    "crypto-browserify": "^3.12.0",
-    "eslint": "^8.38.0",
-    "eslint-config-airbnb": "^19.0.4",
-    "json-bigint": "^1.0.0",
-    "mocha": "^10.2.0",
-    "mocha-jenkins-reporter": "^0.4.8",
-    "process": "^0.11.10",
-    "rimraf": "^5.0.0",
-    "stream-browserify": "^3.0.0",
-    "url": "^0.11.0",
-    "webpack": "^5.79.0",
-    "webpack-cli": "^5.0.1",
-    "yargs": "^17.7.1"
+    "@types/jest": "~29.5.5",
+    "@types/ripemd160": "~2.0.1",
+    "@types/yargs": "~17.0.26",
+    "@wasm-tool/wasm-pack-plugin": "~1.7.0",
+    "assert": "~2.1.0",
+    "buffer": "~6.0.3",
+    "c8": "~9.1.0",
+    "chai": "~5.1.0",
+    "crypto-browserify": "~3.12.0",
+    "eslint": "~8.57.0",
+    "eslint-config-airbnb": "~19.0.4",
+    "eslint-plugin-jsdoc": "^48.2.1",
+    "json-bigint": "~1.0.0",
+    "mkdirp": "~3.0.1",
+    "mocha": "~10.4.0",
+    "mocha-jenkins-reporter": "~0.4.8",
+    "process": "~0.11.10",
+    "rimraf": "~5.0.5",
+    "stream-browserify": "~3.0.0",
+    "typescript": "~5.4.2",
+    "url": "~0.11.3",
+    "webpack": "~5.91.0",
+    "webpack-cli": "~5.1.4",
+    "yargs": "~17.7.2"
   },
   "dependencies": {
-    "@noble/hashes": "^1.3.0",
-    "bitcore-mnemonic": "^10.0.5",
-    "ripemd160": "^2.0.2",
-    "tweetnacl": "^1.0.3"
+    "@noble/hashes": "~1.4.0",
+    "bitcore-mnemonic": "~10.0.11",
+    "ripemd160": "~2.0.2"
   },
-  "files": ["src/*", "wasm/pkg/*"]
+  "files": [
+    "src/*",
+    "dist/*",
+    "ts/src/*"
+  ],
+  "optionalDependencies": {
+    "symbol-crypto-wasm-node": "^0.1.1"
+  }
 }

@@ -7,11 +7,14 @@ pipeline {
 		choice name: 'OPERATING_SYSTEM',
 			choices: ['ubuntu', 'fedora', 'debian', 'windows'],
 			description: 'operating system'
+		choice name: 'ARCHITECTURE',
+			choices: ['amd64', 'arm64'],
+			description: 'Computer architecture'
 		booleanParam name: 'SHOULD_PUBLISH_FAIL_JOB_STATUS', description: 'true to publish job status if failed', defaultValue: false
 	}
 
 	agent {
-		label "${helper.resolveAgentName("${OPERATING_SYSTEM}")}"
+		label "${helper.resolveAgentName("${OPERATING_SYSTEM}", "${ARCHITECTURE}", 'medium')}"
 	}
 
 	environment {
@@ -25,22 +28,33 @@ pipeline {
 	}
 
 	stages {
+		stage('git checkout') {
+			steps {
+				sh "git checkout ${params.MANUAL_GIT_BRANCH}"
+				sh "git reset --hard origin/${params.MANUAL_GIT_BRANCH}"
+			}
+		}
 		stage('prepare') {
 			stages {
 				stage('prepare variables') {
 					steps {
 						script {
 							helper.runStepAndRecordFailure {
+								baseImageDockerfileGeneratorCommand = """
+									python3 ./jenkins/catapult/baseImageDockerfileGenerator.py \
+										--compiler-configuration jenkins/catapult/configurations/${ARCHITECTURE}/${COMPILER_CONFIGURATION}.yaml \
+										--operating-system ${OPERATING_SYSTEM} \
+										--versions ./jenkins/catapult/versions.properties \
+										--layer os \
+										--base-name-only \
+								"""
+								archImageName = sh(
+										script: "${baseImageDockerfileGeneratorCommand}",
+										returnStdout: true
+								).trim()
 								destImageName = sh(
-									script: """
-										python3 ./jenkins/catapult/baseImageDockerfileGenerator.py \
-											--compiler-configuration jenkins/catapult/configurations/${COMPILER_CONFIGURATION}.yaml \
-											--operating-system ${OPERATING_SYSTEM} \
-											--versions ./jenkins/catapult/versions.properties \
-											--layer os \
-											--base-name-only
-									""",
-									returnStdout: true
+										script: "${baseImageDockerfileGeneratorCommand} --ignore-architecture",
+										returnStdout: true
 								).trim()
 							}
 						}
@@ -54,6 +68,7 @@ pipeline {
 
 							COMPILER_CONFIGURATION: ${COMPILER_CONFIGURATION}
 								  OPERATING_SYSTEM: ${OPERATING_SYSTEM}
+									  ARCHITECTURE: ${ARCHITECTURE}
 
 								     destImageName: ${destImageName}
 						"""
@@ -69,10 +84,16 @@ pipeline {
 						dir("jenkins/catapult/compilers/${OPERATING_SYSTEM}-${compilerParts[0]}")
 						{
 							String compilerVersion = readYaml(file: "../${COMPILER_CONFIGURATION}.yaml").version
-							String buildArg = "--build-arg COMPILER_VERSION=${compilerVersion} ."
+							properties = readProperties(file: '../../versions.properties')
+							osVersion = properties[params.OPERATING_SYSTEM]
+							String fromImage = 'windows' == params.OPERATING_SYSTEM
+									? 'mcr.microsoft.com/powershell:latest'
+									: "${params.OPERATING_SYSTEM}:${osVersion}"
+							String buildArg = "--build-arg COMPILER_VERSION=${compilerVersion} --build-arg FROM_IMAGE=${fromImage} ."
 							docker.withRegistry(DOCKER_URL, DOCKER_CREDENTIALS_ID) {
-								docker.build(destImageName, buildArg).push()
+								docker.build(archImageName, buildArg).push()
 							}
+							dockerHelper.tagDockerImage("${OPERATING_SYSTEM}", "${DOCKER_URL}", "${DOCKER_CREDENTIALS_ID}", archImageName, destImageName)
 						}
 					}
 				}

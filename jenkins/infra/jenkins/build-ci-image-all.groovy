@@ -1,11 +1,15 @@
 pipeline {
-	agent {
-		label 'ubuntu-agent'
-	}
-
 	parameters {
 		gitParameter branchFilter: 'origin/(.*)', defaultValue: 'dev', name: 'MANUAL_GIT_BRANCH', type: 'PT_BRANCH'
+		choice name: 'ARCHITECTURE', choices: ['arm64', 'amd64'], description: 'Computer architecture'
 		booleanParam name: 'SHOULD_PUBLISH_JOB_STATUS', description: 'true to publish job status', defaultValue: true
+	}
+
+	agent {
+		label """${
+			env.ARCHITECTURE = env.ARCHITECTURE ?: 'arm64'
+			helper.resolveAgentName('ubuntu', "${env.ARCHITECTURE}", 'small')
+		}"""
 	}
 
 	options {
@@ -14,15 +18,28 @@ pipeline {
 	}
 
 	triggers {
-		cron('@weekly')
+		// saturday and sunday of the week
+		cron('H H * * 6,7')
 	}
 
 	stages {
+		stage('override architecture') {
+			when {
+				triggeredBy 'TimerTrigger'
+			}
+			steps {
+				script {
+					// even days are amd64, odd days are arm64
+					env.ARCHITECTURE = helper.determineArchitecture()
+				}
+			}
+		}
 		stage('print env') {
 			steps {
 				echo """
 							env.GIT_BRANCH: ${env.GIT_BRANCH}
-						 MANUAL_GIT_BRANCH: ${MANUAL_GIT_BRANCH}
+						 MANUAL_GIT_BRANCH: ${env.MANUAL_GIT_BRANCH}
+							  ARCHITECTURE: ${env.ARCHITECTURE}
 				"""
 			}
 		}
@@ -43,6 +60,7 @@ pipeline {
 						}
 					}
 				}
+
 				stage('javascript') {
 					steps {
 						script {
@@ -50,6 +68,26 @@ pipeline {
 						}
 					}
 				}
+				stage('javascript - windows') {
+					when {
+						expression {
+							helper.isAmd64Architecture(env.ARCHITECTURE)
+						}
+					}
+					steps {
+						script {
+							dispatchBuildCiImageJob('javascript', 'lts', 'windows')
+						}
+					}
+				}
+				stage('javascript - fedora') {
+					steps {
+						script {
+							dispatchBuildCiImageJob('javascript', 'lts', 'fedora')
+						}
+					}
+				}
+
 				stage('linter') {
 					steps {
 						script {
@@ -69,6 +107,39 @@ pipeline {
 					steps {
 						script {
 							dispatchBuildCiImageJob('python')
+						}
+					}
+				}
+				stage('python - ubuntu base') {
+					steps {
+						script {
+							dispatchBuildCiImageJob('python', 'base')
+						}
+					}
+				}
+				stage('python - ubuntu latest') {
+					steps {
+						script {
+							dispatchBuildCiImageJob('python', 'latest')
+						}
+					}
+				}
+				stage('python - windows') {
+					when {
+						expression {
+							helper.isAmd64Architecture(env.ARCHITECTURE)
+						}
+					}
+					steps {
+						script {
+							dispatchBuildCiImageJob('python', 'lts', 'windows')
+						}
+					}
+				}
+				stage('python - fedora') {
+					steps {
+						script {
+							dispatchBuildCiImageJob('python', 'lts', 'fedora')
 						}
 					}
 				}
@@ -103,10 +174,13 @@ pipeline {
 	}
 }
 
-void dispatchBuildCiImageJob(String ciImage) {
+void dispatchBuildCiImageJob(String ciImage, String baseImage = 'lts', String operatingSystem = 'ubuntu') {
 	build job: 'build-ci-image', parameters: [
-		string(name: 'CI_IMAGE', value: "${ciImage}"),
-		string(name: 'MANUAL_GIT_BRANCH', value: "${params.MANUAL_GIT_BRANCH}"),
+		string(name: 'OPERATING_SYSTEM', value: operatingSystem),
+		string(name: 'CI_IMAGE', value: ciImage),
+		string(name: 'MANUAL_GIT_BRANCH', value: params.MANUAL_GIT_BRANCH),
+		string(name: 'ARCHITECTURE', value: env.ARCHITECTURE),
+		string(name: 'BASE_IMAGE', value: baseImage),
 		booleanParam(
 			name: 'SHOULD_PUBLISH_FAIL_JOB_STATUS',
 			value: "${!env.SHOULD_PUBLISH_JOB_STATUS || env.SHOULD_PUBLISH_JOB_STATUS.toBoolean()}"
