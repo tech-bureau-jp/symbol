@@ -1,4 +1,4 @@
-ARG FROM_IMAGE=ubuntu:23.10
+ARG FROM_IMAGE=ubuntu:24.04
 FROM ${FROM_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -12,7 +12,7 @@ RUN apt-get update >/dev/null && \
 	xz-utils \
 	wget \
 	>/dev/null 
-	
+
 # Use the latest gcc version.
 ARG COMPILER_VERSION=13
 RUN apt-get update >/dev/null && \

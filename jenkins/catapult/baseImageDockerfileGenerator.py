@@ -69,7 +69,11 @@ def print_msvc_line(lines, separator=" `\n    && ", **kwargs):
 
 def install_pip_package(user, package_name):
     print_lines(
-        [f"USER {user}", f"RUN python3 -m pip install -U {package_name}", "USER root"]
+        [
+            f"USER {user}",
+            f"RUN python3 -m pip install -U --break-system-packages {package_name}",
+            "USER root",
+        ]
     )
 
 
@@ -350,7 +354,7 @@ class UbuntuSystem:
             ],
             APT_PACKAGES=" ".join(apt_packages),
         )
-        install_pip_package(user, "pycodestyle pylint pyyaml")
+        install_pip_package("root", "pycodestyle pylint pyyaml")
 
 
 class FedoraSystem:
