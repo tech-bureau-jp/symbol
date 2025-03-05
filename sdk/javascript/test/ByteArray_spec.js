@@ -47,4 +47,12 @@ describe('ByteArray', () => {
 	it('supports toString', () => {
 		expect(new ByteArray(FIXED_SIZE, TEST_BYTES).toString()).to.equal(TEST_HEX);
 	});
+
+	it('supports toJson', () => {
+		expect(new ByteArray(FIXED_SIZE, TEST_BYTES).toJson()).to.equal(TEST_HEX);
+	});
+
+	it('supports NAME', () => {
+		expect(ByteArray.NAME).to.equal('ByteArray');
+	});
 });

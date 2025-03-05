@@ -102,8 +102,8 @@ namespace catapult {
 
 // Bug in boost where the trait information is missing the "catapult" namespace.
 // Boost function returns this - [with TTraits = {anonymous}::RuntimeErrorTraits]
-// For gcc 12 add the namespace manually
-#if (12 == __GNUC__)
+// For gcc 12 and greater add the namespace manually
+#if (12 <= __GNUC__)
 				oss << "catapult::";
 #endif
 
@@ -120,7 +120,7 @@ namespace catapult {
 			std::string endBrace = " >";
 			std::string exceptionFqn = std::string(TTraits::Exception_Fqn);
 
-#if 15 == __clang_major__
+#if 15 <= __clang_major__
 			endBrace = ">";
 			std::string toSearch = "> >";
 			auto pos = exceptionFqn.find(toSearch);

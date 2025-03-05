@@ -4,10 +4,12 @@
 // Shows how to create all transactions manually using TransactionFactory.
 //
 
-import symbolSdk from '../src/index.js';
+import { PrivateKey } from '../src/index.js';
+import { NemFacade } from '../src/nem/index.js';
+import { SymbolFacade } from '../src/symbol/index.js';
 import yargs from 'yargs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 
 (() => {
 	class TransactionSample {
@@ -15,8 +17,8 @@ import { fileURLToPath } from 'url';
 			this.facade = facade;
 			this.commonFields = commonFields;
 
-			const privateKey = new symbolSdk.PrivateKey('11002233445566778899AABBCCDDEEFF11002233445566778899AABBCCDDEEFF');
-			this.keyPair = new this.facade.constructor.KeyPair(privateKey);
+			const privateKey = new PrivateKey('11002233445566778899AABBCCDDEEFF11002233445566778899AABBCCDDEEFF');
+			this.keyPair = new this.facade.static.KeyPair(privateKey);
 		}
 
 		processTransactionDescriptors(transactionDescriptors) {
@@ -36,7 +38,7 @@ import { fileURLToPath } from 'url';
 
 		signAndPrint(transaction) {
 			const signature = this.facade.signTransaction(this.keyPair, transaction);
-			this.facade.transactionFactory.constructor.attachSignature(transaction, signature);
+			this.facade.transactionFactory.static.attachSignature(transaction, signature);
 
 			console.log(`Hash: ${this.facade.hashTransaction(transaction)}`);
 			console.log(transaction.toString());
@@ -58,7 +60,7 @@ import { fileURLToPath } from 'url';
 			testsPending += 1;
 
 			const filepath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'descriptors', `${factoryName}.js`);
-			import(filepath).then(module => {
+			import(pathToFileURL(filepath).toString()).then(module => {
 				const transactionDescriptors = module.default();
 				sample.processTransactionDescriptors(transactionDescriptors);
 				totalDescriptorsCount += transactionDescriptors.length;
@@ -70,11 +72,11 @@ import { fileURLToPath } from 'url';
 		decrementTestsPending();
 	};
 
-	const nemTransactionSample = new TransactionSample(new symbolSdk.facade.NemFacade('testnet'), {
+	const nemTransactionSample = new TransactionSample(new NemFacade('testnet'), {
 		deadline: 12345
 	});
 
-	const symbolTransactionSample = new TransactionSample(new symbolSdk.facade.SymbolFacade('testnet'), {
+	const symbolTransactionSample = new TransactionSample(new SymbolFacade('testnet'), {
 		fee: 625n,
 		deadline: 12345n
 	});
@@ -85,7 +87,7 @@ import { fileURLToPath } from 'url';
 			choices: ['nem', 'symbol'],
 			require: true
 		})
-		.argv;
+		.parseSync();
 
 	if ('nem' === args.blockchain) {
 		runAllTests(nemTransactionSample, [

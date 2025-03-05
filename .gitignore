@@ -19,8 +19,10 @@ _temp/
 # js
 node_modules/
 npm-*.log*
+ts/
 
 # python
+.python-version
 __pycache__/
 *.egg-info/
 build/

@@ -19,14 +19,11 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const dbFacade = require('./dbFacade');
-const routeResultTypes = require('./routeResultTypes');
-const routeUtils = require('./routeUtils');
-const catapult = require('../catapult-sdk/index');
+import dbFacade from './dbFacade.js';
+import routeResultTypes from './routeResultTypes.js';
+import routeUtils from './routeUtils.js';
 
-const { uint64 } = catapult.utils;
-
-module.exports = {
+export default {
 	register: (server, db, services) => {
 		server.get('/blocks', (req, res, next) => {
 			const { params } = req;
@@ -36,13 +33,16 @@ module.exports = {
 				? routeUtils.parseArgument(params, 'beneficiaryAddress', 'address')
 				: undefined;
 
+			const fromTimestamp = params.fromTimestamp ? routeUtils.parseArgument(params, 'fromTimestamp', 'uint64') : undefined;
+			const toTimestamp = params.toTimestamp ? routeUtils.parseArgument(params, 'toTimestamp', 'uint64') : undefined;
+
 			const offsetParsers = {
 				id: 'objectId',
 				height: 'uint64'
 			};
 			const options = routeUtils.parsePaginationArguments(params, services.config.pageSize, offsetParsers);
 
-			return db.blocks(signerPublicKey, beneficiaryAddress, options)
+			return db.blocks(signerPublicKey, beneficiaryAddress, fromTimestamp, toTimestamp, options)
 				.then(result => routeUtils.createSender(routeResultTypes.block).sendPage(res, next)(result));
 		});
 
@@ -51,7 +51,7 @@ module.exports = {
 
 			return dbFacade.runHeightDependentOperation(db, height, () => db.blockAtHeight(height))
 				.then(result => result.payload)
-				.then(routeUtils.createSender(routeResultTypes.block).sendOne(uint64.toString(height), res, next));
+				.then(routeUtils.createSender(routeResultTypes.block).sendOne(height, res, next));
 		});
 
 		server.get(

@@ -17,12 +17,12 @@ export class Amount extends BaseValue {
 
 	static deserialize(payload) {
 		const byteArray = payload;
-		return new Amount(converter.bytesToIntUnaligned(byteArray, 8, false));
+		return new Amount(converter.bytesToBigIntUnaligned(byteArray, 8, false));
 	}
 
 	static deserializeAligned(payload) {
 		const byteArray = payload;
-		return new Amount(converter.bytesToInt(byteArray, 8, false));
+		return new Amount(converter.bytesToBigInt(byteArray, 8, false));
 	}
 
 	serialize() {
@@ -39,12 +39,12 @@ export class Height extends BaseValue {
 
 	static deserialize(payload) {
 		const byteArray = payload;
-		return new Height(converter.bytesToIntUnaligned(byteArray, 8, false));
+		return new Height(converter.bytesToBigIntUnaligned(byteArray, 8, false));
 	}
 
 	static deserializeAligned(payload) {
 		const byteArray = payload;
-		return new Height(converter.bytesToInt(byteArray, 8, false));
+		return new Height(converter.bytesToBigInt(byteArray, 8, false));
 	}
 
 	serialize() {
@@ -207,6 +207,10 @@ export class NetworkType {
 	toString() {
 		return `NetworkType.${NetworkType.valueToKey(this.value)}`;
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
 export class TransactionType {
@@ -218,7 +222,7 @@ export class TransactionType {
 
 	static MULTISIG_COSIGNATURE = new TransactionType(4098);
 
-	static MULTISIG_TRANSACTION = new TransactionType(4100);
+	static MULTISIG = new TransactionType(4100);
 
 	static NAMESPACE_REGISTRATION = new TransactionType(8193);
 
@@ -235,8 +239,8 @@ export class TransactionType {
 			257, 2049, 4097, 4098, 4100, 8193, 16385, 16386
 		];
 		const keys = [
-			'TRANSFER', 'ACCOUNT_KEY_LINK', 'MULTISIG_ACCOUNT_MODIFICATION', 'MULTISIG_COSIGNATURE', 'MULTISIG_TRANSACTION',
-			'NAMESPACE_REGISTRATION', 'MOSAIC_DEFINITION', 'MOSAIC_SUPPLY_CHANGE'
+			'TRANSFER', 'ACCOUNT_KEY_LINK', 'MULTISIG_ACCOUNT_MODIFICATION', 'MULTISIG_COSIGNATURE', 'MULTISIG', 'NAMESPACE_REGISTRATION',
+			'MOSAIC_DEFINITION', 'MOSAIC_SUPPLY_CHANGE'
 		];
 
 		const index = values.indexOf(value);
@@ -270,6 +274,10 @@ export class TransactionType {
 
 	toString() {
 		return `TransactionType.${TransactionType.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -381,8 +389,7 @@ export class Transaction {
 		return size;
 	}
 
-	static deserialize(payload) {
-		const view = new BufferView(payload);
+	static _deserialize(view, instance) {
 		const type = TransactionType.deserialize(view.buffer);
 		view.shiftRight(type.size);
 		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
@@ -412,7 +419,6 @@ export class Transaction {
 		const deadline = Timestamp.deserialize(view.buffer);
 		view.shiftRight(deadline.size);
 
-		const instance = new Transaction();
 		instance._type = type;
 		instance._version = version;
 		instance._network = network;
@@ -421,11 +427,15 @@ export class Transaction {
 		instance._signature = signature;
 		instance._fee = fee;
 		instance._deadline = deadline;
-		return instance;
 	}
 
 	serialize() {
 		const buffer = new Writer(this.size);
+		this._serialize(buffer);
+		return buffer.storage;
+	}
+
+	_serialize(buffer) {
 		buffer.write(this._type.serialize());
 		buffer.write(converter.intToBytes(this._version, 1, false));
 		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
@@ -437,7 +447,6 @@ export class Transaction {
 		buffer.write(this._signature.serialize());
 		buffer.write(this._fee.serialize());
 		buffer.write(this._deadline.serialize());
-		return buffer.storage;
 	}
 
 	toString() {
@@ -451,6 +460,22 @@ export class Transaction {
 		result += `fee: ${this._fee.toString()}, `;
 		result += `deadline: ${this._deadline.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.type = this._type.toJson();
+		result.version = this._version;
+		result.network = this._network.toJson();
+		result.timestamp = this._timestamp.toJson();
+		result.signerPublicKey = this._signerPublicKey.toJson();
+		result.signature = this._signature.toJson();
+		result.fee = this._fee.toJson();
+		result.deadline = this._deadline.toJson();
 		return result;
 	}
 }
@@ -550,8 +575,7 @@ export class NonVerifiableTransaction {
 		return size;
 	}
 
-	static deserialize(payload) {
-		const view = new BufferView(payload);
+	static _deserialize(view, instance) {
 		const type = TransactionType.deserialize(view.buffer);
 		view.shiftRight(type.size);
 		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
@@ -575,7 +599,6 @@ export class NonVerifiableTransaction {
 		const deadline = Timestamp.deserialize(view.buffer);
 		view.shiftRight(deadline.size);
 
-		const instance = new NonVerifiableTransaction();
 		instance._type = type;
 		instance._version = version;
 		instance._network = network;
@@ -583,11 +606,15 @@ export class NonVerifiableTransaction {
 		instance._signerPublicKey = signerPublicKey;
 		instance._fee = fee;
 		instance._deadline = deadline;
-		return instance;
 	}
 
 	serialize() {
 		const buffer = new Writer(this.size);
+		this._serialize(buffer);
+		return buffer.storage;
+	}
+
+	_serialize(buffer) {
 		buffer.write(this._type.serialize());
 		buffer.write(converter.intToBytes(this._version, 1, false));
 		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
@@ -597,7 +624,6 @@ export class NonVerifiableTransaction {
 		buffer.write(this._signerPublicKey.serialize());
 		buffer.write(this._fee.serialize());
 		buffer.write(this._deadline.serialize());
-		return buffer.storage;
 	}
 
 	toString() {
@@ -610,6 +636,21 @@ export class NonVerifiableTransaction {
 		result += `fee: ${this._fee.toString()}, `;
 		result += `deadline: ${this._deadline.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.type = this._type.toJson();
+		result.version = this._version;
+		result.network = this._network.toJson();
+		result.timestamp = this._timestamp.toJson();
+		result.signerPublicKey = this._signerPublicKey.toJson();
+		result.fee = this._fee.toJson();
+		result.deadline = this._deadline.toJson();
 		return result;
 	}
 }
@@ -663,107 +704,33 @@ export class LinkAction {
 	toString() {
 		return `LinkAction.${LinkAction.valueToKey(this.value)}`;
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
-export class AccountKeyLinkTransactionV1 {
+export class AccountKeyLinkTransactionV1 extends Transaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.ACCOUNT_KEY_LINK;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		linkAction: 'enum:LinkAction',
 		remotePublicKey: 'pod:PublicKey'
 	};
 
 	constructor() {
+		super();
 		this._type = AccountKeyLinkTransactionV1.TRANSACTION_TYPE;
 		this._version = AccountKeyLinkTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._linkAction = LinkAction.LINK;
 		this._remotePublicKey = new PublicKey();
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 		this._remotePublicKeySize = 32; // reserved field
 	}
 
 	sort() { // eslint-disable-line class-methods-use-this
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get linkAction() {
@@ -784,17 +751,7 @@ export class AccountKeyLinkTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += this.linkAction.size;
 		size += 4;
 		size += this.remotePublicKey.size;
@@ -803,34 +760,9 @@ export class AccountKeyLinkTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new AccountKeyLinkTransactionV1();
+
+		Transaction._deserialize(view, instance);
 		const linkAction = LinkAction.deserialize(view.buffer);
 		view.shiftRight(linkAction.size);
 		const remotePublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
@@ -840,15 +772,6 @@ export class AccountKeyLinkTransactionV1 {
 		const remotePublicKey = PublicKey.deserialize(view.buffer);
 		view.shiftRight(remotePublicKey.size);
 
-		const instance = new AccountKeyLinkTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._linkAction = linkAction;
 		instance._remotePublicKey = remotePublicKey;
 		return instance;
@@ -856,17 +779,7 @@ export class AccountKeyLinkTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(this._linkAction.serialize());
 		buffer.write(converter.intToBytes(this._remotePublicKeySize, 4, false));
 		buffer.write(this._remotePublicKey.serialize());
@@ -875,109 +788,46 @@ export class AccountKeyLinkTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `linkAction: ${this._linkAction.toString()}, `;
 		result += `remotePublicKey: ${this._remotePublicKey.toString()}, `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkAction = this._linkAction.toJson();
+		result.remotePublicKey = this._remotePublicKey.toJson();
+		return result;
+	}
 }
 
-export class NonVerifiableAccountKeyLinkTransactionV1 {
+export class NonVerifiableAccountKeyLinkTransactionV1 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.ACCOUNT_KEY_LINK;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		linkAction: 'enum:LinkAction',
 		remotePublicKey: 'pod:PublicKey'
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableAccountKeyLinkTransactionV1.TRANSACTION_TYPE;
 		this._version = NonVerifiableAccountKeyLinkTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._linkAction = LinkAction.LINK;
 		this._remotePublicKey = new PublicKey();
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 		this._remotePublicKeySize = 32; // reserved field
 	}
 
 	sort() { // eslint-disable-line class-methods-use-this
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get linkAction() {
@@ -998,15 +848,7 @@ export class NonVerifiableAccountKeyLinkTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += this.linkAction.size;
 		size += 4;
 		size += this.remotePublicKey.size;
@@ -1015,28 +857,9 @@ export class NonVerifiableAccountKeyLinkTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableAccountKeyLinkTransactionV1();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const linkAction = LinkAction.deserialize(view.buffer);
 		view.shiftRight(linkAction.size);
 		const remotePublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
@@ -1046,14 +869,6 @@ export class NonVerifiableAccountKeyLinkTransactionV1 {
 		const remotePublicKey = PublicKey.deserialize(view.buffer);
 		view.shiftRight(remotePublicKey.size);
 
-		const instance = new NonVerifiableAccountKeyLinkTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._linkAction = linkAction;
 		instance._remotePublicKey = remotePublicKey;
 		return instance;
@@ -1061,15 +876,7 @@ export class NonVerifiableAccountKeyLinkTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(this._linkAction.serialize());
 		buffer.write(converter.intToBytes(this._remotePublicKeySize, 4, false));
 		buffer.write(this._remotePublicKey.serialize());
@@ -1078,16 +885,21 @@ export class NonVerifiableAccountKeyLinkTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `linkAction: ${this._linkAction.toString()}, `;
 		result += `remotePublicKey: ${this._remotePublicKey.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkAction = this._linkAction.toJson();
+		result.remotePublicKey = this._remotePublicKey.toJson();
 		return result;
 	}
 }
@@ -1121,12 +933,13 @@ export class NamespaceId {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new NamespaceId();
+
 		const nameSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		const name = new Uint8Array(view.buffer.buffer, view.buffer.byteOffset, nameSize);
 		view.shiftRight(nameSize);
 
-		const instance = new NamespaceId();
 		instance._name = name;
 		return instance;
 	}
@@ -1142,6 +955,15 @@ export class NamespaceId {
 		let result = '(';
 		result += `name: hex(${converter.uint8ToHex(this._name)}), `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.name = converter.uint8ToHex(this._name);
 		return result;
 	}
 }
@@ -1187,6 +1009,8 @@ export class MosaicId {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new MosaicId();
+
 		const namespaceId = NamespaceId.deserialize(view.buffer);
 		view.shiftRight(namespaceId.size);
 		const nameSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
@@ -1194,7 +1018,6 @@ export class MosaicId {
 		const name = new Uint8Array(view.buffer.buffer, view.buffer.byteOffset, nameSize);
 		view.shiftRight(nameSize);
 
-		const instance = new MosaicId();
 		instance._namespaceId = namespaceId;
 		instance._name = name;
 		return instance;
@@ -1213,6 +1036,16 @@ export class MosaicId {
 		result += `namespaceId: ${this._namespaceId.toString()}, `;
 		result += `name: hex(${converter.uint8ToHex(this._name)}), `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.namespaceId = this._namespaceId.toJson();
+		result.name = converter.uint8ToHex(this._name);
 		return result;
 	}
 }
@@ -1258,6 +1091,8 @@ export class Mosaic {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new Mosaic();
+
 		const mosaicIdSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
@@ -1266,7 +1101,6 @@ export class Mosaic {
 		const amount = Amount.deserialize(view.buffer);
 		view.shiftRight(amount.size);
 
-		const instance = new Mosaic();
 		instance._mosaicId = mosaicId;
 		instance._amount = amount;
 		return instance;
@@ -1285,6 +1119,16 @@ export class Mosaic {
 		result += `mosaicId: ${this._mosaicId.toString()}, `;
 		result += `amount: ${this._amount.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.mosaicId = this._mosaicId.toJson();
+		result.amount = this._amount.toJson();
 		return result;
 	}
 }
@@ -1319,13 +1163,14 @@ export class SizePrefixedMosaic {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new SizePrefixedMosaic();
+
 		const mosaicSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
 		const mosaic = Mosaic.deserialize(view.window(mosaicSize));
 		view.shiftRight(mosaic.size);
 
-		const instance = new SizePrefixedMosaic();
 		instance._mosaic = mosaic;
 		return instance;
 	}
@@ -1341,6 +1186,15 @@ export class SizePrefixedMosaic {
 		let result = '(';
 		result += `mosaic: ${this._mosaic.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.mosaic = this._mosaic.toJson();
 		return result;
 	}
 }
@@ -1393,6 +1247,10 @@ export class MosaicTransferFeeType {
 
 	toString() {
 		return `MosaicTransferFeeType.${MosaicTransferFeeType.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -1461,6 +1319,8 @@ export class MosaicLevy {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new MosaicLevy();
+
 		const transferFeeType = MosaicTransferFeeType.deserialize(view.buffer);
 		view.shiftRight(transferFeeType.size);
 		const recipientAddressSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
@@ -1477,7 +1337,6 @@ export class MosaicLevy {
 		const fee = Amount.deserialize(view.buffer);
 		view.shiftRight(fee.size);
 
-		const instance = new MosaicLevy();
 		instance._transferFeeType = transferFeeType;
 		instance._recipientAddress = recipientAddress;
 		instance._mosaicId = mosaicId;
@@ -1503,6 +1362,18 @@ export class MosaicLevy {
 		result += `mosaicId: ${this._mosaicId.toString()}, `;
 		result += `fee: ${this._fee.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.transferFeeType = this._transferFeeType.toJson();
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.mosaicId = this._mosaicId.toJson();
+		result.fee = this._fee.toJson();
 		return result;
 	}
 }
@@ -1548,6 +1419,8 @@ export class MosaicProperty {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new MosaicProperty();
+
 		const nameSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		const name = new Uint8Array(view.buffer.buffer, view.buffer.byteOffset, nameSize);
@@ -1557,7 +1430,6 @@ export class MosaicProperty {
 		const value = new Uint8Array(view.buffer.buffer, view.buffer.byteOffset, valueSize);
 		view.shiftRight(valueSize);
 
-		const instance = new MosaicProperty();
 		instance._name = name;
 		instance._value = value;
 		return instance;
@@ -1577,6 +1449,16 @@ export class MosaicProperty {
 		result += `name: hex(${converter.uint8ToHex(this._name)}), `;
 		result += `value: hex(${converter.uint8ToHex(this._value)}), `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.name = converter.uint8ToHex(this._name);
+		result.value = converter.uint8ToHex(this._value);
 		return result;
 	}
 }
@@ -1611,13 +1493,14 @@ export class SizePrefixedMosaicProperty {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new SizePrefixedMosaicProperty();
+
 		const propertySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
 		const property = MosaicProperty.deserialize(view.window(propertySize));
 		view.shiftRight(property.size);
 
-		const instance = new SizePrefixedMosaicProperty();
 		instance._property = property;
 		return instance;
 	}
@@ -1633,6 +1516,15 @@ export class SizePrefixedMosaicProperty {
 		let result = '(';
 		result += `property: ${this._property.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.property = this._property.toJson();
 		return result;
 	}
 }
@@ -1724,6 +1616,8 @@ export class MosaicDefinition {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new MosaicDefinition();
+
 		const ownerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		if (32 !== ownerPublicKeySize)
@@ -1751,7 +1645,6 @@ export class MosaicDefinition {
 			view.shiftRight(levy.size);
 		}
 
-		const instance = new MosaicDefinition();
 		instance._ownerPublicKey = ownerPublicKey;
 		instance._id = id;
 		instance._description = description;
@@ -1789,110 +1682,47 @@ export class MosaicDefinition {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.ownerPublicKey = this._ownerPublicKey.toJson();
+		result.id = this._id.toJson();
+		result.description = converter.uint8ToHex(this._description);
+		result.properties = this._properties.map(e => e.toJson());
+		if (0 !== this.levySizeComputed)
+			result.levy = this._levy.toJson();
+
+		return result;
+	}
 }
 
-export class MosaicDefinitionTransactionV1 {
+export class MosaicDefinitionTransactionV1 extends Transaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.MOSAIC_DEFINITION;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		mosaicDefinition: 'struct:MosaicDefinition',
 		rentalFeeSink: 'pod:Address',
 		rentalFee: 'pod:Amount'
 	};
 
 	constructor() {
+		super();
 		this._type = MosaicDefinitionTransactionV1.TRANSACTION_TYPE;
 		this._version = MosaicDefinitionTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._mosaicDefinition = new MosaicDefinition();
 		this._rentalFeeSink = new Address();
 		this._rentalFee = new Amount();
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 		this._rentalFeeSinkSize = 40; // reserved field
 	}
 
 	sort() {
 		this._mosaicDefinition.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get mosaicDefinition() {
@@ -1921,17 +1751,7 @@ export class MosaicDefinitionTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.mosaicDefinition.size;
 		size += 4;
@@ -1942,34 +1762,9 @@ export class MosaicDefinitionTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new MosaicDefinitionTransactionV1();
+
+		Transaction._deserialize(view, instance);
 		const mosaicDefinitionSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
@@ -1984,15 +1779,6 @@ export class MosaicDefinitionTransactionV1 {
 		const rentalFee = Amount.deserialize(view.buffer);
 		view.shiftRight(rentalFee.size);
 
-		const instance = new MosaicDefinitionTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._mosaicDefinition = mosaicDefinition;
 		instance._rentalFeeSink = rentalFeeSink;
 		instance._rentalFee = rentalFee;
@@ -2001,17 +1787,7 @@ export class MosaicDefinitionTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this.mosaicDefinition.size, 4, false)); // bound: mosaic_definition_size
 		buffer.write(this._mosaicDefinition.serialize());
 		buffer.write(converter.intToBytes(this._rentalFeeSinkSize, 4, false));
@@ -2022,113 +1798,51 @@ export class MosaicDefinitionTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `mosaicDefinition: ${this._mosaicDefinition.toString()}, `;
 		result += `rentalFeeSink: ${this._rentalFeeSink.toString()}, `;
 		result += `rentalFee: ${this._rentalFee.toString()}, `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicDefinition = this._mosaicDefinition.toJson();
+		result.rentalFeeSink = this._rentalFeeSink.toJson();
+		result.rentalFee = this._rentalFee.toJson();
+		return result;
+	}
 }
 
-export class NonVerifiableMosaicDefinitionTransactionV1 {
+export class NonVerifiableMosaicDefinitionTransactionV1 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.MOSAIC_DEFINITION;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		mosaicDefinition: 'struct:MosaicDefinition',
 		rentalFeeSink: 'pod:Address',
 		rentalFee: 'pod:Amount'
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableMosaicDefinitionTransactionV1.TRANSACTION_TYPE;
 		this._version = NonVerifiableMosaicDefinitionTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._mosaicDefinition = new MosaicDefinition();
 		this._rentalFeeSink = new Address();
 		this._rentalFee = new Amount();
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 		this._rentalFeeSinkSize = 40; // reserved field
 	}
 
 	sort() {
 		this._mosaicDefinition.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get mosaicDefinition() {
@@ -2157,15 +1871,7 @@ export class NonVerifiableMosaicDefinitionTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.mosaicDefinition.size;
 		size += 4;
@@ -2176,28 +1882,9 @@ export class NonVerifiableMosaicDefinitionTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableMosaicDefinitionTransactionV1();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const mosaicDefinitionSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
@@ -2212,14 +1899,6 @@ export class NonVerifiableMosaicDefinitionTransactionV1 {
 		const rentalFee = Amount.deserialize(view.buffer);
 		view.shiftRight(rentalFee.size);
 
-		const instance = new NonVerifiableMosaicDefinitionTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._mosaicDefinition = mosaicDefinition;
 		instance._rentalFeeSink = rentalFeeSink;
 		instance._rentalFee = rentalFee;
@@ -2228,15 +1907,7 @@ export class NonVerifiableMosaicDefinitionTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this.mosaicDefinition.size, 4, false)); // bound: mosaic_definition_size
 		buffer.write(this._mosaicDefinition.serialize());
 		buffer.write(converter.intToBytes(this._rentalFeeSinkSize, 4, false));
@@ -2247,17 +1918,23 @@ export class NonVerifiableMosaicDefinitionTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `mosaicDefinition: ${this._mosaicDefinition.toString()}, `;
 		result += `rentalFeeSink: ${this._rentalFeeSink.toString()}, `;
 		result += `rentalFee: ${this._rentalFee.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicDefinition = this._mosaicDefinition.toJson();
+		result.rentalFeeSink = this._rentalFeeSink.toJson();
+		result.rentalFee = this._rentalFee.toJson();
 		return result;
 	}
 }
@@ -2311,109 +1988,35 @@ export class MosaicSupplyChangeAction {
 	toString() {
 		return `MosaicSupplyChangeAction.${MosaicSupplyChangeAction.valueToKey(this.value)}`;
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
-export class MosaicSupplyChangeTransactionV1 {
+export class MosaicSupplyChangeTransactionV1 extends Transaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.MOSAIC_SUPPLY_CHANGE;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		mosaicId: 'struct:MosaicId',
 		action: 'enum:MosaicSupplyChangeAction',
 		delta: 'pod:Amount'
 	};
 
 	constructor() {
+		super();
 		this._type = MosaicSupplyChangeTransactionV1.TRANSACTION_TYPE;
 		this._version = MosaicSupplyChangeTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._mosaicId = new MosaicId();
 		this._action = MosaicSupplyChangeAction.INCREASE;
 		this._delta = new Amount();
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 	}
 
 	sort() {
 		this._mosaicId.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get mosaicId() {
@@ -2442,17 +2045,7 @@ export class MosaicSupplyChangeTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.mosaicId.size;
 		size += this.action.size;
@@ -2462,34 +2055,9 @@ export class MosaicSupplyChangeTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new MosaicSupplyChangeTransactionV1();
+
+		Transaction._deserialize(view, instance);
 		const mosaicIdSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
@@ -2500,15 +2068,6 @@ export class MosaicSupplyChangeTransactionV1 {
 		const delta = Amount.deserialize(view.buffer);
 		view.shiftRight(delta.size);
 
-		const instance = new MosaicSupplyChangeTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._mosaicId = mosaicId;
 		instance._action = action;
 		instance._delta = delta;
@@ -2517,17 +2076,7 @@ export class MosaicSupplyChangeTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this.mosaicId.size, 4, false)); // bound: mosaic_id_size
 		buffer.write(this._mosaicId.serialize());
 		buffer.write(this._action.serialize());
@@ -2537,112 +2086,50 @@ export class MosaicSupplyChangeTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `mosaicId: ${this._mosaicId.toString()}, `;
 		result += `action: ${this._action.toString()}, `;
 		result += `delta: ${this._delta.toString()}, `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicId = this._mosaicId.toJson();
+		result.action = this._action.toJson();
+		result.delta = this._delta.toJson();
+		return result;
+	}
 }
 
-export class NonVerifiableMosaicSupplyChangeTransactionV1 {
+export class NonVerifiableMosaicSupplyChangeTransactionV1 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.MOSAIC_SUPPLY_CHANGE;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		mosaicId: 'struct:MosaicId',
 		action: 'enum:MosaicSupplyChangeAction',
 		delta: 'pod:Amount'
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableMosaicSupplyChangeTransactionV1.TRANSACTION_TYPE;
 		this._version = NonVerifiableMosaicSupplyChangeTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._mosaicId = new MosaicId();
 		this._action = MosaicSupplyChangeAction.INCREASE;
 		this._delta = new Amount();
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 	}
 
 	sort() {
 		this._mosaicId.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get mosaicId() {
@@ -2671,15 +2158,7 @@ export class NonVerifiableMosaicSupplyChangeTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.mosaicId.size;
 		size += this.action.size;
@@ -2689,28 +2168,9 @@ export class NonVerifiableMosaicSupplyChangeTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableMosaicSupplyChangeTransactionV1();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const mosaicIdSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
@@ -2721,14 +2181,6 @@ export class NonVerifiableMosaicSupplyChangeTransactionV1 {
 		const delta = Amount.deserialize(view.buffer);
 		view.shiftRight(delta.size);
 
-		const instance = new NonVerifiableMosaicSupplyChangeTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._mosaicId = mosaicId;
 		instance._action = action;
 		instance._delta = delta;
@@ -2737,15 +2189,7 @@ export class NonVerifiableMosaicSupplyChangeTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this.mosaicId.size, 4, false)); // bound: mosaic_id_size
 		buffer.write(this._mosaicId.serialize());
 		buffer.write(this._action.serialize());
@@ -2755,17 +2199,23 @@ export class NonVerifiableMosaicSupplyChangeTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `mosaicId: ${this._mosaicId.toString()}, `;
 		result += `action: ${this._action.toString()}, `;
 		result += `delta: ${this._delta.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicId = this._mosaicId.toJson();
+		result.action = this._action.toJson();
+		result.delta = this._delta.toJson();
 		return result;
 	}
 }
@@ -2819,6 +2269,10 @@ export class MultisigAccountModificationType {
 	toString() {
 		return `MultisigAccountModificationType.${MultisigAccountModificationType.valueToKey(this.value)}`;
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
 export class MultisigAccountModification {
@@ -2869,6 +2323,8 @@ export class MultisigAccountModification {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new MultisigAccountModification();
+
 		const modificationType = MultisigAccountModificationType.deserialize(view.buffer);
 		view.shiftRight(modificationType.size);
 		const cosignatoryPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
@@ -2878,7 +2334,6 @@ export class MultisigAccountModification {
 		const cosignatoryPublicKey = PublicKey.deserialize(view.buffer);
 		view.shiftRight(cosignatoryPublicKey.size);
 
-		const instance = new MultisigAccountModification();
 		instance._modificationType = modificationType;
 		instance._cosignatoryPublicKey = cosignatoryPublicKey;
 		return instance;
@@ -2897,6 +2352,16 @@ export class MultisigAccountModification {
 		result += `modificationType: ${this._modificationType.toString()}, `;
 		result += `cosignatoryPublicKey: ${this._cosignatoryPublicKey.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.modificationType = this._modificationType.toJson();
+		result.cosignatoryPublicKey = this._cosignatoryPublicKey.toJson();
 		return result;
 	}
 }
@@ -2931,13 +2396,14 @@ export class SizePrefixedMultisigAccountModification {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new SizePrefixedMultisigAccountModification();
+
 		const modificationSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
 		const modification = MultisigAccountModification.deserialize(view.window(modificationSize));
 		view.shiftRight(modification.size);
 
-		const instance = new SizePrefixedMultisigAccountModification();
 		instance._modification = modification;
 		return instance;
 	}
@@ -2955,37 +2421,32 @@ export class SizePrefixedMultisigAccountModification {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.modification = this._modification.toJson();
+		return result;
+	}
 }
 
-export class MultisigAccountModificationTransactionV1 {
+export class MultisigAccountModificationTransactionV1 extends Transaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.MULTISIG_ACCOUNT_MODIFICATION;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		modifications: 'array[SizePrefixedMultisigAccountModification]'
 	};
 
 	constructor() {
+		super();
 		this._type = MultisigAccountModificationTransactionV1.TRANSACTION_TYPE;
 		this._version = MultisigAccountModificationTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._modifications = [];
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 	}
 
 	sort() {
@@ -2993,70 +2454,6 @@ export class MultisigAccountModificationTransactionV1 {
 			(lhs.modification.comparer ? lhs.modification.comparer() : lhs.modification.value),
 			(rhs.modification.comparer ? rhs.modification.comparer() : rhs.modification.value)
 		));
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get modifications() {
@@ -3069,17 +2466,7 @@ export class MultisigAccountModificationTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += arrayHelpers.size(this.modifications);
 		return size;
@@ -3087,65 +2474,21 @@ export class MultisigAccountModificationTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new MultisigAccountModificationTransactionV1();
+
+		Transaction._deserialize(view, instance);
 		const modificationsCount = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		const modifications = arrayHelpers.readArrayCount(view.buffer, SizePrefixedMultisigAccountModification, modificationsCount, e => ((e.modification.comparer ? e.modification.comparer() : e.modification.value)));
 		view.shiftRight(arrayHelpers.size(modifications));
 
-		const instance = new MultisigAccountModificationTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._modifications = modifications;
 		return instance;
 	}
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._modifications.length, 4, false)); // bound: modifications_count
 		arrayHelpers.writeArray(buffer, this._modifications, e => ((e.modification.comparer ? e.modification.comparer() : e.modification.value)));
 		return buffer.storage;
@@ -3153,46 +2496,38 @@ export class MultisigAccountModificationTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `modifications: [${this._modifications.map(e => e.toString()).join(',')}], `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.modifications = this._modifications.map(e => e.toJson());
+		return result;
+	}
 }
 
-export class NonVerifiableMultisigAccountModificationTransactionV1 {
+export class NonVerifiableMultisigAccountModificationTransactionV1 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.MULTISIG_ACCOUNT_MODIFICATION;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		modifications: 'array[SizePrefixedMultisigAccountModification]'
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableMultisigAccountModificationTransactionV1.TRANSACTION_TYPE;
 		this._version = NonVerifiableMultisigAccountModificationTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._modifications = [];
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 	}
 
 	sort() {
@@ -3200,62 +2535,6 @@ export class NonVerifiableMultisigAccountModificationTransactionV1 {
 			(lhs.modification.comparer ? lhs.modification.comparer() : lhs.modification.value),
 			(rhs.modification.comparer ? rhs.modification.comparer() : rhs.modification.value)
 		));
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get modifications() {
@@ -3268,15 +2547,7 @@ export class NonVerifiableMultisigAccountModificationTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += arrayHelpers.size(this.modifications);
 		return size;
@@ -3284,56 +2555,21 @@ export class NonVerifiableMultisigAccountModificationTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableMultisigAccountModificationTransactionV1();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const modificationsCount = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		const modifications = arrayHelpers.readArrayCount(view.buffer, SizePrefixedMultisigAccountModification, modificationsCount, e => ((e.modification.comparer ? e.modification.comparer() : e.modification.value)));
 		view.shiftRight(arrayHelpers.size(modifications));
 
-		const instance = new NonVerifiableMultisigAccountModificationTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._modifications = modifications;
 		return instance;
 	}
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._modifications.length, 4, false)); // bound: modifications_count
 		arrayHelpers.writeArray(buffer, this._modifications, e => ((e.modification.comparer ? e.modification.comparer() : e.modification.value)));
 		return buffer.storage;
@@ -3341,49 +2577,39 @@ export class NonVerifiableMultisigAccountModificationTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `modifications: [${this._modifications.map(e => e.toString()).join(',')}], `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.modifications = this._modifications.map(e => e.toJson());
+		return result;
+	}
 }
 
-export class MultisigAccountModificationTransactionV2 {
+export class MultisigAccountModificationTransactionV2 extends Transaction {
 	static TRANSACTION_VERSION = 2;
 
 	static TRANSACTION_TYPE = TransactionType.MULTISIG_ACCOUNT_MODIFICATION;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		modifications: 'array[SizePrefixedMultisigAccountModification]'
 	};
 
 	constructor() {
+		super();
 		this._type = MultisigAccountModificationTransactionV2.TRANSACTION_TYPE;
 		this._version = MultisigAccountModificationTransactionV2.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._modifications = [];
 		this._minApprovalDelta = 0;
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 		this._minApprovalDeltaSize = 4; // reserved field
 	}
 
@@ -3392,70 +2618,6 @@ export class MultisigAccountModificationTransactionV2 {
 			(lhs.modification.comparer ? lhs.modification.comparer() : lhs.modification.value),
 			(rhs.modification.comparer ? rhs.modification.comparer() : rhs.modification.value)
 		));
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get modifications() {
@@ -3476,17 +2638,7 @@ export class MultisigAccountModificationTransactionV2 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += arrayHelpers.size(this.modifications);
 		size += 4;
@@ -3496,34 +2648,9 @@ export class MultisigAccountModificationTransactionV2 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new MultisigAccountModificationTransactionV2();
+
+		Transaction._deserialize(view, instance);
 		const modificationsCount = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		const modifications = arrayHelpers.readArrayCount(view.buffer, SizePrefixedMultisigAccountModification, modificationsCount, e => ((e.modification.comparer ? e.modification.comparer() : e.modification.value)));
@@ -3535,15 +2662,6 @@ export class MultisigAccountModificationTransactionV2 {
 		const minApprovalDelta = converter.bytesToIntUnaligned(view.buffer, 4, true);
 		view.shiftRight(4);
 
-		const instance = new MultisigAccountModificationTransactionV2();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._modifications = modifications;
 		instance._minApprovalDelta = minApprovalDelta;
 		return instance;
@@ -3551,17 +2669,7 @@ export class MultisigAccountModificationTransactionV2 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._modifications.length, 4, false)); // bound: modifications_count
 		arrayHelpers.writeArray(buffer, this._modifications, e => ((e.modification.comparer ? e.modification.comparer() : e.modification.value)));
 		buffer.write(converter.intToBytes(this._minApprovalDeltaSize, 4, false));
@@ -3571,48 +2679,41 @@ export class MultisigAccountModificationTransactionV2 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `modifications: [${this._modifications.map(e => e.toString()).join(',')}], `;
 		result += `minApprovalDelta: ${'0x'.concat(this._minApprovalDelta.toString(16))}, `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.modifications = this._modifications.map(e => e.toJson());
+		result.minApprovalDelta = this._minApprovalDelta;
+		return result;
+	}
 }
 
-export class NonVerifiableMultisigAccountModificationTransactionV2 {
+export class NonVerifiableMultisigAccountModificationTransactionV2 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 2;
 
 	static TRANSACTION_TYPE = TransactionType.MULTISIG_ACCOUNT_MODIFICATION;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		modifications: 'array[SizePrefixedMultisigAccountModification]'
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableMultisigAccountModificationTransactionV2.TRANSACTION_TYPE;
 		this._version = NonVerifiableMultisigAccountModificationTransactionV2.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._modifications = [];
 		this._minApprovalDelta = 0;
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 		this._minApprovalDeltaSize = 4; // reserved field
 	}
 
@@ -3621,62 +2722,6 @@ export class NonVerifiableMultisigAccountModificationTransactionV2 {
 			(lhs.modification.comparer ? lhs.modification.comparer() : lhs.modification.value),
 			(rhs.modification.comparer ? rhs.modification.comparer() : rhs.modification.value)
 		));
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get modifications() {
@@ -3697,15 +2742,7 @@ export class NonVerifiableMultisigAccountModificationTransactionV2 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += arrayHelpers.size(this.modifications);
 		size += 4;
@@ -3715,28 +2752,9 @@ export class NonVerifiableMultisigAccountModificationTransactionV2 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableMultisigAccountModificationTransactionV2();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const modificationsCount = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		const modifications = arrayHelpers.readArrayCount(view.buffer, SizePrefixedMultisigAccountModification, modificationsCount, e => ((e.modification.comparer ? e.modification.comparer() : e.modification.value)));
@@ -3748,14 +2766,6 @@ export class NonVerifiableMultisigAccountModificationTransactionV2 {
 		const minApprovalDelta = converter.bytesToIntUnaligned(view.buffer, 4, true);
 		view.shiftRight(4);
 
-		const instance = new NonVerifiableMultisigAccountModificationTransactionV2();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._modifications = modifications;
 		instance._minApprovalDelta = minApprovalDelta;
 		return instance;
@@ -3763,15 +2773,7 @@ export class NonVerifiableMultisigAccountModificationTransactionV2 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._modifications.length, 4, false)); // bound: modifications_count
 		arrayHelpers.writeArray(buffer, this._modifications, e => ((e.modification.comparer ? e.modification.comparer() : e.modification.value)));
 		buffer.write(converter.intToBytes(this._minApprovalDeltaSize, 4, false));
@@ -3781,129 +2783,52 @@ export class NonVerifiableMultisigAccountModificationTransactionV2 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `modifications: [${this._modifications.map(e => e.toString()).join(',')}], `;
 		result += `minApprovalDelta: ${'0x'.concat(this._minApprovalDelta.toString(16))}, `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.modifications = this._modifications.map(e => e.toJson());
+		result.minApprovalDelta = this._minApprovalDelta;
+		return result;
+	}
 }
 
-export class CosignatureV1 {
+export class CosignatureV1Body {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.MULTISIG_COSIGNATURE;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
-		multisigTransactionHash: 'pod:Hash256',
+		otherTransactionHash: 'pod:Hash256',
 		multisigAccountAddress: 'pod:Address'
 	};
 
 	constructor() {
-		this._type = CosignatureV1.TRANSACTION_TYPE;
-		this._version = CosignatureV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
-		this._multisigTransactionHash = new Hash256();
+		this._otherTransactionHash = new Hash256();
 		this._multisigAccountAddress = new Address();
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
-		this._multisigTransactionHashOuterSize = 36; // reserved field
-		this._multisigTransactionHashSize = 32; // reserved field
+		this._otherTransactionHashOuterSize = 36; // reserved field
+		this._otherTransactionHashSize = 32; // reserved field
 		this._multisigAccountAddressSize = 40; // reserved field
 	}
 
 	sort() { // eslint-disable-line class-methods-use-this
 	}
 
-	get type() {
-		return this._type;
+	get otherTransactionHash() {
+		return this._otherTransactionHash;
 	}
 
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
-	}
-
-	get multisigTransactionHash() {
-		return this._multisigTransactionHash;
-	}
-
-	set multisigTransactionHash(value) {
-		this._multisigTransactionHash = value;
+	set otherTransactionHash(value) {
+		this._otherTransactionHash = value;
 	}
 
 	get multisigAccountAddress() {
@@ -3916,20 +2841,9 @@ export class CosignatureV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
 		size += 4;
 		size += 4;
-		size += this.multisigTransactionHash.size;
+		size += this.otherTransactionHash.size;
 		size += 4;
 		size += this.multisigAccountAddress.size;
 		return size;
@@ -3937,44 +2851,18 @@ export class CosignatureV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
+		const instance = new CosignatureV1Body();
+
+		const otherTransactionHashOuterSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
+		if (36 !== otherTransactionHashOuterSize)
+			throw RangeError(`Invalid value of reserved field (${otherTransactionHashOuterSize})`);
+		const otherTransactionHashSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
-		const multisigTransactionHashOuterSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (36 !== multisigTransactionHashOuterSize)
-			throw RangeError(`Invalid value of reserved field (${multisigTransactionHashOuterSize})`);
-		const multisigTransactionHashSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== multisigTransactionHashSize)
-			throw RangeError(`Invalid value of reserved field (${multisigTransactionHashSize})`);
-		const multisigTransactionHash = Hash256.deserialize(view.buffer);
-		view.shiftRight(multisigTransactionHash.size);
+		if (32 !== otherTransactionHashSize)
+			throw RangeError(`Invalid value of reserved field (${otherTransactionHashSize})`);
+		const otherTransactionHash = Hash256.deserialize(view.buffer);
+		view.shiftRight(otherTransactionHash.size);
 		const multisigAccountAddressSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		if (40 !== multisigAccountAddressSize)
@@ -3982,36 +2870,16 @@ export class CosignatureV1 {
 		const multisigAccountAddress = Address.deserialize(view.buffer);
 		view.shiftRight(multisigAccountAddress.size);
 
-		const instance = new CosignatureV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
-		instance._multisigTransactionHash = multisigTransactionHash;
+		instance._otherTransactionHash = otherTransactionHash;
 		instance._multisigAccountAddress = multisigAccountAddress;
 		return instance;
 	}
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
-		buffer.write(converter.intToBytes(this._multisigTransactionHashOuterSize, 4, false));
-		buffer.write(converter.intToBytes(this._multisigTransactionHashSize, 4, false));
-		buffer.write(this._multisigTransactionHash.serialize());
+		buffer.write(converter.intToBytes(this._otherTransactionHashOuterSize, 4, false));
+		buffer.write(converter.intToBytes(this._otherTransactionHashSize, 4, false));
+		buffer.write(this._otherTransactionHash.serialize());
 		buffer.write(converter.intToBytes(this._multisigAccountAddressSize, 4, false));
 		buffer.write(this._multisigAccountAddress.serialize());
 		return buffer.storage;
@@ -4019,17 +2887,241 @@ export class CosignatureV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
-		result += `multisigTransactionHash: ${this._multisigTransactionHash.toString()}, `;
+		result += `otherTransactionHash: ${this._otherTransactionHash.toString()}, `;
 		result += `multisigAccountAddress: ${this._multisigAccountAddress.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.otherTransactionHash = this._otherTransactionHash.toJson();
+		result.multisigAccountAddress = this._multisigAccountAddress.toJson();
+		return result;
+	}
+}
+
+export class CosignatureV1 extends Transaction {
+	static TRANSACTION_VERSION = 1;
+
+	static TRANSACTION_TYPE = TransactionType.MULTISIG_COSIGNATURE;
+
+	static TYPE_HINTS = {
+		...Transaction.TYPE_HINTS,
+		otherTransactionHash: 'pod:Hash256',
+		multisigAccountAddress: 'pod:Address'
+	};
+
+	constructor() {
+		super();
+		this._type = CosignatureV1.TRANSACTION_TYPE;
+		this._version = CosignatureV1.TRANSACTION_VERSION;
+		this._otherTransactionHash = new Hash256();
+		this._multisigAccountAddress = new Address();
+		this._otherTransactionHashOuterSize = 36; // reserved field
+		this._otherTransactionHashSize = 32; // reserved field
+		this._multisigAccountAddressSize = 40; // reserved field
+	}
+
+	sort() { // eslint-disable-line class-methods-use-this
+	}
+
+	get otherTransactionHash() {
+		return this._otherTransactionHash;
+	}
+
+	set otherTransactionHash(value) {
+		this._otherTransactionHash = value;
+	}
+
+	get multisigAccountAddress() {
+		return this._multisigAccountAddress;
+	}
+
+	set multisigAccountAddress(value) {
+		this._multisigAccountAddress = value;
+	}
+
+	get size() { // eslint-disable-line class-methods-use-this
+		let size = 0;
+		size += super.size;
+		size += 4;
+		size += 4;
+		size += this.otherTransactionHash.size;
+		size += 4;
+		size += this.multisigAccountAddress.size;
+		return size;
+	}
+
+	static deserialize(payload) {
+		const view = new BufferView(payload);
+		const instance = new CosignatureV1();
+
+		Transaction._deserialize(view, instance);
+		const otherTransactionHashOuterSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
+		view.shiftRight(4);
+		if (36 !== otherTransactionHashOuterSize)
+			throw RangeError(`Invalid value of reserved field (${otherTransactionHashOuterSize})`);
+		const otherTransactionHashSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
+		view.shiftRight(4);
+		if (32 !== otherTransactionHashSize)
+			throw RangeError(`Invalid value of reserved field (${otherTransactionHashSize})`);
+		const otherTransactionHash = Hash256.deserialize(view.buffer);
+		view.shiftRight(otherTransactionHash.size);
+		const multisigAccountAddressSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
+		view.shiftRight(4);
+		if (40 !== multisigAccountAddressSize)
+			throw RangeError(`Invalid value of reserved field (${multisigAccountAddressSize})`);
+		const multisigAccountAddress = Address.deserialize(view.buffer);
+		view.shiftRight(multisigAccountAddress.size);
+
+		instance._otherTransactionHash = otherTransactionHash;
+		instance._multisigAccountAddress = multisigAccountAddress;
+		return instance;
+	}
+
+	serialize() {
+		const buffer = new Writer(this.size);
+		super._serialize(buffer);
+		buffer.write(converter.intToBytes(this._otherTransactionHashOuterSize, 4, false));
+		buffer.write(converter.intToBytes(this._otherTransactionHashSize, 4, false));
+		buffer.write(this._otherTransactionHash.serialize());
+		buffer.write(converter.intToBytes(this._multisigAccountAddressSize, 4, false));
+		buffer.write(this._multisigAccountAddress.serialize());
+		return buffer.storage;
+	}
+
+	toString() {
+		let result = '(';
+		result += super.toString();
+		result += `otherTransactionHash: ${this._otherTransactionHash.toString()}, `;
+		result += `multisigAccountAddress: ${this._multisigAccountAddress.toString()}, `;
+		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.otherTransactionHash = this._otherTransactionHash.toJson();
+		result.multisigAccountAddress = this._multisigAccountAddress.toJson();
+		return result;
+	}
+}
+
+export class NonVerifiableCosignatureV1 extends NonVerifiableTransaction {
+	static TRANSACTION_VERSION = 1;
+
+	static TRANSACTION_TYPE = TransactionType.MULTISIG_COSIGNATURE;
+
+	static TYPE_HINTS = {
+		...NonVerifiableTransaction.TYPE_HINTS,
+		otherTransactionHash: 'pod:Hash256',
+		multisigAccountAddress: 'pod:Address'
+	};
+
+	constructor() {
+		super();
+		this._type = NonVerifiableCosignatureV1.TRANSACTION_TYPE;
+		this._version = NonVerifiableCosignatureV1.TRANSACTION_VERSION;
+		this._otherTransactionHash = new Hash256();
+		this._multisigAccountAddress = new Address();
+		this._otherTransactionHashOuterSize = 36; // reserved field
+		this._otherTransactionHashSize = 32; // reserved field
+		this._multisigAccountAddressSize = 40; // reserved field
+	}
+
+	sort() { // eslint-disable-line class-methods-use-this
+	}
+
+	get otherTransactionHash() {
+		return this._otherTransactionHash;
+	}
+
+	set otherTransactionHash(value) {
+		this._otherTransactionHash = value;
+	}
+
+	get multisigAccountAddress() {
+		return this._multisigAccountAddress;
+	}
+
+	set multisigAccountAddress(value) {
+		this._multisigAccountAddress = value;
+	}
+
+	get size() { // eslint-disable-line class-methods-use-this
+		let size = 0;
+		size += super.size;
+		size += 4;
+		size += 4;
+		size += this.otherTransactionHash.size;
+		size += 4;
+		size += this.multisigAccountAddress.size;
+		return size;
+	}
+
+	static deserialize(payload) {
+		const view = new BufferView(payload);
+		const instance = new NonVerifiableCosignatureV1();
+
+		NonVerifiableTransaction._deserialize(view, instance);
+		const otherTransactionHashOuterSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
+		view.shiftRight(4);
+		if (36 !== otherTransactionHashOuterSize)
+			throw RangeError(`Invalid value of reserved field (${otherTransactionHashOuterSize})`);
+		const otherTransactionHashSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
+		view.shiftRight(4);
+		if (32 !== otherTransactionHashSize)
+			throw RangeError(`Invalid value of reserved field (${otherTransactionHashSize})`);
+		const otherTransactionHash = Hash256.deserialize(view.buffer);
+		view.shiftRight(otherTransactionHash.size);
+		const multisigAccountAddressSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
+		view.shiftRight(4);
+		if (40 !== multisigAccountAddressSize)
+			throw RangeError(`Invalid value of reserved field (${multisigAccountAddressSize})`);
+		const multisigAccountAddress = Address.deserialize(view.buffer);
+		view.shiftRight(multisigAccountAddress.size);
+
+		instance._otherTransactionHash = otherTransactionHash;
+		instance._multisigAccountAddress = multisigAccountAddress;
+		return instance;
+	}
+
+	serialize() {
+		const buffer = new Writer(this.size);
+		super._serialize(buffer);
+		buffer.write(converter.intToBytes(this._otherTransactionHashOuterSize, 4, false));
+		buffer.write(converter.intToBytes(this._otherTransactionHashSize, 4, false));
+		buffer.write(this._otherTransactionHash.serialize());
+		buffer.write(converter.intToBytes(this._multisigAccountAddressSize, 4, false));
+		buffer.write(this._multisigAccountAddress.serialize());
+		return buffer.storage;
+	}
+
+	toString() {
+		let result = '(';
+		result += super.toString();
+		result += `otherTransactionHash: ${this._otherTransactionHash.toString()}, `;
+		result += `multisigAccountAddress: ${this._multisigAccountAddress.toString()}, `;
+		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.otherTransactionHash = this._otherTransactionHash.toJson();
+		result.multisigAccountAddress = this._multisigAccountAddress.toJson();
 		return result;
 	}
 }
@@ -4064,13 +3156,14 @@ export class SizePrefixedCosignatureV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new SizePrefixedCosignatureV1();
+
 		const cosignatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
 		const cosignature = CosignatureV1.deserialize(view.window(cosignatureSize));
 		view.shiftRight(cosignature.size);
 
-		const instance = new SizePrefixedCosignatureV1();
 		instance._cosignature = cosignature;
 		return instance;
 	}
@@ -4088,107 +3181,38 @@ export class SizePrefixedCosignatureV1 {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.cosignature = this._cosignature.toJson();
+		return result;
+	}
 }
 
-export class MultisigTransactionV1 {
+export class MultisigTransactionV1 extends Transaction {
 	static TRANSACTION_VERSION = 1;
 
-	static TRANSACTION_TYPE = TransactionType.MULTISIG_TRANSACTION;
+	static TRANSACTION_TYPE = TransactionType.MULTISIG;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		innerTransaction: 'struct:NonVerifiableTransaction',
 		cosignatures: 'array[SizePrefixedCosignatureV1]'
 	};
 
 	constructor() {
+		super();
 		this._type = MultisigTransactionV1.TRANSACTION_TYPE;
 		this._version = MultisigTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._innerTransaction = new NonVerifiableTransaction();
 		this._cosignatures = [];
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 	}
 
 	sort() {
 		this._innerTransaction.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get innerTransaction() {
@@ -4209,17 +3233,7 @@ export class MultisigTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.innerTransaction.size;
 		size += 4;
@@ -4229,34 +3243,9 @@ export class MultisigTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new MultisigTransactionV1();
+
+		Transaction._deserialize(view, instance);
 		const innerTransactionSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
@@ -4267,15 +3256,6 @@ export class MultisigTransactionV1 {
 		const cosignatures = arrayHelpers.readArrayCount(view.buffer, SizePrefixedCosignatureV1, cosignaturesCount);
 		view.shiftRight(arrayHelpers.size(cosignatures));
 
-		const instance = new MultisigTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._innerTransaction = innerTransaction;
 		instance._cosignatures = cosignatures;
 		return instance;
@@ -4283,17 +3263,7 @@ export class MultisigTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this.innerTransaction.size, 4, false)); // bound: inner_transaction_size
 		buffer.write(this._innerTransaction.serialize());
 		buffer.write(converter.intToBytes(this._cosignatures.length, 4, false)); // bound: cosignatures_count
@@ -4303,107 +3273,44 @@ export class MultisigTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `innerTransaction: ${this._innerTransaction.toString()}, `;
 		result += `cosignatures: [${this._cosignatures.map(e => e.toString()).join(',')}], `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.innerTransaction = this._innerTransaction.toJson();
+		result.cosignatures = this._cosignatures.map(e => e.toJson());
+		return result;
+	}
 }
 
-export class NonVerifiableMultisigTransactionV1 {
+export class NonVerifiableMultisigTransactionV1 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 1;
 
-	static TRANSACTION_TYPE = TransactionType.MULTISIG_TRANSACTION;
+	static TRANSACTION_TYPE = TransactionType.MULTISIG;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		innerTransaction: 'struct:NonVerifiableTransaction'
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableMultisigTransactionV1.TRANSACTION_TYPE;
 		this._version = NonVerifiableMultisigTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._innerTransaction = new NonVerifiableTransaction();
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 	}
 
 	sort() {
 		this._innerTransaction.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get innerTransaction() {
@@ -4416,15 +3323,7 @@ export class NonVerifiableMultisigTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.innerTransaction.size;
 		return size;
@@ -4432,57 +3331,22 @@ export class NonVerifiableMultisigTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableMultisigTransactionV1();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const innerTransactionSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		// marking sizeof field
 		const innerTransaction = NonVerifiableTransactionFactory.deserialize(view.window(innerTransactionSize));
 		view.shiftRight(innerTransaction.size);
 
-		const instance = new NonVerifiableMultisigTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._innerTransaction = innerTransaction;
 		return instance;
 	}
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this.innerTransaction.size, 4, false)); // bound: inner_transaction_size
 		buffer.write(this._innerTransaction.serialize());
 		return buffer.storage;
@@ -4490,32 +3354,30 @@ export class NonVerifiableMultisigTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `innerTransaction: ${this._innerTransaction.toString()}, `;
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.innerTransaction = this._innerTransaction.toJson();
+		return result;
+	}
 }
 
-export class NamespaceRegistrationTransactionV1 {
+export class NamespaceRegistrationTransactionV1 extends Transaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.NAMESPACE_REGISTRATION;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		rentalFeeSink: 'pod:Address',
 		rentalFee: 'pod:Amount',
 		name: 'bytes_array',
@@ -4523,89 +3385,17 @@ export class NamespaceRegistrationTransactionV1 {
 	};
 
 	constructor() {
+		super();
 		this._type = NamespaceRegistrationTransactionV1.TRANSACTION_TYPE;
 		this._version = NamespaceRegistrationTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._rentalFeeSink = new Address();
 		this._rentalFee = new Amount();
 		this._name = new Uint8Array();
 		this._parentName = null;
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 		this._rentalFeeSinkSize = 40; // reserved field
 	}
 
 	sort() { // eslint-disable-line class-methods-use-this
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get rentalFeeSink() {
@@ -4642,17 +3432,7 @@ export class NamespaceRegistrationTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.rentalFeeSink.size;
 		size += this.rentalFee.size;
@@ -4667,34 +3447,9 @@ export class NamespaceRegistrationTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NamespaceRegistrationTransactionV1();
+
+		Transaction._deserialize(view, instance);
 		const rentalFeeSinkSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		if (40 !== rentalFeeSinkSize)
@@ -4715,15 +3470,6 @@ export class NamespaceRegistrationTransactionV1 {
 			view.shiftRight(parentNameSize);
 		}
 
-		const instance = new NamespaceRegistrationTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._rentalFeeSink = rentalFeeSink;
 		instance._rentalFee = rentalFee;
 		instance._name = name;
@@ -4733,17 +3479,7 @@ export class NamespaceRegistrationTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._rentalFeeSinkSize, 4, false));
 		buffer.write(this._rentalFeeSink.serialize());
 		buffer.write(this._rentalFee.serialize());
@@ -4758,14 +3494,7 @@ export class NamespaceRegistrationTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `rentalFeeSink: ${this._rentalFeeSink.toString()}, `;
 		result += `rentalFee: ${this._rentalFee.toString()}, `;
 		result += `name: hex(${converter.uint8ToHex(this._name)}), `;
@@ -4775,20 +3504,30 @@ export class NamespaceRegistrationTransactionV1 {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.rentalFeeSink = this._rentalFeeSink.toJson();
+		result.rentalFee = this._rentalFee.toJson();
+		result.name = converter.uint8ToHex(this._name);
+		if (this.parentName)
+			result.parentName = converter.uint8ToHex(this._parentName);
+
+		return result;
+	}
 }
 
-export class NonVerifiableNamespaceRegistrationTransactionV1 {
+export class NonVerifiableNamespaceRegistrationTransactionV1 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.NAMESPACE_REGISTRATION;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		rentalFeeSink: 'pod:Address',
 		rentalFee: 'pod:Amount',
 		name: 'bytes_array',
@@ -4796,79 +3535,17 @@ export class NonVerifiableNamespaceRegistrationTransactionV1 {
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableNamespaceRegistrationTransactionV1.TRANSACTION_TYPE;
 		this._version = NonVerifiableNamespaceRegistrationTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._rentalFeeSink = new Address();
 		this._rentalFee = new Amount();
 		this._name = new Uint8Array();
 		this._parentName = null;
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 		this._rentalFeeSinkSize = 40; // reserved field
 	}
 
 	sort() { // eslint-disable-line class-methods-use-this
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get rentalFeeSink() {
@@ -4905,15 +3582,7 @@ export class NonVerifiableNamespaceRegistrationTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.rentalFeeSink.size;
 		size += this.rentalFee.size;
@@ -4928,28 +3597,9 @@ export class NonVerifiableNamespaceRegistrationTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableNamespaceRegistrationTransactionV1();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const rentalFeeSinkSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		if (40 !== rentalFeeSinkSize)
@@ -4970,14 +3620,6 @@ export class NonVerifiableNamespaceRegistrationTransactionV1 {
 			view.shiftRight(parentNameSize);
 		}
 
-		const instance = new NonVerifiableNamespaceRegistrationTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._rentalFeeSink = rentalFeeSink;
 		instance._rentalFee = rentalFee;
 		instance._name = name;
@@ -4987,15 +3629,7 @@ export class NonVerifiableNamespaceRegistrationTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._rentalFeeSinkSize, 4, false));
 		buffer.write(this._rentalFeeSink.serialize());
 		buffer.write(this._rentalFee.serialize());
@@ -5010,13 +3644,7 @@ export class NonVerifiableNamespaceRegistrationTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `rentalFeeSink: ${this._rentalFeeSink.toString()}, `;
 		result += `rentalFee: ${this._rentalFee.toString()}, `;
 		result += `name: hex(${converter.uint8ToHex(this._name)}), `;
@@ -5024,6 +3652,21 @@ export class NonVerifiableNamespaceRegistrationTransactionV1 {
 			result += `parentName: hex(${converter.uint8ToHex(this._parentName)}), `;
 
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.rentalFeeSink = this._rentalFeeSink.toJson();
+		result.rentalFee = this._rentalFee.toJson();
+		result.name = converter.uint8ToHex(this._name);
+		if (this.parentName)
+			result.parentName = converter.uint8ToHex(this._parentName);
+
 		return result;
 	}
 }
@@ -5077,6 +3720,10 @@ export class MessageType {
 	toString() {
 		return `MessageType.${MessageType.valueToKey(this.value)}`;
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
 export class Message {
@@ -5119,6 +3766,8 @@ export class Message {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
+		const instance = new Message();
+
 		const messageType = MessageType.deserialize(view.buffer);
 		view.shiftRight(messageType.size);
 		const messageSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
@@ -5126,7 +3775,6 @@ export class Message {
 		const message = new Uint8Array(view.buffer.buffer, view.buffer.byteOffset, messageSize);
 		view.shiftRight(messageSize);
 
-		const instance = new Message();
 		instance._messageType = messageType;
 		instance._message = message;
 		return instance;
@@ -5147,111 +3795,43 @@ export class Message {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.messageType = this._messageType.toJson();
+		result.message = converter.uint8ToHex(this._message);
+		return result;
+	}
 }
 
-export class TransferTransactionV1 {
+export class TransferTransactionV1 extends Transaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.TRANSFER;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		recipientAddress: 'pod:Address',
 		amount: 'pod:Amount',
 		message: 'struct:Message'
 	};
 
 	constructor() {
+		super();
 		this._type = TransferTransactionV1.TRANSACTION_TYPE;
 		this._version = TransferTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._recipientAddress = new Address();
 		this._amount = new Amount();
 		this._message = null;
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 		this._recipientAddressSize = 40; // reserved field
 	}
 
 	sort() {
 		if (0 !== this.messageEnvelopeSizeComputed)
 			this._message.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get recipientAddress() {
@@ -5284,17 +3864,7 @@ export class TransferTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.recipientAddress.size;
 		size += this.amount.size;
@@ -5307,34 +3877,9 @@ export class TransferTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new TransferTransactionV1();
+
+		Transaction._deserialize(view, instance);
 		const recipientAddressSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		if (40 !== recipientAddressSize)
@@ -5351,15 +3896,6 @@ export class TransferTransactionV1 {
 			view.shiftRight(message.size);
 		}
 
-		const instance = new TransferTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._recipientAddress = recipientAddress;
 		instance._amount = amount;
 		instance._message = message;
@@ -5368,17 +3904,7 @@ export class TransferTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._recipientAddressSize, 4, false));
 		buffer.write(this._recipientAddress.serialize());
 		buffer.write(this._amount.serialize());
@@ -5391,14 +3917,7 @@ export class TransferTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `recipientAddress: ${this._recipientAddress.toString()}, `;
 		result += `amount: ${this._amount.toString()}, `;
 		if (0 !== this.messageEnvelopeSizeComputed)
@@ -5407,100 +3926,47 @@ export class TransferTransactionV1 {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.amount = this._amount.toJson();
+		if (0 !== this.messageEnvelopeSizeComputed)
+			result.message = this._message.toJson();
+
+		return result;
+	}
 }
 
-export class NonVerifiableTransferTransactionV1 {
+export class NonVerifiableTransferTransactionV1 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 1;
 
 	static TRANSACTION_TYPE = TransactionType.TRANSFER;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		recipientAddress: 'pod:Address',
 		amount: 'pod:Amount',
 		message: 'struct:Message'
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableTransferTransactionV1.TRANSACTION_TYPE;
 		this._version = NonVerifiableTransferTransactionV1.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._recipientAddress = new Address();
 		this._amount = new Amount();
 		this._message = null;
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 		this._recipientAddressSize = 40; // reserved field
 	}
 
 	sort() {
 		if (0 !== this.messageEnvelopeSizeComputed)
 			this._message.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get recipientAddress() {
@@ -5533,15 +3999,7 @@ export class NonVerifiableTransferTransactionV1 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.recipientAddress.size;
 		size += this.amount.size;
@@ -5554,28 +4012,9 @@ export class NonVerifiableTransferTransactionV1 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableTransferTransactionV1();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const recipientAddressSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		if (40 !== recipientAddressSize)
@@ -5592,14 +4031,6 @@ export class NonVerifiableTransferTransactionV1 {
 			view.shiftRight(message.size);
 		}
 
-		const instance = new NonVerifiableTransferTransactionV1();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._recipientAddress = recipientAddress;
 		instance._amount = amount;
 		instance._message = message;
@@ -5608,15 +4039,7 @@ export class NonVerifiableTransferTransactionV1 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._recipientAddressSize, 4, false));
 		buffer.write(this._recipientAddress.serialize());
 		buffer.write(this._amount.serialize());
@@ -5629,13 +4052,7 @@ export class NonVerifiableTransferTransactionV1 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `recipientAddress: ${this._recipientAddress.toString()}, `;
 		result += `amount: ${this._amount.toString()}, `;
 		if (0 !== this.messageEnvelopeSizeComputed)
@@ -5644,21 +4061,29 @@ export class NonVerifiableTransferTransactionV1 {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.amount = this._amount.toJson();
+		if (0 !== this.messageEnvelopeSizeComputed)
+			result.message = this._message.toJson();
+
+		return result;
+	}
 }
 
-export class TransferTransactionV2 {
+export class TransferTransactionV2 extends Transaction {
 	static TRANSACTION_VERSION = 2;
 
 	static TRANSACTION_TYPE = TransactionType.TRANSFER;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		signature: 'pod:Signature',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...Transaction.TYPE_HINTS,
 		recipientAddress: 'pod:Address',
 		amount: 'pod:Amount',
 		message: 'struct:Message',
@@ -5666,91 +4091,19 @@ export class TransferTransactionV2 {
 	};
 
 	constructor() {
+		super();
 		this._type = TransferTransactionV2.TRANSACTION_TYPE;
 		this._version = TransferTransactionV2.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._signature = new Signature();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._recipientAddress = new Address();
 		this._amount = new Amount();
 		this._message = null;
 		this._mosaics = [];
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
-		this._signatureSize = 64; // reserved field
 		this._recipientAddressSize = 40; // reserved field
 	}
 
 	sort() {
 		if (0 !== this.messageEnvelopeSizeComputed)
 			this._message.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get signature() {
-		return this._signature;
-	}
-
-	set signature(value) {
-		this._signature = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get recipientAddress() {
@@ -5791,17 +4144,7 @@ export class TransferTransactionV2 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += 4;
-		size += this.signature.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.recipientAddress.size;
 		size += this.amount.size;
@@ -5816,34 +4159,9 @@ export class TransferTransactionV2 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const signatureSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (64 !== signatureSize)
-			throw RangeError(`Invalid value of reserved field (${signatureSize})`);
-		const signature = Signature.deserialize(view.buffer);
-		view.shiftRight(signature.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new TransferTransactionV2();
+
+		Transaction._deserialize(view, instance);
 		const recipientAddressSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		if (40 !== recipientAddressSize)
@@ -5864,15 +4182,6 @@ export class TransferTransactionV2 {
 		const mosaics = arrayHelpers.readArrayCount(view.buffer, SizePrefixedMosaic, mosaicsCount);
 		view.shiftRight(arrayHelpers.size(mosaics));
 
-		const instance = new TransferTransactionV2();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._signature = signature;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._recipientAddress = recipientAddress;
 		instance._amount = amount;
 		instance._message = message;
@@ -5882,17 +4191,7 @@ export class TransferTransactionV2 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(converter.intToBytes(this._signatureSize, 4, false));
-		buffer.write(this._signature.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._recipientAddressSize, 4, false));
 		buffer.write(this._recipientAddress.serialize());
 		buffer.write(this._amount.serialize());
@@ -5907,14 +4206,7 @@ export class TransferTransactionV2 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `signature: ${this._signature.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `recipientAddress: ${this._recipientAddress.toString()}, `;
 		result += `amount: ${this._amount.toString()}, `;
 		if (0 !== this.messageEnvelopeSizeComputed)
@@ -5924,20 +4216,30 @@ export class TransferTransactionV2 {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.amount = this._amount.toJson();
+		if (0 !== this.messageEnvelopeSizeComputed)
+			result.message = this._message.toJson();
+
+		result.mosaics = this._mosaics.map(e => e.toJson());
+		return result;
+	}
 }
 
-export class NonVerifiableTransferTransactionV2 {
+export class NonVerifiableTransferTransactionV2 extends NonVerifiableTransaction {
 	static TRANSACTION_VERSION = 2;
 
 	static TRANSACTION_TYPE = TransactionType.TRANSFER;
 
 	static TYPE_HINTS = {
-		type: 'enum:TransactionType',
-		network: 'enum:NetworkType',
-		timestamp: 'pod:Timestamp',
-		signerPublicKey: 'pod:PublicKey',
-		fee: 'pod:Amount',
-		deadline: 'pod:Timestamp',
+		...NonVerifiableTransaction.TYPE_HINTS,
 		recipientAddress: 'pod:Address',
 		amount: 'pod:Amount',
 		message: 'struct:Message',
@@ -5945,81 +4247,19 @@ export class NonVerifiableTransferTransactionV2 {
 	};
 
 	constructor() {
+		super();
 		this._type = NonVerifiableTransferTransactionV2.TRANSACTION_TYPE;
 		this._version = NonVerifiableTransferTransactionV2.TRANSACTION_VERSION;
-		this._network = NetworkType.MAINNET;
-		this._timestamp = new Timestamp();
-		this._signerPublicKey = new PublicKey();
-		this._fee = new Amount();
-		this._deadline = new Timestamp();
 		this._recipientAddress = new Address();
 		this._amount = new Amount();
 		this._message = null;
 		this._mosaics = [];
-		this._entityBodyReserved_1 = 0; // reserved field
-		this._signerPublicKeySize = 32; // reserved field
 		this._recipientAddressSize = 40; // reserved field
 	}
 
 	sort() {
 		if (0 !== this.messageEnvelopeSizeComputed)
 			this._message.sort();
-	}
-
-	get type() {
-		return this._type;
-	}
-
-	set type(value) {
-		this._type = value;
-	}
-
-	get version() {
-		return this._version;
-	}
-
-	set version(value) {
-		this._version = value;
-	}
-
-	get network() {
-		return this._network;
-	}
-
-	set network(value) {
-		this._network = value;
-	}
-
-	get timestamp() {
-		return this._timestamp;
-	}
-
-	set timestamp(value) {
-		this._timestamp = value;
-	}
-
-	get signerPublicKey() {
-		return this._signerPublicKey;
-	}
-
-	set signerPublicKey(value) {
-		this._signerPublicKey = value;
-	}
-
-	get fee() {
-		return this._fee;
-	}
-
-	set fee(value) {
-		this._fee = value;
-	}
-
-	get deadline() {
-		return this._deadline;
-	}
-
-	set deadline(value) {
-		this._deadline = value;
 	}
 
 	get recipientAddress() {
@@ -6060,15 +4300,7 @@ export class NonVerifiableTransferTransactionV2 {
 
 	get size() { // eslint-disable-line class-methods-use-this
 		let size = 0;
-		size += this.type.size;
-		size += 1;
-		size += 2;
-		size += this.network.size;
-		size += this.timestamp.size;
-		size += 4;
-		size += this.signerPublicKey.size;
-		size += this.fee.size;
-		size += this.deadline.size;
+		size += super.size;
 		size += 4;
 		size += this.recipientAddress.size;
 		size += this.amount.size;
@@ -6083,28 +4315,9 @@ export class NonVerifiableTransferTransactionV2 {
 
 	static deserialize(payload) {
 		const view = new BufferView(payload);
-		const type = TransactionType.deserialize(view.buffer);
-		view.shiftRight(type.size);
-		const version = converter.bytesToIntUnaligned(view.buffer, 1, false);
-		view.shiftRight(1);
-		const entityBodyReserved_1 = converter.bytesToIntUnaligned(view.buffer, 2, false);
-		view.shiftRight(2);
-		if (0 !== entityBodyReserved_1)
-			throw RangeError(`Invalid value of reserved field (${entityBodyReserved_1})`);
-		const network = NetworkType.deserialize(view.buffer);
-		view.shiftRight(network.size);
-		const timestamp = Timestamp.deserialize(view.buffer);
-		view.shiftRight(timestamp.size);
-		const signerPublicKeySize = converter.bytesToIntUnaligned(view.buffer, 4, false);
-		view.shiftRight(4);
-		if (32 !== signerPublicKeySize)
-			throw RangeError(`Invalid value of reserved field (${signerPublicKeySize})`);
-		const signerPublicKey = PublicKey.deserialize(view.buffer);
-		view.shiftRight(signerPublicKey.size);
-		const fee = Amount.deserialize(view.buffer);
-		view.shiftRight(fee.size);
-		const deadline = Timestamp.deserialize(view.buffer);
-		view.shiftRight(deadline.size);
+		const instance = new NonVerifiableTransferTransactionV2();
+
+		NonVerifiableTransaction._deserialize(view, instance);
 		const recipientAddressSize = converter.bytesToIntUnaligned(view.buffer, 4, false);
 		view.shiftRight(4);
 		if (40 !== recipientAddressSize)
@@ -6125,14 +4338,6 @@ export class NonVerifiableTransferTransactionV2 {
 		const mosaics = arrayHelpers.readArrayCount(view.buffer, SizePrefixedMosaic, mosaicsCount);
 		view.shiftRight(arrayHelpers.size(mosaics));
 
-		const instance = new NonVerifiableTransferTransactionV2();
-		instance._type = type;
-		instance._version = version;
-		instance._network = network;
-		instance._timestamp = timestamp;
-		instance._signerPublicKey = signerPublicKey;
-		instance._fee = fee;
-		instance._deadline = deadline;
 		instance._recipientAddress = recipientAddress;
 		instance._amount = amount;
 		instance._message = message;
@@ -6142,15 +4347,7 @@ export class NonVerifiableTransferTransactionV2 {
 
 	serialize() {
 		const buffer = new Writer(this.size);
-		buffer.write(this._type.serialize());
-		buffer.write(converter.intToBytes(this._version, 1, false));
-		buffer.write(converter.intToBytes(this._entityBodyReserved_1, 2, false));
-		buffer.write(this._network.serialize());
-		buffer.write(this._timestamp.serialize());
-		buffer.write(converter.intToBytes(this._signerPublicKeySize, 4, false));
-		buffer.write(this._signerPublicKey.serialize());
-		buffer.write(this._fee.serialize());
-		buffer.write(this._deadline.serialize());
+		super._serialize(buffer);
 		buffer.write(converter.intToBytes(this._recipientAddressSize, 4, false));
 		buffer.write(this._recipientAddress.serialize());
 		buffer.write(this._amount.serialize());
@@ -6165,13 +4362,7 @@ export class NonVerifiableTransferTransactionV2 {
 
 	toString() {
 		let result = '(';
-		result += `type: ${this._type.toString()}, `;
-		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
-		result += `network: ${this._network.toString()}, `;
-		result += `timestamp: ${this._timestamp.toString()}, `;
-		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
-		result += `fee: ${this._fee.toString()}, `;
-		result += `deadline: ${this._deadline.toString()}, `;
+		result += super.toString();
 		result += `recipientAddress: ${this._recipientAddress.toString()}, `;
 		result += `amount: ${this._amount.toString()}, `;
 		if (0 !== this.messageEnvelopeSizeComputed)
@@ -6179,6 +4370,21 @@ export class NonVerifiableTransferTransactionV2 {
 
 		result += `mosaics: [${this._mosaics.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.amount = this._amount.toJson();
+		if (0 !== this.messageEnvelopeSizeComputed)
+			result.message = this._message.toJson();
+
+		result.mosaics = this._mosaics.map(e => e.toJson());
 		return result;
 	}
 }
@@ -6193,20 +4399,21 @@ export class TransactionFactory {
 	}
 
 	static deserialize(payload) {
+		const parent = new Transaction();
+		Transaction._deserialize(new BufferView(payload), parent);
+
 		const view = new BufferView(payload);
-		const parent = Transaction.deserialize(view.buffer);
-		const mapping = new Map([
-			[TransactionFactory.toKey([AccountKeyLinkTransactionV1.TRANSACTION_TYPE.value, AccountKeyLinkTransactionV1.TRANSACTION_VERSION]), AccountKeyLinkTransactionV1],
-			[TransactionFactory.toKey([MosaicDefinitionTransactionV1.TRANSACTION_TYPE.value, MosaicDefinitionTransactionV1.TRANSACTION_VERSION]), MosaicDefinitionTransactionV1],
-			[TransactionFactory.toKey([MosaicSupplyChangeTransactionV1.TRANSACTION_TYPE.value, MosaicSupplyChangeTransactionV1.TRANSACTION_VERSION]), MosaicSupplyChangeTransactionV1],
-			[TransactionFactory.toKey([MultisigAccountModificationTransactionV1.TRANSACTION_TYPE.value, MultisigAccountModificationTransactionV1.TRANSACTION_VERSION]), MultisigAccountModificationTransactionV1],
-			[TransactionFactory.toKey([MultisigAccountModificationTransactionV2.TRANSACTION_TYPE.value, MultisigAccountModificationTransactionV2.TRANSACTION_VERSION]), MultisigAccountModificationTransactionV2],
-			[TransactionFactory.toKey([CosignatureV1.TRANSACTION_TYPE.value, CosignatureV1.TRANSACTION_VERSION]), CosignatureV1],
-			[TransactionFactory.toKey([MultisigTransactionV1.TRANSACTION_TYPE.value, MultisigTransactionV1.TRANSACTION_VERSION]), MultisigTransactionV1],
-			[TransactionFactory.toKey([NamespaceRegistrationTransactionV1.TRANSACTION_TYPE.value, NamespaceRegistrationTransactionV1.TRANSACTION_VERSION]), NamespaceRegistrationTransactionV1],
-			[TransactionFactory.toKey([TransferTransactionV1.TRANSACTION_TYPE.value, TransferTransactionV1.TRANSACTION_VERSION]), TransferTransactionV1],
-			[TransactionFactory.toKey([TransferTransactionV2.TRANSACTION_TYPE.value, TransferTransactionV2.TRANSACTION_VERSION]), TransferTransactionV2]
-		]);
+		const mapping = new Map();
+		mapping.set(TransactionFactory.toKey([AccountKeyLinkTransactionV1.TRANSACTION_TYPE.value, AccountKeyLinkTransactionV1.TRANSACTION_VERSION]), AccountKeyLinkTransactionV1);
+		mapping.set(TransactionFactory.toKey([MosaicDefinitionTransactionV1.TRANSACTION_TYPE.value, MosaicDefinitionTransactionV1.TRANSACTION_VERSION]), MosaicDefinitionTransactionV1);
+		mapping.set(TransactionFactory.toKey([MosaicSupplyChangeTransactionV1.TRANSACTION_TYPE.value, MosaicSupplyChangeTransactionV1.TRANSACTION_VERSION]), MosaicSupplyChangeTransactionV1);
+		mapping.set(TransactionFactory.toKey([MultisigAccountModificationTransactionV1.TRANSACTION_TYPE.value, MultisigAccountModificationTransactionV1.TRANSACTION_VERSION]), MultisigAccountModificationTransactionV1);
+		mapping.set(TransactionFactory.toKey([MultisigAccountModificationTransactionV2.TRANSACTION_TYPE.value, MultisigAccountModificationTransactionV2.TRANSACTION_VERSION]), MultisigAccountModificationTransactionV2);
+		mapping.set(TransactionFactory.toKey([CosignatureV1.TRANSACTION_TYPE.value, CosignatureV1.TRANSACTION_VERSION]), CosignatureV1);
+		mapping.set(TransactionFactory.toKey([MultisigTransactionV1.TRANSACTION_TYPE.value, MultisigTransactionV1.TRANSACTION_VERSION]), MultisigTransactionV1);
+		mapping.set(TransactionFactory.toKey([NamespaceRegistrationTransactionV1.TRANSACTION_TYPE.value, NamespaceRegistrationTransactionV1.TRANSACTION_VERSION]), NamespaceRegistrationTransactionV1);
+		mapping.set(TransactionFactory.toKey([TransferTransactionV1.TRANSACTION_TYPE.value, TransferTransactionV1.TRANSACTION_VERSION]), TransferTransactionV1);
+		mapping.set(TransactionFactory.toKey([TransferTransactionV2.TRANSACTION_TYPE.value, TransferTransactionV2.TRANSACTION_VERSION]), TransferTransactionV2);
 		const discriminator = TransactionFactory.toKey([parent.type.value, parent.version]);
 		const factory_class = mapping.get(discriminator);
 		return factory_class.deserialize(view.buffer);
@@ -6243,19 +4450,21 @@ export class NonVerifiableTransactionFactory {
 	}
 
 	static deserialize(payload) {
+		const parent = new NonVerifiableTransaction();
+		NonVerifiableTransaction._deserialize(new BufferView(payload), parent);
+
 		const view = new BufferView(payload);
-		const parent = NonVerifiableTransaction.deserialize(view.buffer);
-		const mapping = new Map([
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableAccountKeyLinkTransactionV1.TRANSACTION_TYPE.value, NonVerifiableAccountKeyLinkTransactionV1.TRANSACTION_VERSION]), NonVerifiableAccountKeyLinkTransactionV1],
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableMosaicDefinitionTransactionV1.TRANSACTION_TYPE.value, NonVerifiableMosaicDefinitionTransactionV1.TRANSACTION_VERSION]), NonVerifiableMosaicDefinitionTransactionV1],
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableMosaicSupplyChangeTransactionV1.TRANSACTION_TYPE.value, NonVerifiableMosaicSupplyChangeTransactionV1.TRANSACTION_VERSION]), NonVerifiableMosaicSupplyChangeTransactionV1],
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableMultisigAccountModificationTransactionV1.TRANSACTION_TYPE.value, NonVerifiableMultisigAccountModificationTransactionV1.TRANSACTION_VERSION]), NonVerifiableMultisigAccountModificationTransactionV1],
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableMultisigAccountModificationTransactionV2.TRANSACTION_TYPE.value, NonVerifiableMultisigAccountModificationTransactionV2.TRANSACTION_VERSION]), NonVerifiableMultisigAccountModificationTransactionV2],
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableMultisigTransactionV1.TRANSACTION_TYPE.value, NonVerifiableMultisigTransactionV1.TRANSACTION_VERSION]), NonVerifiableMultisigTransactionV1],
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableNamespaceRegistrationTransactionV1.TRANSACTION_TYPE.value, NonVerifiableNamespaceRegistrationTransactionV1.TRANSACTION_VERSION]), NonVerifiableNamespaceRegistrationTransactionV1],
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableTransferTransactionV1.TRANSACTION_TYPE.value, NonVerifiableTransferTransactionV1.TRANSACTION_VERSION]), NonVerifiableTransferTransactionV1],
-			[NonVerifiableTransactionFactory.toKey([NonVerifiableTransferTransactionV2.TRANSACTION_TYPE.value, NonVerifiableTransferTransactionV2.TRANSACTION_VERSION]), NonVerifiableTransferTransactionV2]
-		]);
+		const mapping = new Map();
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableAccountKeyLinkTransactionV1.TRANSACTION_TYPE.value, NonVerifiableAccountKeyLinkTransactionV1.TRANSACTION_VERSION]), NonVerifiableAccountKeyLinkTransactionV1);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableMosaicDefinitionTransactionV1.TRANSACTION_TYPE.value, NonVerifiableMosaicDefinitionTransactionV1.TRANSACTION_VERSION]), NonVerifiableMosaicDefinitionTransactionV1);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableMosaicSupplyChangeTransactionV1.TRANSACTION_TYPE.value, NonVerifiableMosaicSupplyChangeTransactionV1.TRANSACTION_VERSION]), NonVerifiableMosaicSupplyChangeTransactionV1);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableMultisigAccountModificationTransactionV1.TRANSACTION_TYPE.value, NonVerifiableMultisigAccountModificationTransactionV1.TRANSACTION_VERSION]), NonVerifiableMultisigAccountModificationTransactionV1);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableMultisigAccountModificationTransactionV2.TRANSACTION_TYPE.value, NonVerifiableMultisigAccountModificationTransactionV2.TRANSACTION_VERSION]), NonVerifiableMultisigAccountModificationTransactionV2);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableCosignatureV1.TRANSACTION_TYPE.value, NonVerifiableCosignatureV1.TRANSACTION_VERSION]), NonVerifiableCosignatureV1);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableMultisigTransactionV1.TRANSACTION_TYPE.value, NonVerifiableMultisigTransactionV1.TRANSACTION_VERSION]), NonVerifiableMultisigTransactionV1);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableNamespaceRegistrationTransactionV1.TRANSACTION_TYPE.value, NonVerifiableNamespaceRegistrationTransactionV1.TRANSACTION_VERSION]), NonVerifiableNamespaceRegistrationTransactionV1);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableTransferTransactionV1.TRANSACTION_TYPE.value, NonVerifiableTransferTransactionV1.TRANSACTION_VERSION]), NonVerifiableTransferTransactionV1);
+		mapping.set(NonVerifiableTransactionFactory.toKey([NonVerifiableTransferTransactionV2.TRANSACTION_TYPE.value, NonVerifiableTransferTransactionV2.TRANSACTION_VERSION]), NonVerifiableTransferTransactionV2);
 		const discriminator = NonVerifiableTransactionFactory.toKey([parent.type.value, parent.version]);
 		const factory_class = mapping.get(discriminator);
 		return factory_class.deserialize(view.buffer);
@@ -6268,6 +4477,7 @@ export class NonVerifiableTransactionFactory {
 			non_verifiable_mosaic_supply_change_transaction_v1: NonVerifiableMosaicSupplyChangeTransactionV1,
 			non_verifiable_multisig_account_modification_transaction_v1: NonVerifiableMultisigAccountModificationTransactionV1,
 			non_verifiable_multisig_account_modification_transaction_v2: NonVerifiableMultisigAccountModificationTransactionV2,
+			non_verifiable_cosignature_v1: NonVerifiableCosignatureV1,
 			non_verifiable_multisig_transaction_v1: NonVerifiableMultisigTransactionV1,
 			non_verifiable_namespace_registration_transaction_v1: NonVerifiableNamespaceRegistrationTransactionV1,
 			non_verifiable_transfer_transaction_v1: NonVerifiableTransferTransactionV1,

@@ -33,6 +33,7 @@ builds:
 
   - name: Linters
     path: linters
+    required: true
 
 customBuilds:
   - name: Nightly Job
@@ -43,12 +44,26 @@ customBuilds:
         schedule: '@midnight'
 
   - name: Build CI Image
-    jobName: /infra/build-ci-image
+    jobName: /Infrastructure/build-ci-image
     scriptPath: jenkins/infra/jenkins/build-ci-image.groovy
 
   - name: Build All CI Images
-    jobName: /infra/build-ci-image-all
+    jobName: /Infrastructure/build-ci-image-all
     scriptPath: jenkins/infra/jenkins/build-ci-image-all.groovy
+    triggers:
+      - type: cron
+        schedule: '@weekly'
+
+  - name: Backup Mainnet Dual Node
+    jobName: /Infrastructure/backup-mainnet-dual-node
+    scriptPath: .github/jenkinsfile/mainnetBackupDual.groovy
+    triggers:
+      - type: cron
+        schedule: '@weekly'
+
+  - name: Backup Mainnet Peer Node
+    jobName: /Infrastructure/backup-mainnet-peer-node
+    scriptPath: .github/jenkinsfile/mainnetBackupPeer.groovy
     triggers:
       - type: cron
         schedule: '@weekly'
@@ -94,6 +109,13 @@ customBuilds:
       - type: cron
         schedule: H 0 1 * *
 
+  - name: Clone Symbol Branches to internal
+    jobName: /Infrastructure/clone-symbol-branches-to-internal
+    scriptPath: .github/jenkinsfile/cloneSymbolBranches.groovy
+    triggers:
+      - type: cron
+        schedule: '@weekly'
+
   - name: Prepare Base Image
     jobName: /symbol/catapult-client/catapult-client-prepare-base-image
     scriptPath: jenkins/catapult/jenkins/catapult-client-prepare-base-image.groovy
@@ -102,3 +124,17 @@ customBuilds:
     jobName: /symbol/catapult-client/catapult-client-release-build
     scriptPath: jenkins/catapult/jenkins/catapult-client-release-build.groovy
     targetDirectory: symbol-mono
+
+  - name: Catapult Dependency Updater
+    jobName: /symbol/catapult-client/catapult-dependency-updater
+    scriptPath: .github/jenkinsfile/catapultDependency.groovy
+    triggers:
+      - type: cron
+        schedule: '@monthly'
+
+  - name: Weekly Job
+    jobName: weeklyJob
+    scriptPath: .github/jenkinsfile/weeklyBuild.groovy
+    triggers:
+      - type: cron
+        schedule: '@weekly'

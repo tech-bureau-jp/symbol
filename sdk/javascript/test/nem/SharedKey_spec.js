@@ -1,5 +1,5 @@
 import { PrivateKey } from '../../src/CryptoTypes.js';
-import NemFacade from '../../src/facade/NemFacade.js';
+import { NemFacade } from '../../src/facade/NemFacade.js';
 import { KeyPair } from '../../src/nem/KeyPair.js';
 import { deriveSharedKeyDeprecated } from '../../src/nem/SharedKey.js'; // eslint-disable-line import/no-deprecated
 import runBasicSharedKeyTests from '../test/sharedKeyTests.js';
@@ -13,7 +13,7 @@ describe('SharedKey (NEM)', () => {
 });
 
 describe('SharedKey (NEM) (deprecated)', () => {
-	const deterministicSalt = new TextEncoder('utf-8').encode('1234567890ABCDEF1234567890ABCDEF');
+	const deterministicSalt = new TextEncoder().encode('1234567890ABCDEF1234567890ABCDEF');
 	runBasicSharedKeyTests({
 		KeyPair,
 		// eslint-disable-next-line import/no-deprecated

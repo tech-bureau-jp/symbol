@@ -34,11 +34,11 @@ describe('MessageEncoder (NEM)', () => {
 		encodedMessage.message = new Uint8Array(16 + 32 + 1);
 
 		// Act:
-		const [result, decoded] = encoder.tryDecode(recipientPublicKey, encodedMessage);
+		const result = encoder.tryDecode(recipientPublicKey, encodedMessage);
 
 		// Assert:
-		expect(result).to.equal(false);
-		expect(decoded).to.deep.equal(encodedMessage);
+		expect(result.isDecoded).to.equal(false);
+		expect(result.message).to.deep.equal(encodedMessage);
 	});
 
 	it('decode throws when message type is invalid', () => {

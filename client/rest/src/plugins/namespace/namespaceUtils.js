@@ -19,11 +19,11 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const namespaceUtils = {
+export default {
 	/**
 	 * Returns function for processing alias names requests.
 	 * @param {module:db/CatapultDb} catapultDb Catapult database.
-	 * @param {numeric} aliasType Alias type.
+	 * @param {number} aliasType Alias type.
 	 * @param {Function} getParams Function to parse request params into ids.
 	 * @param {Function} namespaceFilter Function to filter namespaces based on ids.
 	 * @param {string} aliasFieldName Alias field name to show in the results.
@@ -98,5 +98,3 @@ const namespaceUtils = {
 		});
 	}
 };
-
-module.exports = namespaceUtils;

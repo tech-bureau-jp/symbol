@@ -23,18 +23,19 @@ class Downloader:
 
 	def download_boost_unix(self):
 		version = self.versions['boost']
-		tar_filename = f'boost_1_{version}_0.tar.gz'
-		tar_source_path = f'https://boostorg.jfrog.io/artifactory/main/release/1.{version}.0/source/{tar_filename}'
+		archive_name = f'boost_{version.replace(".", "_")}'
+		tar_filename = f'{archive_name}.tar.gz'
+		tar_source_path = f'https://archives.boost.io/release/{version}/source/{tar_filename}'
 
 		self.process_manager.dispatch_subprocess(['curl', '-o', tar_filename, '-SL', tar_source_path])
 		self.process_manager.dispatch_subprocess(['tar', '-xzf', tar_filename])
-		self.process_manager.dispatch_subprocess(['mv', f'boost_1_{version}_0', 'boost'])
+		self.process_manager.dispatch_subprocess(['mv', archive_name, 'boost'])
 
 	def download_boost_windows(self):
 		version = self.versions['boost']
-		archive_name = f'boost_1_{version}_0'
+		archive_name = f'boost_{version.replace(".", "_")}'
 		zip_filename = f'{archive_name}.7z'
-		zip_source_path = f'https://boostorg.jfrog.io/artifactory/main/release/1.{version}.0/source/{zip_filename}'
+		zip_source_path = f'https://archives.boost.io/release/{version}/source/{zip_filename}'
 
 		self.process_manager.dispatch_subprocess(['powershell', '-Command', 'wget', zip_source_path, '-outfile', zip_filename])
 		self.process_manager.dispatch_subprocess(['powershell', '-Command', '7z', 'x', zip_filename])
@@ -70,7 +71,7 @@ class Builder:
 
 		b2_options = [boost_prefix_option]
 		if self.is_clang:
-			b2_options += ['toolset=clang', 'linkflags=\'-stdlib=libc++\'']
+			b2_options += ['toolset=clang', 'cxxflags=--std=c++17', 'linkflags=\'-stdlib=libc++\'']
 
 		b2_options += get_dependency_flags('boost')
 
@@ -94,6 +95,10 @@ class Builder:
 			# For build without a C++17 polyfill
 			# https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
 			cmake_options += ['-DCMAKE_CXX_FLAGS="/Zc:__cplusplus"', f'-DCMAKE_PREFIX_PATH={self.target_directory / organization}']
+
+			version = self.versions[f'{organization}_{project}']
+			if 'r3.10.0' <= version:
+				cmake_options += ['-DENABLE_ABI_TAG_IN_LIBRARY_FILENAMES=OFF']
 
 		if 'mongodb' == organization:
 			cmake_options += [f'-DOPENSSL_ROOT_DIR={self.target_directory / "openssl"}']

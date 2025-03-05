@@ -19,14 +19,19 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const catapult = require('../../catapult-sdk/index');
-const merkleUtils = require('../../routes/merkleUtils');
-const routeResultTypes = require('../../routes/routeResultTypes');
-const routeUtils = require('../../routes/routeUtils');
+import { MetalSeal } from './metal.js';
+import catapult from '../../catapult-sdk/index.js';
+import merkleUtils from '../../routes/merkleUtils.js';
+import routeResultTypes from '../../routes/routeResultTypes.js';
+import routeUtils from '../../routes/routeUtils.js';
+import { sendMetalData } from '../../routes/simpleSend.js';
+import NodeCache from 'node-cache';
+
+const cache = new NodeCache();
 
 const { PacketType } = catapult.packet;
 
-module.exports = {
+export default {
 	register: (server, db, services) => {
 		const metadataSender = routeUtils.createSender(routeResultTypes.metadata);
 
@@ -61,6 +66,49 @@ module.exports = {
 				res.send(response);
 				next();
 			});
+		});
+
+		server.get('/metadata/metal/:metalId', async (req, res, next) => {
+			const { cacheTtl, sizeLimit } = services.config.metal;
+			const sendData = (data, mimeType, fileName, text, download) => sendMetalData(res, next)(
+				data,
+				mimeType,
+				fileName,
+				text,
+				download
+			);
+			const deriveParams = (text, initialMimeType, initialFileName) => {
+				const seal = MetalSeal.tryParse(text);
+				const mimeType = initialMimeType || (seal.isParsed && seal.value.mimeType) || 'application/octet-stream';
+				const fileName = initialFileName || (seal.isParsed && seal.value.name) || null;
+
+				return { mimeType, fileName };
+			};
+
+			const {
+				mimeType: initialMimeType, fileName: initialFileName, metalId, download
+			} = req.params;
+			const cachePayloadKey = `metadata:${metalId}_payload`;
+			const cacheTextKey = `metadata:${metalId}_text`;
+			const cachedPayload = cache.get(cachePayloadKey);
+			const cachedText = cache.get(cacheTextKey);
+
+			if (undefined !== cachedPayload) {
+				const { mimeType, fileName } = deriveParams(cachedText, initialMimeType, initialFileName);
+				sendData(cachedPayload, mimeType, fileName, cachedText, download);
+			} else {
+				const { payload, text } = await db.binDataByMetalId(metalId);
+				const { mimeType, fileName } = deriveParams(text, initialMimeType, initialFileName);
+				const estimatedNewCacheSize = cache.getStats().vsize + payload.length + (text?.length || 0);
+
+				if (estimatedNewCacheSize <= sizeLimit) {
+					// Cache the data for cacheTtl
+					cache.set(cachePayloadKey, payload, cacheTtl);
+					if (text)
+						cache.set(cacheTextKey, text, cacheTtl);
+				}
+				sendData(payload, mimeType, fileName, text, download);
+			}
 		});
 	}
 };

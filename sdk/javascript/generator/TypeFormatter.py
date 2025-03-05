@@ -12,25 +12,42 @@ class ClassFormatter(ABC):
 		raise NotImplementedError('need to override method')
 
 	@staticmethod
+	def generate_documentation(documentation_lines):
+		if not documentation_lines:
+			return ''
+
+		def prepend_star(line):
+			return ' *' if not line else f' * {line}'
+
+		documentation = '/**\n'
+		documentation += '\n'.join(prepend_star(line) for line in documentation_lines)
+		documentation += '\n */\n'
+		return documentation
+
+	@staticmethod
 	def generate_method(method_descriptor):
 		arguments = ', '.join(method_descriptor.arguments)
 		if len(arguments) > 100:
-			arguments = '\n    ' + ',\n    '.join(method_descriptor.arguments) + '\n'
+			arguments = '\n\t' + ',\n\t'.join(method_descriptor.arguments) + '\n'
 
+		documentation = ClassFormatter.generate_documentation(method_descriptor.documentation)
 		body = indent(method_descriptor.body)
 
 		disabled_warnings = ''
 		if method_descriptor.disabled_warnings:
 			disabled_warnings = f' // eslint-disable-line {" ".join(method_descriptor.disabled_warnings)}'
 
-		return f'{method_descriptor.method_name}({arguments}) {{{disabled_warnings}\n{body}}}\n'
+		return f'{documentation}{method_descriptor.method_name}({arguments}) {{{disabled_warnings}\n{body}}}\n'
 
 	def generate_class_header(self):
+		documentation = ''
+		if self.provider.get_class_documentation():
+			documentation = ClassFormatter.generate_documentation(self.provider.get_class_documentation().splitlines())
+
 		base_class = self.provider.get_base_class()
 		base_class = f' extends {base_class}' if base_class else ''
 		header = f'export class {self.provider.typename}{base_class} {{\n'
-		comment = ''
-		return header + indent(comment)
+		return f'{documentation}{header}'
 
 	def generate_class(self):
 		output = self.generate_class_header()
@@ -103,14 +120,25 @@ class TypeFormatter(ClassFormatter):
 			return None
 
 		generated_name = generated_name or name
-		method_descriptor.method_name = f'static {generated_name}'
-		method_descriptor.arguments = ['payload']
+		prefix = '_' if self.provider.is_type_abstract else ''
+		method_descriptor.method_name = f'static {prefix}{generated_name}'
+		method_descriptor.arguments = ['view', 'instance'] if self.provider.is_type_abstract else ['payload']
+
 		method_descriptor.annotations = []
 		return self.generate_method(method_descriptor)
 
 	def generate_serializer(self):
 		method_descriptor = self.provider.get_serialize_descriptor()
 		method_descriptor.method_name = 'serialize'
+		return self.generate_method(method_descriptor)
+
+	def generate_serializer_protected(self):
+		method_descriptor = self.provider.get_serialize_protected_descriptor()
+		if not method_descriptor:
+			return None
+
+		method_descriptor.method_name = '_serialize'
+		method_descriptor.arguments = ['buffer']
 		return self.generate_method(method_descriptor)
 
 	def generate_size(self):
@@ -134,6 +162,14 @@ class TypeFormatter(ClassFormatter):
 		method_descriptor.method_name = 'toString'
 		return self.generate_method(method_descriptor)
 
+	def generate_json(self):
+		method_descriptor = self.provider.get_json_descriptor()
+		if not method_descriptor:
+			return None
+
+		method_descriptor.method_name = 'toJson'
+		return self.generate_method(method_descriptor)
+
 	def generate_methods(self):
 		methods = []
 
@@ -149,8 +185,10 @@ class TypeFormatter(ClassFormatter):
 		_append_if_not_none(methods, self.generate_deserializer('deserialize_aligned', 'deserializeAligned'))
 
 		methods.append(self.generate_serializer())
+		_append_if_not_none(methods, self.generate_serializer_protected())
 
 		_append_if_not_none(methods, self.generate_representation())
+		_append_if_not_none(methods, self.generate_json())
 
 		return methods
 
