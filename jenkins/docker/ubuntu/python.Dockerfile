@@ -5,11 +5,15 @@ FROM ${FROM_IMAGE}
 # install tzdata first to prevent 'geographic area' prompt
 RUN apt-get update >/dev/null \
 	&& apt-get install -y tzdata \
-	&& apt-get install -y git curl
+	&& apt-get install -y git curl zip unzip
 
 # install python
 ARG FROM_IMAGE
 ARG PYTHON_VERSION='3.11'
+# Adding the Deadsnakes PPA
+RUN apt-get install -y software-properties-common && \
+	add-apt-repository ppa:deadsnakes/ppa && \
+	apt-get update
 RUN apt-get install -y python${PYTHON_VERSION} python3-pip python${PYTHON_VERSION}-venv python${PYTHON_VERSION}-dev  \
 		&& update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 10
 
@@ -32,6 +36,12 @@ RUN ARCH=$([ "$(uname -m)" = "x86_64" ] && echo "linux" || echo "aarch64") \
 	&& curl -Os "https://uploader.codecov.io/latest/${ARCH}/codecov" \
 	&& chmod +x codecov \
 	&& mv codecov /usr/local/bin
+
+# install aws cli
+RUN ARCH=$([ "$(uname -m)" = "x86_64" ] && echo "x86_64" || echo "aarch64") \
+	&& curl "https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip" -o "awscliv2.zip" \
+	&& unzip awscliv2.zip \
+	&& ./aws/install
 
 # add ubuntu user (used by jenkins)
 RUN id -u "ubuntu" || useradd --uid 1000 -ms /bin/bash ubuntu

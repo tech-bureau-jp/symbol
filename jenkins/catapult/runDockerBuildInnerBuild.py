@@ -29,7 +29,10 @@ class BuildEnvironment:
 	def _prepare_environment_variables(self):
 		if self.use_conan:
 			# conan cache directory
-			self.environment_manager.set_env_var('CONAN_HOME', '/conan')
+			self.environment_manager.set_env_var(
+				'CONAN_HOME',
+				'c:\\conan' if self.environment_manager.is_windows_platform() else '/conan'
+			)
 		else:
 			if self.environment_manager.is_windows_platform():
 				self.environment_manager.set_env_var('BOOST_ROOT', 'c:/usr/catapult/deps/boost')
@@ -52,12 +55,15 @@ class BuildEnvironment:
 		for key, value in settings.items():
 			setting_overrides += ['-s', f'compiler.{key}={value}']
 		self.dispatch_subprocess(['conan', 'profile', 'show', '--profile', 'default'])
-		self.dispatch_subprocess([
+		conan_install_rc = self.dispatch_subprocess([
 			'conan', 'install', source_path,
 			'--build', 'missing',
 			'--output-folder', build_path,
-			'-s', f'build_type={build_type}',
-		] + setting_overrides)
+			'-s', f'build_type={build_type}'
+		] + setting_overrides,
+			handle_error=not self.environment_manager.is_windows_platform())
+		if 0 != conan_install_rc:
+			raise RuntimeError(f'conan install failed: {conan_install_rc}')
 
 
 class BuildManager(BasicBuildManager):

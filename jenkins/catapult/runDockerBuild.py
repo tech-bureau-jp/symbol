@@ -12,6 +12,7 @@ CONAN_ROOT = CACHE_ROOT / 'conan'
 
 OUTPUT_DIR = Path.cwd() / 'output'
 BINARIES_DIR = OUTPUT_DIR / 'binaries'
+USER_HOME = Path(EnvironmentManager.root_directory('usr/catapult')).resolve()
 
 
 class OptionsManager(BasicBuildManager):
@@ -49,7 +50,7 @@ class OptionsManager(BasicBuildManager):
 
 	@property
 	def ccache_path(self):
-		ccache_architecture_path = CCACHE_ROOT / self.architecture
+		ccache_architecture_path = CCACHE_ROOT / self.architecture / self.versioned_compiler
 		if self.enable_code_coverage:
 			return ccache_architecture_path / 'cc'
 
@@ -60,14 +61,7 @@ class OptionsManager(BasicBuildManager):
 
 	@property
 	def conan_path(self):
-		conan_path = CONAN_ROOT / self.architecture
-		if self.is_clang:
-			return conan_path / 'clang'
-
-		if self.is_msvc:
-			return conan_path / 'msvc'
-
-		return conan_path / 'gcc'
+		return CONAN_ROOT / self.architecture / self.versioned_compiler
 
 	def docker_run_settings(self):
 		settings = [
@@ -159,14 +153,21 @@ def prepare_docker_image(process_manager, container_id, prepare_replacements):
 		f'--volume={OUTPUT_DIR}:{EnvironmentManager.root_directory("data")}',
 		f'registry.hub.docker.com/{prepare_replacements["base_image_name"]}',
 		'python3', '/scripts/runDockerBuildInnerPrepare.py',
-		f'--disposition={build_disposition}'
+		f'--disposition={build_disposition}',
+		f'--user-home={USER_HOME}'
 	])
 
 	if not container_id:
 		with open(cid_filepath, 'rt', encoding='utf8') as cid_infile:
 			container_id = cid_infile.read()
 
-	process_manager.dispatch_subprocess(['docker', 'commit', container_id, destination_image_name])
+	process_manager.dispatch_subprocess([
+		'docker', 'commit',
+		'--change', f'WORKDIR {USER_HOME}',
+		'--change', f'ENV LD_LIBRARY_PATH="{USER_HOME}/lib:{USER_HOME}/deps"',
+		container_id,
+		destination_image_name
+	])
 
 
 def get_script_path():
@@ -216,7 +217,7 @@ def main():
 
 	process_manager = ProcessManager(args.dry_run)
 
-	return_code = process_manager.dispatch_subprocess(docker_run)
+	return_code = process_manager.dispatch_subprocess(docker_run, handle_error=not environment_manager.is_windows_platform())
 	if return_code:
 		sys.exit(return_code)
 

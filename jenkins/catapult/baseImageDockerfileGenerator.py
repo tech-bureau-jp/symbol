@@ -167,6 +167,9 @@ class OptionsManager:
 			# https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
 			descriptor.cxxflags += ['/Zc:__cplusplus']
 
+			# https://www.mongodb.com/docs/languages/cpp/cpp-driver/upcoming/api-abi-versioning/#shared-libraries--msvc-only-
+			descriptor.options += ['-DENABLE_ABI_TAG_IN_LIBRARY_FILENAMES=OFF']
+
 		return self._cmake(descriptor)
 
 	def libzmq(self):
@@ -200,7 +203,7 @@ class OptionsManager:
 		# Disable warning as error due to a bug in gcc which should be fix in 12.2
 		# https://github.com/facebook/rocksdb/issues/9925
 		if self.compiler.c.startswith('gcc') and 12 == self.compiler.version:
-			descriptor.cxxflags += ['-Wno-error=maybe-uninitialized']
+			descriptor.cxxflags += ['-Wno-error=maybe-uninitialized', '-Wno-error=array-bounds']
 
 		if self.compiler.c.startswith('clang') and 15 == self.compiler.version:
 			descriptor.cxxflags += ['-Wno-error=unused-but-set-variable']
@@ -310,6 +313,13 @@ class UbuntuSystem:
 		], APT_PACKAGES=' '.join(apt_packages))
 		install_pip_package(user, 'pycodestyle pylint pyyaml')
 
+	@staticmethod
+	def add_conan_packages(packages):
+		print_line([
+			'RUN apt-get -y update',
+			'apt-get install -y {APT_PACKAGES}'
+		], APT_PACKAGES=' '.join(packages))
+
 
 class FedoraSystem:
 	@staticmethod
@@ -352,6 +362,13 @@ class FedoraSystem:
 			'rm -rf /var/cache/yum'
 		], RPM_PACKAGES=' '.join(rpm_packages))
 		install_pip_package(user, 'pycodestyle pylint pyyaml')
+
+	@staticmethod
+	def add_conan_packages(packages):
+		print_line([
+			'RUN dnf update --assumeyes',
+			'dnf install --assumeyes {RPM_PACKAGES}'
+		], RPM_PACKAGES=' '.join(packages))
 
 
 class WindowsSystem:
@@ -434,7 +451,7 @@ class LinuxSystemGenerator:
 
 		print_args = {
 			'BOOST_ARCHIVE': f'boost_{boost_version.replace(".", "_")}',
-			'BOOST_URI': f'https://boostorg.jfrog.io/artifactory/main/release/{boost_version}/source',
+			'BOOST_URI': f'https://archives.boost.io/release/{boost_version}/source',
 			'BOOTSTRAP_OPTIONS': ' '.join(self.options.bootstrap()),
 			'B2_OPTIONS': ' '.join(self.options.b2()),
 			'BOOST_DISABLED_LIBS': ' '.join(BOOST_DISABLED_LIBS)
@@ -514,12 +531,7 @@ class LinuxSystemGenerator:
 	def generate_phase_conan(self):
 		print(f'FROM {self.options.layer_image_name("os")}')
 
-		apt_packages = ['python3-pip']
-
-		print_line([
-			'RUN apt-get -y update',
-			'apt-get install -y {APT_PACKAGES}'
-		], APT_PACKAGES=' '.join(apt_packages))
+		self.system.add_conan_packages(['python3-pip'])
 		install_pip_package(self.system.user(), 'conan')
 
 
@@ -545,7 +557,7 @@ class WindowsSystemGenerator:
 		boost_version = self.options.versions['boost']
 		print_args = {
 			'BOOST_ARCHIVE': f'boost_{boost_version.replace(".", "_")}',
-			'BOOST_URI': f'https://boostorg.jfrog.io/artifactory/main/release/{boost_version}/source',
+			'BOOST_URI': f'https://archives.boost.io/release/{boost_version}/source',
 			'BOOTSTRAP_OPTIONS': ' '.join(self.options.bootstrap()),
 			'B2_OPTIONS': ' '.join(self.options.b2()),
 			'BOOST_DISABLED_LIBS': ' '.join(BOOST_DISABLED_LIBS),

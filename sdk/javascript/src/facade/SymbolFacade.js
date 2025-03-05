@@ -12,6 +12,7 @@ import {
 } from '../CryptoTypes.js';
 import { NetworkLocator } from '../Network.js';
 import { KeyPair, Verifier } from '../symbol/KeyPair.js';
+import MessageEncoder from '../symbol/MessageEncoder.js';
 import {
 	Address,
 	Network,
@@ -56,10 +57,102 @@ const transactionDataBuffer = transactionBuffer => {
 	return transactionBuffer.subarray(dataBufferStart, dataBufferEnd);
 };
 
+// region SymbolPublicAccount / SymbolAccount
+
+/**
+ * Symbol public account.
+ */
+export class SymbolPublicAccount {
+	/**
+	 * Creates a Symbol public account.
+	 * @param {SymbolFacade} facade Symbol facade.
+	 * @param {PublicKey} publicKey Account public key.
+	 */
+	constructor(facade, publicKey) {
+		/**
+		 * @protected
+		 */
+		this._facade = facade;
+
+		/**
+		 * Account public key.
+		 * @type {PublicKey}
+		 */
+		this.publicKey = publicKey;
+
+		/**
+		 * Account address.
+		 * @type {Address}
+		 */
+		this.address = this._facade.network.publicKeyToAddress(this.publicKey);
+	}
+}
+
+/**
+ * Symbol account.
+ */
+export class SymbolAccount extends SymbolPublicAccount {
+	/**
+	 * Creates a Symbol account.
+	 * @param {SymbolFacade} facade Symbol facade.
+	 * @param {KeyPair} keyPair Account key pair.
+	 */
+	constructor(facade, keyPair) {
+		super(facade, keyPair.publicKey);
+
+		/**
+		 * Account key pair.
+		 * @type {KeyPair}
+		 */
+		this.keyPair = keyPair;
+	}
+
+	/**
+	 * Creates a message encoder that can be used for encrypting and encoding messages between two parties.
+	 * @returns {MessageEncoder} Message encoder using this account as one party.
+	 */
+	messageEncoder() {
+		return new MessageEncoder(this.keyPair);
+	}
+
+	/**
+	 * Signs a Symbol transaction.
+	 * @param {sc.Transaction} transaction Transaction object.
+	 * @returns {Signature} Transaction signature.
+	 */
+	signTransaction(transaction) {
+		return this._facade.signTransaction(this.keyPair, transaction);
+	}
+
+	/**
+	 * Cosigns a Symbol transaction.
+	 * @param {sc.Transaction} transaction Transaction object.
+	 * @param {boolean} detached \c true if resulting cosignature is appropriate for network propagation.
+	 *                           \c false if resulting cosignature is appropriate for attaching to an aggregate.
+	 * @returns {sc.Cosignature|sc.DetachedCosignature} Signed cosignature.
+	 */
+	cosignTransaction(transaction, detached = false) {
+		return this._facade.cosignTransaction(this.keyPair, transaction, detached);
+	}
+
+	/**
+	 * Cosigns a Symbol transaction hash.
+	 * @param {Hash256} transactionHash Transaction hash.
+	 * @param {boolean} detached \c true if resulting cosignature is appropriate for network propagation.
+	 *                           \c false if resulting cosignature is appropriate for attaching to an aggregate.
+	 * @returns {sc.Cosignature|sc.DetachedCosignature} Signed cosignature.
+	 */
+	cosignTransactionHash(transactionHash, detached = false) {
+		return this._facade.static.cosignTransactionHash(this.keyPair, transactionHash, detached);
+	}
+}
+
+// endregion
+
 /**
  * Facade used to interact with Symbol blockchain.
  */
-export default class SymbolFacade {
+export class SymbolFacade {
 	/**
 	 * BIP32 curve name.
 	 * @type {string}
@@ -120,10 +213,74 @@ export default class SymbolFacade {
 
 	/**
 	 * Creates a network timestamp representing the current time.
-	 * @returns {NetworkTimestamp} Network timestamp representing the current time
+	 * @returns {NetworkTimestamp} Network timestamp representing the current time.
 	 */
 	now() {
 		return this.network.fromDatetime(new Date());
+	}
+
+	/**
+	 * Creates a Symbol public account from a public key.
+	 * @param {PublicKey} publicKey Account public key.
+	 * @returns {SymbolPublicAccount} Symbol public account.
+	 */
+	createPublicAccount(publicKey) {
+		return new SymbolPublicAccount(this, publicKey);
+	}
+
+	/**
+	 * Creates a Symbol account from a private key.
+	 * @param {PrivateKey} privateKey Account private key.
+	 * @returns {SymbolAccount} Symbol account.
+	 */
+	createAccount(privateKey) {
+		return new SymbolAccount(this, new KeyPair(privateKey));
+	}
+
+	/**
+	 * Creates a transaction from a (typed) transaction descriptor.
+	 * @param {object} typedDescriptor Transaction (typed) descriptor.
+	 * @param {PublicKey} signerPublicKey Signer public key.
+	 * @param {number} feeMultiplier Fee multiplier.
+	 * @param {number} deadlineSeconds Approximate seconds from now for deadline.
+	 * @param {number} cosignatureCount Number of cosignature spaces to reserve.
+	 * @returns {sc.Transaction} Created transaction.
+	 */
+	createTransactionFromTypedDescriptor(typedDescriptor, signerPublicKey, feeMultiplier, deadlineSeconds, cosignatureCount = 0) {
+		const rawDescriptor = typedDescriptor.toMap();
+		const transaction = this.transactionFactory.create({
+			...rawDescriptor,
+
+			signerPublicKey,
+			deadline: this.now().addSeconds(deadlineSeconds).timestamp
+		});
+
+		// if cosignatures are specified in the descriptor, use the max of them and cosignatureCount
+		let cosignatureCountAdjustment = cosignatureCount;
+		if (rawDescriptor.cosignatures) {
+			cosignatureCountAdjustment = rawDescriptor.cosignatures.length > cosignatureCount
+				? 0
+				: cosignatureCount - rawDescriptor.cosignatures.length;
+		}
+
+		const transactionWithCosignaturesSize = transaction.size + (cosignatureCountAdjustment * new sc.Cosignature().size);
+		transaction.fee = new sc.Amount(BigInt(transactionWithCosignaturesSize) * BigInt(feeMultiplier));
+		return transaction;
+	}
+
+	/**
+	 * Creates an embedded transaction from a (typed) transaction descriptor.
+	 * @param {object} typedDescriptor Transaction (typed) descriptor.
+	 * @param {PublicKey} signerPublicKey Signer public key.
+	 * @returns {sc.EmbeddedTransaction} Created embedded transaction.
+	 */
+	createEmbeddedTransactionFromTypedDescriptor(typedDescriptor, signerPublicKey) {
+		const transaction = this.transactionFactory.createEmbedded({
+			...typedDescriptor.toMap(),
+
+			signerPublicKey
+		});
+		return transaction;
 	}
 
 	/**
@@ -141,16 +298,25 @@ export default class SymbolFacade {
 	}
 
 	/**
+	 * Gets the payload to sign given a Symbol transaction.
+	 * @param {sc.Transaction} transaction Transaction object.
+	 * @returns {Uint8Array} Verifiable data to sign.
+	 */
+	extractSigningPayload(transaction) {
+		return new Uint8Array([
+			...this.network.generationHashSeed.bytes,
+			...transactionDataBuffer(transaction.serialize())
+		]);
+	}
+
+	/**
 	 * Signs a Symbol transaction.
 	 * @param {KeyPair} keyPair Key pair.
 	 * @param {sc.Transaction} transaction Transaction object.
 	 * @returns {Signature} Transaction signature.
 	 */
 	signTransaction(keyPair, transaction) {
-		return keyPair.sign(new Uint8Array([
-			...this.network.generationHashSeed.bytes,
-			...transactionDataBuffer(transaction.serialize())
-		]));
+		return keyPair.sign(this.extractSigningPayload(transaction));
 	}
 
 	/**
@@ -160,24 +326,19 @@ export default class SymbolFacade {
 	 * @returns {boolean} \c true if transaction signature is verified.
 	 */
 	verifyTransaction(transaction, signature) {
-		const verifyBuffer = new Uint8Array([
-			...this.network.generationHashSeed.bytes,
-			...transactionDataBuffer(transaction.serialize())
-		]);
+		const verifyBuffer = new Uint8Array(this.extractSigningPayload(transaction));
 		return new Verifier(transaction.signerPublicKey).verify(verifyBuffer, signature);
 	}
 
 	/**
-	 * Cosigns a Symbol transaction.
+	 * Cosigns a Symbol transaction hash.
 	 * @param {KeyPair} keyPair Key pair of the cosignatory.
-	 * @param {sc.Transaction} transaction Transaction object.
+	 * @param {Hash256} transactionHash Transaction hash.
 	 * @param {boolean} detached \c true if resulting cosignature is appropriate for network propagation.
 	 *                           \c false if resulting cosignature is appropriate for attaching to an aggregate.
 	 * @returns {sc.Cosignature|sc.DetachedCosignature} Signed cosignature.
 	 */
-	cosignTransaction(keyPair, transaction, detached = false) {
-		const transactionHash = this.hashTransaction(transaction);
-
+	static cosignTransactionHash(keyPair, transactionHash, detached = false) {
 		const initializeCosignature = cosignature => {
 			cosignature.version = 0n;
 			cosignature.signerPublicKey = new sc.PublicKey(keyPair.publicKey.bytes);
@@ -194,6 +355,20 @@ export default class SymbolFacade {
 		const cosignature = new sc.Cosignature();
 		initializeCosignature(cosignature);
 		return cosignature;
+	}
+
+	/**
+	 * Cosigns a Symbol transaction.
+	 * @param {KeyPair} keyPair Key pair of the cosignatory.
+	 * @param {sc.Transaction} transaction Transaction object.
+	 * @param {boolean} detached \c true if resulting cosignature is appropriate for network propagation.
+	 *                           \c false if resulting cosignature is appropriate for attaching to an aggregate.
+	 * @returns {sc.Cosignature|sc.DetachedCosignature} Signed cosignature.
+	 */
+	cosignTransaction(keyPair, transaction, detached = false) {
+		const transactionHash = this.hashTransaction(transaction);
+
+		return SymbolFacade.cosignTransactionHash(keyPair, transactionHash, detached);
 	}
 
 	/**
