@@ -23,11 +23,11 @@ describe('MessageEncoder (Symbol)', () => {
 			const invalidEncoded = Uint8Array.from(Buffer.from('024A4A4A', 'hex'));
 
 			// Act:
-			const [result, decoded] = encoder.tryDecode(new PublicKey(new Uint8Array(32)), invalidEncoded);
+			const result = encoder.tryDecode(new PublicKey(new Uint8Array(32)), invalidEncoded);
 
 			// Assert:
-			expect(result).to.equal(false);
-			expect(decoded).to.deep.equal(invalidEncoded);
+			expect(result.isDecoded).to.equal(false);
+			expect(result.message).to.deep.equal(invalidEncoded);
 		});
 	});
 
@@ -40,7 +40,7 @@ describe('MessageEncoder (Symbol)', () => {
 				// for these tests to work properly, the encoder key pair is used as the node key pair
 				const remoteKeyPair = new KeyPair(new PrivateKey('11223344556677889900AABBCCDDEEFF11223344556677889900AABBCCDDEEFF'));
 				const vrfKeyPair = new KeyPair(new PrivateKey('11223344556677889900AABBCCDDEEFF11223344556677889900AABBCCDDEEFF'));
-				return encoder.encodePersistentHarvestingDelegation(encoder.keyPair.publicKey, remoteKeyPair, vrfKeyPair);
+				return encoder.encodePersistentHarvestingDelegation(encoder.publicKey, remoteKeyPair, vrfKeyPair);
 			},
 			malformEncoded
 		});
@@ -58,11 +58,11 @@ describe('MessageEncoder (Symbol)', () => {
 
 			// Act:
 			const decoder = new MessageEncoder(nodeKeyPair);
-			const [result, decoded] = decoder.tryDecode(keyPair.publicKey, encoded);
+			const result = decoder.tryDecode(keyPair.publicKey, encoded);
 
 			// Assert:
-			expect(result).to.equal(true);
-			expect(decoded).to.deep.equal(concatArrays(remoteKeyPair.privateKey.bytes, vrfKeyPair.privateKey.bytes));
+			expect(result.isDecoded).to.equal(true);
+			expect(result.message).to.deep.equal(concatArrays(remoteKeyPair.privateKey.bytes, vrfKeyPair.privateKey.bytes));
 		});
 
 		it('decode falls back to input when ephemeral public key is not valid', () => {
@@ -80,11 +80,11 @@ describe('MessageEncoder (Symbol)', () => {
 
 			// Act:
 			const decoder = new MessageEncoder(nodeKeyPair);
-			const [result, decoded] = decoder.tryDecode(keyPair.publicKey, encoded);
+			const result = decoder.tryDecode(keyPair.publicKey, encoded);
 
 			// Assert:
-			expect(result).to.equal(false);
-			expect(decoded).to.deep.equal(encoded);
+			expect(result.isDecoded).to.equal(false);
+			expect(result.message).to.deep.equal(encoded);
 		});
 	});
 
@@ -105,11 +105,11 @@ describe('MessageEncoder (Symbol)', () => {
 			const encoded = encoder.encode(recipientPublicKey, new TextEncoder().encode('hello world'));
 
 			// Act: decode using deprecated function
-			const [result, decoded] = encoder.tryDecodeDeprecated(recipientPublicKey, encoded);
+			const result = encoder.tryDecodeDeprecated(recipientPublicKey, encoded);
 
 			// Assert: decode was successful
-			expect(result).to.equal(true);
-			expect(decoded).to.deep.equal(new TextEncoder().encode('hello world'));
+			expect(result.isDecoded).to.equal(true);
+			expect(result.message).to.deep.equal(new TextEncoder().encode('hello world'));
 		});
 	});
 });

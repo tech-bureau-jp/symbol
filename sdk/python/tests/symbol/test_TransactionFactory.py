@@ -209,6 +209,10 @@ class EmbeddedTransactionFactoryTest(BasicTransactionFactoryExSignatureTest, Sym
 	def create_transaction(factory):
 		return factory.create_embedded
 
+	@staticmethod
+	def deserialize_transaction(factory):
+		return factory.deserialize_embedded
+
 
 class TransactionFactoryTest(BasicTransactionFactoryTest, SymbolTransactionFactoryTest, unittest.TestCase):
 	def assert_transaction(self, transaction):
@@ -250,5 +254,18 @@ class TransactionFactoryTest(BasicTransactionFactoryTest, SymbolTransactionFacto
 			'array[UnresolvedMosaicId]', 'array[TransactionType]', 'array[UnresolvedAddress]', 'array[UnresolvedMosaic]'
 		]
 		self.assertEqual(set(expected_rule_names), set(factory.factory.rules.keys()))
+
+	# endregion
+
+	# region lookup_transaction_name
+
+	def test_lookup_transaction_name_can_lookup_known_transaction(self):
+		self.assertEqual('transfer_transaction_v1', TransactionFactory.lookup_transaction_name(sc.TransactionType.TRANSFER, 1))
+		self.assertEqual('transfer_transaction_v2', TransactionFactory.lookup_transaction_name(sc.TransactionType.TRANSFER, 2))
+		self.assertEqual('hash_lock_transaction_v1', TransactionFactory.lookup_transaction_name(sc.TransactionType.HASH_LOCK, 1))
+
+	def test_lookup_transaction_name_cannot_lookup_unknown_transaction(self):
+		with self.assertRaises(ValueError):
+			TransactionFactory.lookup_transaction_name(sc.TransactionType(123), 1)
 
 	# endregion

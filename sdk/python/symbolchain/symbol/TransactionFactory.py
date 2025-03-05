@@ -16,6 +16,11 @@ class TransactionFactory:
 		self.factory = self._build_rules(type_rule_overrides)
 		self.network = network
 
+	@staticmethod
+	def lookup_transaction_name(transaction_type, transaction_version):
+		"""Looks up the friendly name for the specified transaction."""
+		return f'{str(transaction_type)[str(transaction_type).index(".") + 1:].lower()}_transaction_v{transaction_version}'
+
 	def _create_and_extend(self, transaction_descriptor, autosort, factory_class):
 		transaction = self.factory.create_from_factory(factory_class.create_by_name, {
 			**transaction_descriptor,
@@ -49,6 +54,16 @@ class TransactionFactory:
 		When unset, descriptor arrays will be presumed to be already sorted.
 		"""
 		return self._create_and_extend(transaction_descriptor, autosort, sc.EmbeddedTransactionFactory)
+
+	@staticmethod
+	def deserialize(payload):
+		"""Deserializes a transaction from a binary payload."""
+		return sc.TransactionFactory.deserialize(payload)
+
+	@staticmethod
+	def deserialize_embedded(payload):
+		"""Deserializes an embedded transaction from a binary payload."""
+		return sc.EmbeddedTransactionFactory.deserialize(payload)
 
 	@staticmethod
 	def attach_signature(transaction, signature):

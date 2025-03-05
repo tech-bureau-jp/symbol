@@ -19,7 +19,7 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const catapult = require('../catapult-sdk/index');
+import catapult from '../catapult-sdk/index.js';
 
 const { formatArray, formatPage } = catapult.utils.formattingUtils;
 
@@ -59,10 +59,10 @@ const formatBody = (modelFormatter, body) => {
 	};
 };
 
-module.exports = {
+export default {
 	/**
 	 * Creates server formatters around a model formatter.
-	 * @param {array<object>} modelFormatters Model formatters.
+	 * @param {Array<object>} modelFormatters Model formatters.
 	 * @returns {object} Server formatters.
 	 */
 	create: modelFormatters => ({

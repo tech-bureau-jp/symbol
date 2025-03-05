@@ -16,6 +16,10 @@ class AbstractTypeFormatter(ABC):
 	def typename(self):
 		raise NotImplementedError('need to override method')
 
+	@property
+	def is_type_abstract(self):
+		return False
+
 	def get_base_class(self):
 		# pylint: disable=no-self-use
 		return ''
@@ -38,6 +42,10 @@ class AbstractTypeFormatter(ABC):
 	def get_serialize_descriptor(self) -> MethodDescriptor:
 		pass
 
+	def get_serialize_protected_descriptor(self) -> MethodDescriptor:
+		# pylint: disable=no-self-use
+		return None
+
 	@abstractmethod
 	def get_size_descriptor(self) -> MethodDescriptor:
 		pass
@@ -51,6 +59,10 @@ class AbstractTypeFormatter(ABC):
 		return []
 
 	def get_str_descriptor(self) -> MethodDescriptor:
+		# pylint: disable=no-self-use
+		return None
+
+	def get_json_descriptor(self) -> MethodDescriptor:
 		# pylint: disable=no-self-use
 		return None
 

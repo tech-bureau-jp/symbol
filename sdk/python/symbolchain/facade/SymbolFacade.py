@@ -1,10 +1,12 @@
 import hashlib
+from datetime import datetime, timezone
 
 from .. import sc
 from ..CryptoTypes import Hash256, PublicKey, Signature
 from ..Network import NetworkLocator
 from ..symbol.KeyPair import KeyPair, Verifier
 from ..symbol.Merkle import MerkleHashBuilder
+from ..symbol.MessageEncoder import MessageEncoder
 from ..symbol.Network import Address, Network
 from ..symbol.SharedKey import SharedKey
 from ..symbol.TransactionFactory import TransactionFactory
@@ -23,6 +25,45 @@ AGGREGATE_HASHED_SIZE = sum(field[1] for field in [
 	('deadline', 8),
 	('transactions_hash', Hash256.SIZE)
 ])
+
+
+# region SymbolPublicAccount / SymbolAccount
+
+class SymbolPublicAccount:
+	"""Symbol public account."""
+
+	def __init__(self, facade, public_key):
+		"""Creates a Symbol public account."""
+		self._facade = facade
+		self.public_key = public_key
+		self.address = self._facade.network.public_key_to_address(self.public_key)
+
+
+class SymbolAccount(SymbolPublicAccount):
+	"""Symbol account."""
+
+	def __init__(self, facade, key_pair):
+		"""Creates a Symbol account."""
+		super().__init__(facade, key_pair.public_key)
+		self.key_pair = key_pair
+
+	def message_encoder(self):
+		"""Creates a message encoder that can be used for encrypting and encoding messages between two parties."""
+		return MessageEncoder(self.key_pair)
+
+	def sign_transaction(self, transaction):
+		"""Signs a Symbol transaction."""
+		return self._facade.sign_transaction(self.key_pair, transaction)
+
+	def cosign_transaction(self, transaction, detached=False):
+		"""Cosigns a Symbol transaction."""
+		return self._facade.cosign_transaction(self.key_pair, transaction, detached)
+
+	def cosign_transaction_hash(self, transaction_hash, detached=False):
+		"""Cosigns a Symbol transaction hash."""
+		return self._facade.cosign_transaction_hash(self.key_pair, transaction_hash, detached)
+
+# endregion
 
 
 class SymbolFacade:
@@ -58,6 +99,18 @@ class SymbolFacade:
 			PublicKey: 'public_key',
 		}
 
+	def now(self):
+		"""Creates a network timestamp representing the current time."""
+		return self.network.from_datetime(datetime.now(timezone.utc))
+
+	def create_public_account(self, public_key):
+		"""Creates a Symbol public account from a public key."""
+		return SymbolPublicAccount(self, public_key)
+
+	def create_account(self, private_key):
+		"""Creates a Symbol account from a private key."""
+		return SymbolAccount(self, KeyPair(private_key))
+
 	def hash_transaction(self, transaction):
 		"""Hashes a Symbol transaction."""
 		hasher = hashlib.sha3_256()
@@ -67,22 +120,23 @@ class SymbolFacade:
 		hasher.update(self._transaction_data_buffer(transaction.serialize()))
 		return Hash256(hasher.digest())
 
-	def sign_transaction(self, key_pair, transaction):
-		"""Signs a Symbol transaction."""
+	def extract_signing_payload(self, transaction):
+		"""Gets the payload to sign given a Symbol transaction."""
 		sign_buffer = self.network.generation_hash_seed.bytes
 		sign_buffer += self._transaction_data_buffer(transaction.serialize())
-		return key_pair.sign(sign_buffer)
+		return sign_buffer
+
+	def sign_transaction(self, key_pair, transaction):
+		"""Signs a Symbol transaction."""
+		return key_pair.sign(self.extract_signing_payload(transaction))
 
 	def verify_transaction(self, transaction, signature):
 		"""Verifies a Symbol transaction."""
-		verify_buffer = self.network.generation_hash_seed.bytes
-		verify_buffer += self._transaction_data_buffer(transaction.serialize())
-		return Verifier(transaction.signer_public_key).verify(verify_buffer, signature)
+		return Verifier(transaction.signer_public_key).verify(self.extract_signing_payload(transaction), signature)
 
-	def cosign_transaction(self, key_pair, transaction, detached=False):
-		"""Cosigns a Symbol transaction."""
-		transaction_hash = self.hash_transaction(transaction)
-
+	@staticmethod
+	def cosign_transaction_hash(key_pair, transaction_hash, detached=False):
+		"""Cosigns a Symbol transaction hash."""
 		cosignature = sc.DetachedCosignature() if detached else sc.Cosignature()
 		if detached:
 			cosignature.parent_hash = sc.Hash256(transaction_hash.bytes)
@@ -91,6 +145,11 @@ class SymbolFacade:
 		cosignature.signer_public_key = sc.PublicKey(key_pair.public_key.bytes)
 		cosignature.signature = sc.Signature(key_pair.sign(transaction_hash.bytes).bytes)
 		return cosignature
+
+	def cosign_transaction(self, key_pair, transaction, detached=False):
+		"""Cosigns a Symbol transaction."""
+		transaction_hash = self.hash_transaction(transaction)
+		return self.cosign_transaction_hash(key_pair, transaction_hash, detached)
 
 	@staticmethod
 	def hash_embedded_transactions(embedded_transactions):

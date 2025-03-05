@@ -4,11 +4,15 @@ import sys
 from pathlib import Path
 
 
-def rm_failure_handler(func, path, excinfo):
+def rm_onerror_handler(func, path, excinfo):
+	rm_onexc_handler(func, path, excinfo[1])
+
+
+def rm_onexc_handler(func, path, exception):
 	del func
 	del path
-	if excinfo[0] != FileNotFoundError:
-		raise excinfo[1]
+	if not isinstance(exception, FileNotFoundError):
+		raise exception
 
 
 class EnvironmentManager:
@@ -22,7 +26,7 @@ class EnvironmentManager:
 		if self.dry_run:
 			return '<SYSTEM_BIN_PATH>'
 
-		for descriptor in [('ubuntu', '/usr/lib/x86_64-linux-gnu'), ('fedora', '/usr/lib64')]:
+		for descriptor in [('ubuntu', '/usr/lib/x86_64-linux-gnu'), ('fedora', '/usr/lib64'), ('ubuntu arm64', '/usr/lib/aarch64-linux-gnu')]:
 			if Path(descriptor[1]).exists():
 				self._print_command('system_bin_path', ['detected', descriptor[1], 'for', descriptor[0]])
 				return descriptor[1]
@@ -71,7 +75,8 @@ class EnvironmentManager:
 		if self.dry_run:
 			return
 
-		shutil.rmtree(path, onerror=rm_failure_handler)
+		kwargs = {'onexc': rm_onexc_handler} if sys.version_info >= (3, 12) else {'onerror': rm_onerror_handler}
+		shutil.rmtree(path, **kwargs)
 
 	# endregion
 

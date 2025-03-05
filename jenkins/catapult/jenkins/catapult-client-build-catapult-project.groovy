@@ -30,13 +30,16 @@ pipeline {
 		choice name: 'TEST_VERBOSITY',
 			choices: ['suite', 'test', 'max'],
 			description: 'output verbosity level'
+		choice name: 'ARCHITECTURE',
+			choices: ['amd64', 'arm64'],
+			description: 'platform'
 
 		booleanParam name: 'SHOULD_PUBLISH_BUILD_IMAGE', description: 'true to publish build image', defaultValue: false
 		booleanParam name: 'SHOULD_PUBLISH_FAIL_JOB_STATUS', description: 'true to publish job status if failed', defaultValue: false
 	}
 
 	agent {
-		label "${helper.resolveAgentName("${OPERATING_SYSTEM}")}"
+		label "${helper.resolveAgentName("${OPERATING_SYSTEM}", "${ARCHITECTURE}", 'xlarge')}"
 	}
 
 	environment {
@@ -53,6 +56,22 @@ pipeline {
 	stages {
 		stage('prepare') {
 			stages {
+				stage('git checkout') {
+					when {
+						expression { isManualBuild() }
+					}
+					steps {
+						script {
+							helper.runStepAndRecordFailure {
+								dir('catapult-src') {
+									sh 'git config -l'
+									sh "git checkout ${resolveBranchName()}"
+									sh "git reset --hard origin/${resolveBranchName()}"
+								}
+							}
+						}
+					}
+				}
 				stage('prepare variables') {
 					steps {
 						script {
@@ -64,6 +83,9 @@ pipeline {
 
 								buildImageLabel = TEST_IMAGE_LABEL?.trim() ? TEST_IMAGE_LABEL : resolveBuildImageLabel()
 								buildImageFullName = "symbolplatform/symbol-server-test:${buildImageLabel}"
+
+								compilerConfiguratonFilePath = "catapult-src/jenkins/catapult/configurations/${ARCHITECTURE}/${COMPILER_CONFIGURATION}.yaml"
+								buildConfigurationFilePath = "catapult-src/jenkins/catapult/configurations/${BUILD_CONFIGURATION}.yaml"
 							}
 						}
 					}
@@ -76,7 +98,8 @@ pipeline {
 
 							COMPILER_CONFIGURATION: ${COMPILER_CONFIGURATION}
 							   BUILD_CONFIGURATION: ${BUILD_CONFIGURATION}
-								  OPERATING_SYSTEM: ${OPERATING_SYSTEM}
+							      OPERATING_SYSTEM: ${OPERATING_SYSTEM}
+						  			  ARCHITECTURE: ${ARCHITECTURE}
 
 								  TEST_IMAGE_LABEL: ${TEST_IMAGE_LABEL}
 										 TEST_MODE: ${TEST_MODE}
@@ -88,23 +111,6 @@ pipeline {
 								   buildImageLabel: ${buildImageLabel}
 								buildImageFullName: ${buildImageFullName}
 						"""
-					}
-				}
-				stage('git checkout') {
-					when {
-						expression { isManualBuild() }
-					}
-					steps {
-						script {
-							helper.runStepAndRecordFailure {
-								cleanWs()
-								dir('catapult-src') {
-									sh 'git config -l'
-									git branch: "${resolveBranchName()}",
-											url: 'https://github.com/symbol/symbol.git'
-								}
-							}
-						}
 					}
 				}
 			}
@@ -119,8 +125,8 @@ pipeline {
 						script {
 							runDockerBuildCommand = """
 								python3 catapult-src/jenkins/catapult/runDockerBuild.py \
-									--compiler-configuration catapult-src/jenkins/catapult/configurations/${COMPILER_CONFIGURATION}.yaml \
-									--build-configuration catapult-src/jenkins/catapult/configurations/${BUILD_CONFIGURATION}.yaml \
+									--compiler-configuration ${compilerConfiguratonFilePath} \
+									--build-configuration ${buildConfigurationFilePath} \
 									--operating-system ${OPERATING_SYSTEM} \
 									--user ${fullyQualifiedUser} \
 									--destination-image-label ${buildImageLabel} \
@@ -154,7 +160,7 @@ pipeline {
 								sh """
 									python3 catapult-src/jenkins/catapult/runDockerTests.py \
 										--image registry.hub.docker.com/symbolplatform/symbol-server-test-base:${OPERATING_SYSTEM} \
-										--compiler-configuration catapult-src/jenkins/catapult/configurations/${COMPILER_CONFIGURATION}.yaml \
+										--compiler-configuration ${compilerConfiguratonFilePath} \
 										--user ${fullyQualifiedUser} \
 										--mode lint \
 										--source-path catapult-src \
@@ -229,7 +235,7 @@ pipeline {
 								sh """
 									python3 catapult-src/jenkins/catapult/runDockerTests.py \
 										--image ${testImageName} \
-										--compiler-configuration catapult-src/jenkins/catapult/configurations/${COMPILER_CONFIGURATION}.yaml \
+										--compiler-configuration ${compilerConfiguratonFilePath} \
 										--user ${fullyQualifiedUser} \
 										--mode ${TEST_MODE} \
 										--verbosity ${TEST_VERBOSITY} \
@@ -254,18 +260,19 @@ pipeline {
 								docker.image(baseImageNames[0]).inside("--volume=${pwd()}/catapult-src:/catapult-src") {
 									sh '''
 										cd /catapult-src
-										lcov --directory client/catapult/_build --capture --output-file coverage_all.info
+										lcov --directory client/catapult/_build --capture --output-file coverage_all.info --ignore-errors mismatch
 										lcov --remove coverage_all.info '/usr/*' '/mybuild/*' '/*tests/*' '/*external/*' --output-file client_coverage.info
 										lcov --list client_coverage.info
 									'''
 
 									withCredentials([string(credentialsId: 'SYMBOL_CODECOV_ID', variable: 'CODECOV_TOKEN')]) {
-										sh '''
+										String platform = 'arm64' == params.ARCHITECTURE ? 'aarch64' : 'linux'
+										sh """
 											cd /catapult-src
-											curl -Os https://uploader.codecov.io/latest/linux/codecov
+											curl -Os https://uploader.codecov.io/latest/${platform}/codecov
 											chmod +x codecov
 											./codecov --verbose --nonZero --rootDir . --flags client-catapult --file client_coverage.info
-										'''
+										"""
 									}
 								}
 							}

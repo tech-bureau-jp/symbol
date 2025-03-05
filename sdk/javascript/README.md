@@ -15,22 +15,52 @@ JavaScript SDK for interacting with the Symbol and NEM blockchains.
 
 Most common functionality is grouped under facades so that the same programming paradigm can be used for interacting with both Symbol and NEM.
 
+## Building the SDK
+
+* Manually install dependencies:
+    * [Node.js](https://nodejs.org/) (any [actively supported version](https://nodejs.org/en/about/previous-releases))
+    * [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+    * [Rustup](https://rustup.rs/)
+    * [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
+    * [Python 3](https://www.python.org/downloads/)
+
+* Install requirements for the generator module:
+
+    ```sh
+    python3 -m pip install -r generator/requirements.txt
+    ```
+
+* Run:
+
+    ```sh
+    npm install
+    scripts/ci/build.sh
+    ```
+
+* Optionally, to build the documentation, run:
+
+    ```sh
+    scripts/generate_docs.sh
+    ```
+
 ## Sending a Transaction
 
 To send a transaction, first create a facade for the desired network:
 
 _Symbol_
 ```javascript
-import symbolSdk from 'symbol-sdk';
+import { PrivateKey } from 'symbol-sdk';
+import { SymbolFacade, descriptors, models } from 'symbol-sdk/symbol';
 
-const facade = new symbolSdk.facade.SymbolFacade('testnet');
+const facade = new SymbolFacade('testnet');
 ```
 
 _NEM_
 ```javascript
-import symbolSdk from 'symbol-sdk';
+import { PrivateKey } from 'symbol-sdk';
+import { NemFacade, descriptors, models } from 'symbol-sdk/nem';
 
-const facade = new symbolSdk.facade.NemFacade('testnet');
+const facade = new NemFacade('testnet');
 ````
 
 Second, describe the transaction using JavaScript object syntax. For example, a transfer transaction can be described as follows:
@@ -62,14 +92,50 @@ const transaction = facade.transactionFactory.create({
 });
 ````
 
+Alternatively, strongly typed transaction bindings are provided:
+
+_Symbol_
+```javascript
+	const typedDescriptor = new descriptors.TransferTransactionV1Descriptor(
+		new Address('TCHBDENCLKEBILBPWP3JPB2XNY64OE7PYHHE32I'),
+		[
+			new descriptors.UnresolvedMosaicDescriptor(new models.UnresolvedMosaicId(0x7CDF3B117A3C40CCn), new models.Amount(1000000n))
+		],
+		'hello symbol'
+	);
+
+	const transaction = facade.createTransactionFromTypedDescriptor(
+		typedDescriptor,
+		new PublicKey('87DA603E7BE5656C45692D5FC7F6D0EF8F24BB7A5C10ED5FDA8C5CFBC49FCBC8'),
+		100,
+		60 * 60
+	);
+```
+
+_NEM_
+```javascript
+	const typedDescriptor = new descriptors.TransferTransactionV1Descriptor(
+		new Address('TALICE5VF6J5FYMTCB7A3QG6OIRDRUXDWJGFVXNW'),
+		new models.Amount(5100000n),
+		new descriptors.MessageDescriptor(models.MessageType.PLAIN, 'hello nem')
+	);
+
+	const transaction = facade.createTransactionFromTypedDescriptor(
+		typedDescriptor,
+		new PublicKey('A59277D56E9F4FA46854F5EFAAA253B09F8AE69A473565E01FD9E6A738E4AB74'),
+		0x186A0n,
+		60 * 60
+	);
+```
+
 Third, sign the transaction and attach the signature:
 
 
 ```javascript
-const privateKey = new symbolSdk.PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
-const signature = facade.signTransaction(new facade.constructor.KeyPair(privateKey), transaction);
+const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
+const signature = facade.signTransaction(new facade.static.KeyPair(privateKey), transaction);
 
-const jsonPayload = facade.transactionFactory.constructor.attachSignature(transaction, signature);;
+const jsonPayload = facade.transactionFactory.static.attachSignature(transaction, signature);;
 ```
 
 Finally, send the payload to the desired network using the specified node endpoint:
@@ -90,12 +156,13 @@ npm install symbol-sdk
 ```
 
 ```js
-import symbolSdk from 'symbol-sdk';
+import { PrivateKey } from 'symbol-sdk';
+import { KeyPair } from 'symbol-sdk/symbol';
 
-const privateKey = new symbolSdk.PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
+const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
 console.log(`Private Key: ${privateKey.toString()}`);
 
-const keyPair = new symbolSdk.symbol.KeyPair(privateKey);
+const keyPair = new KeyPair(privateKey);
 console.log(`Public Key: ${keyPair.publicKey.toString()}`);
 ```
 
@@ -105,12 +172,15 @@ Symbol-sdk is alternatively published as a bundled file, which can be imported d
 
 ```html
 <script type="module">
-	import symbolSdk from './node_modules/symbol-sdk/dist/bundle.web.js';
+	import { core, /* nem, */ symbol } from './node_modules/symbol-sdk/dist/bundle.web.js';
 
-	const privateKey = new symbolSdk.PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
+	const { PrivateKey } = core;
+	const { KeyPair } = symbol;
+
+	const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
 	console.log(`Private Key: ${privateKey.toString()}`);
 
-	const keyPair = new symbolSdk.symbol.KeyPair(privateKey);
+	const keyPair = new KeyPair(privateKey);
 	console.log(`Public Key: ${keyPair.publicKey.toString()}`);
 </script>
 ```
@@ -158,6 +228,20 @@ export default {
 
 If everything is set up correctly, the same syntax as the Node example can be used.
 
+### TypeScript Support
+
+JavaScript SDK uses [node subpath exports](https://nodejs.org/api/packages.html#subpath-exports) for cleaner imports and depends on ES2020 functionality.
+For TypeScript compatibility, the following minimum settings must be specified in `tsconfig.json`:
+
+```json
+	{
+		"compilerOptions": {
+			"target": "ES2020",
+			"module": "Node16",
+			"moduleResolution": "Node16"
+		}
+	}
+```
 
 ## NEM Cheat Sheet
 

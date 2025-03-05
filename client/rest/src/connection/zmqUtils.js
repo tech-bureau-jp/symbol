@@ -19,7 +19,8 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const EventEmitter = require('events');
+import zmq from 'zeromq/v5-compat.js';
+import EventEmitter from 'events';
 
 const logAllMonitorEvents = (zsocket, throttle, logger) => {
 	const eventNameLevelPairs = {
@@ -58,7 +59,7 @@ const logAllMonitorEvents = (zsocket, throttle, logger) => {
 	});
 };
 
-module.exports = {
+export default {
 	/**
 	 * Prepares a zmq socket for a connection.
 	 * @param {zmq.Socket} zsocket Zmq socket.
@@ -108,7 +109,7 @@ module.exports = {
 
 	/**
 	 * Creates a multisocket emitter.
-	 * @param {function} zsocketFactory Factory for creating a zmq socket given a key.
+	 * @param {Function} zsocketFactory Factory for creating a zmq socket given a key.
 	 * @returns {object} Event emitter with partial interface (on, removeAllListeners, listenerCount).
 	 */
 	createMultisocketEmitter: zsocketFactory => {
@@ -154,9 +155,9 @@ module.exports = {
 			listenerCount: key => emitter.listenerCount(key),
 
 			/**
-			  * Gets the number of active zmq sockets.
-			  * @returns {numeric} Number of active zmq sockets.
-			  */
+			 * Gets the number of active zmq sockets.
+			 * @returns {number} Number of active zmq sockets.
+			 */
 			zsocketCount: () => Object.keys(zsockets).length,
 
 			/**

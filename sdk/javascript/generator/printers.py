@@ -35,11 +35,13 @@ class IntPrinter(Printer):
 	def load(self, buffer_name='byteArray', is_aligned=False):
 		data_size = self.get_size()
 		arguments = f'{buffer_name}, {data_size}, {js_bool(not self.descriptor.is_unsigned)}'
+		qualifier = '' if data_size < 8 else 'Big'
+
 		# is_aligned - handles both generation of deserializeAligned for pod and enum types and generation of fields within struct
 		if is_aligned:
-			return f'converter.bytesToInt({arguments})'
+			return f'converter.bytesTo{qualifier}Int({arguments})'
 
-		return f'converter.bytesToIntUnaligned({arguments})'
+		return f'converter.bytesTo{qualifier}IntUnaligned({arguments})'
 
 	def advancement_size(self):
 		return self.get_size()
@@ -54,6 +56,9 @@ class IntPrinter(Printer):
 	@staticmethod
 	def to_string(field_name):
 		return f'\'0x\'.concat({field_name}.toString(16))'
+
+	def to_json(self, field_name):
+		return f'{field_name}.toString()' if 8 == self.descriptor.size else field_name
 
 
 class TypedArrayPrinter(Printer):
@@ -174,6 +179,10 @@ class TypedArrayPrinter(Printer):
 	def to_string(field_name):
 		return f'{field_name}.map(e => e.toString()).join(\',\')'
 
+	@staticmethod
+	def to_json(field_name):
+		return f'{field_name}.map(e => e.toJson())'
+
 
 class ArrayPrinter(Printer):
 	def __init__(self, descriptor, name=None):
@@ -216,6 +225,9 @@ class ArrayPrinter(Printer):
 	@staticmethod
 	def to_string(field_name):
 		return f'converter.uint8ToHex({field_name})'
+
+	def to_json(self, field_name):
+		return self.to_string(field_name)
 
 
 class BuiltinPrinter(Printer):
@@ -273,6 +285,10 @@ class BuiltinPrinter(Printer):
 	@staticmethod
 	def to_string(field_name):
 		return f'{field_name}.toString()'
+
+	@staticmethod
+	def to_json(field_name):
+		return f'{field_name}.toJson()'
 
 
 def create_pod_printer(descriptor, name=None):

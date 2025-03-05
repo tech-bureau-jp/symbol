@@ -11,6 +11,17 @@ const tryDecode = (testDescriptor, decoder) => (
 const runMessageEncoderDecodeSuccessTests = testDescriptor => {
 	const testSuffix = testDescriptor.name ? ` (${testDescriptor.name})` : '';
 
+	it(`can create encoder${testSuffix}`, () => {
+		// Arrange:
+		const keyPair = new testDescriptor.KeyPair(PrivateKey.random());
+
+		// Act:
+		const encoder = new testDescriptor.MessageEncoder(keyPair);
+
+		// Assert:
+		expect(encoder.publicKey).to.deep.equal(keyPair.publicKey);
+	});
+
 	it(`sender can decode encoded message${testSuffix}`, () => {
 		// Arrange:
 		const keyPair = new testDescriptor.KeyPair(PrivateKey.random());
@@ -19,11 +30,11 @@ const runMessageEncoderDecodeSuccessTests = testDescriptor => {
 		const encoded = encode(testDescriptor, encoder)(recipientPublicKey, (new TextEncoder()).encode('hello world'));
 
 		// Act:
-		const [result, decoded] = tryDecode(testDescriptor, encoder)(recipientPublicKey, encoded);
+		const result = tryDecode(testDescriptor, encoder)(recipientPublicKey, encoded);
 
 		// Assert:
-		expect(result).to.equal(true);
-		expect(decoded).to.deep.equal((new TextEncoder()).encode('hello world'));
+		expect(result.isDecoded).to.equal(true);
+		expect(result.message).to.deep.equal((new TextEncoder()).encode('hello world'));
 	});
 
 	it(`recipient can decode encoded message${testSuffix}`, () => {
@@ -35,11 +46,11 @@ const runMessageEncoderDecodeSuccessTests = testDescriptor => {
 
 		// Act:
 		const decoder = new testDescriptor.MessageEncoder(recipientKeyPair);
-		const [result, decoded] = tryDecode(testDescriptor, decoder)(keyPair.publicKey, encoded);
+		const result = tryDecode(testDescriptor, decoder)(keyPair.publicKey, encoded);
 
 		// Assert:
-		expect(result).to.equal(true);
-		expect(decoded).to.deep.equal((new TextEncoder()).encode('hello world'));
+		expect(result.isDecoded).to.equal(true);
+		expect(result.message).to.deep.equal((new TextEncoder()).encode('hello world'));
 	});
 };
 
@@ -56,11 +67,11 @@ export const runMessageEncoderDecodeFailureTests = testDescriptor => {
 		testDescriptor.malformEncoded(encoded);
 
 		// Act:
-		const [result, decoded] = tryDecode(testDescriptor, encoder)(recipientPublicKey, encoded);
+		const result = tryDecode(testDescriptor, encoder)(recipientPublicKey, encoded);
 
 		// Assert:
-		expect(result).to.equal(false);
-		expect(decoded).to.deep.equal(encoded);
+		expect(result.isDecoded).to.equal(false);
+		expect(result.message).to.deep.equal(encoded);
 	};
 
 	it(`decode falls back to input when decoding failed - short${testSuffix}`, () => {

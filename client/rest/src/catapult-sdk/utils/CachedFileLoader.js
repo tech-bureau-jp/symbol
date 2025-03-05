@@ -19,8 +19,8 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const fs = require('fs');
-const util = require('util');
+import fs from 'fs';
+import util from 'util';
 
 const readFile = util.promisify(fs.readFile);
 const stat = util.promisify(fs.stat);
@@ -28,7 +28,7 @@ const stat = util.promisify(fs.stat);
 /**
  * Loads and caches files.
  */
-class CachedFileLoader {
+export default class CachedFileLoader {
 	/**
 	 * Creates a cached file loader.
 	 */
@@ -39,7 +39,7 @@ class CachedFileLoader {
 	/**
 	 * Loads a file.
 	 * @param {string} filePath Path to file to read.
-	 * @param {function} processor File processor.
+	 * @param {Function} processor File processor.
 	 * @returns {Promise} Promise to processed file contents.
 	 */
 	readAlways(filePath, processor) {
@@ -61,7 +61,7 @@ class CachedFileLoader {
 	/**
 	 * Loads a file exactly once and caches the result.
 	 * @param {string} filePath Path to file to read.
-	 * @param {function} processor File processor.
+	 * @param {Function} processor File processor.
 	 * @returns {Promise} Promise to processed file contents.
 	 */
 	readOnce(filePath, processor) {
@@ -73,7 +73,7 @@ class CachedFileLoader {
 	/**
 	 * Loads a file only if it has changed on disk since last load.
 	 * @param {string} filePath Path to file to read.
-	 * @param {function} processor File processor.
+	 * @param {Function} processor File processor.
 	 * @returns {Promise} Promise to processed file contents.
 	 */
 	readNewer(filePath, processor) {
@@ -90,5 +90,3 @@ class CachedFileLoader {
 			});
 	}
 }
-
-module.exports = CachedFileLoader;
