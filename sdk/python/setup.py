@@ -1,14 +1,7 @@
 # -*- coding: utf-8 -*-
-from setuptools import setup
+from setuptools import setup, find_packages
 
-packages = \
-['symbolchain',
-   'symbolchain.facade',
-   'symbolchain.nc',
-   'symbolchain.nem',
-   'symbolchain.external',
-   'symbolchain.sc',
-   'symbolchain.symbol']
+packages = find_packages(include=['symbolchain*'])
 
 package_data = \
 {'': ['*']}
@@ -18,7 +11,7 @@ with open('requirements.txt') as f:
 
 setup_kwargs = {
     'name': 'techbureau-symbol-sdk-python',
-    'version': '3.2.3.dev',
+    'version': '3.2.3.dev1',
     'description': 'Symbol SDK',
     'long_description': 'This is symbol project core sdk python library.',
     'author': 'Techbureau Contributors',
