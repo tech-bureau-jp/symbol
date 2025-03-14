@@ -21,16 +21,18 @@ To send a transaction, first create a facade for the desired network:
 
 _Symbol_
 ```javascript
-import symbolSdk from 'symbol-sdk';
+import { PrivateKey } from 'symbol-sdk';
+import { SymbolFacade } from 'symbol-sdk/symbol';
 
-const facade = new symbolSdk.facade.SymbolFacade('testnet');
+const facade = new SymbolFacade('testnet');
 ```
 
 _NEM_
 ```javascript
-import symbolSdk from 'symbol-sdk';
+import { PrivateKey } from 'symbol-sdk';
+import { NemFacade } from 'symbol-sdk/nem';
 
-const facade = new symbolSdk.facade.NemFacade('testnet');
+const facade = new NemFacade('testnet');
 ````
 
 Second, describe the transaction using JavaScript object syntax. For example, a transfer transaction can be described as follows:
@@ -66,10 +68,10 @@ Third, sign the transaction and attach the signature:
 
 
 ```javascript
-const privateKey = new symbolSdk.PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
-const signature = facade.signTransaction(new facade.constructor.KeyPair(privateKey), transaction);
+const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
+const signature = facade.signTransaction(new facade.static.KeyPair(privateKey), transaction);
 
-const jsonPayload = facade.transactionFactory.constructor.attachSignature(transaction, signature);;
+const jsonPayload = facade.transactionFactory.static.attachSignature(transaction, signature);;
 ```
 
 Finally, send the payload to the desired network using the specified node endpoint:
@@ -77,6 +79,90 @@ Finally, send the payload to the desired network using the specified node endpoi
 _Symbol_: PUT `/transactions`
 <br>
 _NEM_: POST `/transaction/announce`
+
+
+## Usage Environments
+
+### Node
+
+Symbol-sdk is written node-first and published via npm, so simply install the package and import 'symbol-sdk':
+
+```sh
+npm install symbol-sdk
+```
+
+```js
+import { PrivateKey } from 'symbol-sdk';
+import { KeyPair } from 'symbol-sdk/symbol';
+
+const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
+console.log(`Private Key: ${privateKey.toString()}`);
+
+const keyPair = new KeyPair(privateKey);
+console.log(`Public Key: ${keyPair.publicKey.toString()}`);
+```
+
+### Browser
+
+Symbol-sdk is alternatively published as a bundled file, which can be imported directly for browser usage:
+
+```html
+<script type="module">
+	import { core, /* nem, */ symbol } from './node_modules/symbol-sdk/dist/bundle.web.js';
+
+	const { PrivateKey } = core;
+	const { KeyPair } = symbol;
+
+	const privateKey = new PrivateKey('EDB671EB741BD676969D8A035271D1EE5E75DF33278083D877F23615EB839FEC');
+	console.log(`Private Key: ${privateKey.toString()}`);
+
+	const keyPair = new KeyPair(privateKey);
+	console.log(`Public Key: ${keyPair.publicKey.toString()}`);
+</script>
+```
+
+### Web Application / External Bundler
+
+If you want to use symbol-sdk within a browser application and/or are using a bundler, additional configuration of the bundler is required.
+
+For Webpack, the following configuration needs to be added:
+```js
+export default {
+	// ...
+	plugins: [
+		// configure browser replacements for node process and Buffer libraries
+		new webpack.ProvidePlugin({
+			process: 'process/browser',
+			Buffer: ['buffer', 'Buffer']
+		}),
+		// use a browser-optimized wasm for Ed25519 crypto operrations
+		new webpack.NormalModuleReplacementPlugin(
+			/symbol-crypto-wasm-node/,
+			`../../../symbol-crypto-wasm-web/symbol_crypto_wasm.js`
+		)
+	],
+
+	// configure browser polyfills for node crypto, path and stream libraries
+	resolve: {
+		extensions: ['.js'],
+		fallback: {
+			crypto: 'crypto-browserify',
+			path: 'path-browserify',
+			stream: 'stream-browserify'
+		}
+	},
+
+	experiments: {
+		// enable async loading of wasm files
+		asyncWebAssembly: true,
+		topLevelAwait: true
+	}
+	// ...
+}
+
+```
+
+If everything is set up correctly, the same syntax as the Node example can be used.
 
 
 ## NEM Cheat Sheet

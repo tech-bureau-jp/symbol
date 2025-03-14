@@ -2,7 +2,7 @@ import { PublicKey, Signature } from '../../src/CryptoTypes.js';
 import { Address, Network } from '../../src/nem/Network.js';
 import TransactionFactory from '../../src/nem/TransactionFactory.js';
 import * as nc from '../../src/nem/models.js';
-import { uint8ToHex } from '../../src/utils/converter.js';
+import { hexToUint8, uint8ToHex } from '../../src/utils/converter.js';
 import { runBasicTransactionFactoryTests } from '../test/basicTransactionFactoryTests.js';
 import { expect } from 'chai';
 import crypto from 'crypto';
@@ -32,7 +32,15 @@ describe('transaction factory (NEM)', () => {
 
 	runBasicTransactionFactoryTests(testDescriptor);
 
-	// region rules
+	// region constants + rules
+
+	it('has correct static accessor', () => {
+		// Arrange:
+		const factory = new TransactionFactory(Network.TESTNET);
+
+		// Assert:
+		expect(TransactionFactory).to.deep.equal(factory.static);
+	});
 
 	it('has rules with expected hints', () => {
 		// Act:
@@ -53,7 +61,24 @@ describe('transaction factory (NEM)', () => {
 
 			'array[SizePrefixedMosaic]', 'array[SizePrefixedMosaicProperty]', 'array[SizePrefixedMultisigAccountModification]'
 		]);
-		expect(new Set(Array.from(factory.factory.rules.keys()))).to.deep.equal(expectedRuleNames);
+		const ruleNames = new Set(factory.ruleNames);
+		expect(ruleNames).to.deep.equal(expectedRuleNames);
+	});
+
+	// endregion
+
+	// region lookupTransactionName
+
+	describe('lookupTransactionName', () => {
+		it('can lookup known transaction', () => {
+			expect(TransactionFactory.lookupTransactionName(nc.TransactionType.TRANSFER, 1)).to.equal('transfer_transaction_v1');
+			expect(TransactionFactory.lookupTransactionName(nc.TransactionType.TRANSFER, 2)).to.equal('transfer_transaction_v2');
+			expect(TransactionFactory.lookupTransactionName(nc.TransactionType.MULTISIG, 1)).to.equal('multisig_transaction_v1');
+		});
+
+		it('cannot lookup unknown transaction', () => {
+			expect(() => TransactionFactory.lookupTransactionName(new nc.TransactionType(123), 1)).to.throw('invalid enum value 123');
+		});
 	});
 
 	// endregion
@@ -103,8 +128,8 @@ describe('transaction factory (NEM)', () => {
 		});
 
 		// Assert:
-		expect(transaction.rentalFeeSink)
-			.to.deep.equal(new nc.Address('4145424147424146415944515143494B424D474132445150434149524545595543554C424F474142'));
+		const expectedAddressBytes = hexToUint8('4145424147424146415944515143494B424D474132445150434149524545595543554C424F474142');
+		expect(transaction.rentalFeeSink).to.deep.equal(new nc.Address(expectedAddressBytes));
 	});
 
 	// endregion
@@ -218,8 +243,9 @@ describe('transaction factory (NEM)', () => {
 		// Act:
 		const nonVerifiableTransaction = TransactionFactory.toNonVerifiableTransaction(transaction);
 
-		// Assert:
-		expect(nonVerifiableTransaction.signature).to.equal(undefined);
+		// Assert: nonVerifiableTransaction does not contain signature but source transaction does
+		expect(Object.prototype.hasOwnProperty.call(transaction, '_signature')).to.equal(true);
+		expect(Object.prototype.hasOwnProperty.call(nonVerifiableTransaction, '_signature')).to.equal(false);
 
 		// - cut out size and signature from the buffer
 		const verifiableBuffer = transaction.serialize();
@@ -248,6 +274,16 @@ describe('transaction factory (NEM)', () => {
 
 		// Assert:
 		expect(nonVerifiableTransaction2.serialize()).to.deep.equal(nonVerifiableTransaction1.serialize());
+	});
+
+	it('cannot convert non-transaction to non-verifiable', () => {
+		// Arrange:
+		const factory = testDescriptor.createFactory();
+		const signature = new Signature(crypto.randomBytes(Signature.SIZE));
+		const transaction = testDescriptor.createTransaction(factory)(createTransferDescriptorWithSignature(signature));
+
+		// Act + Assert: parameter has correct shape but is not a known transaction type
+		expect(() => TransactionFactory.toNonVerifiableTransaction({ ...transaction })).to.throw('invalid transaction instance');
 	});
 
 	// endregion

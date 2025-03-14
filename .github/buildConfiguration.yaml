@@ -102,3 +102,17 @@ customBuilds:
     jobName: /symbol/catapult-client/catapult-client-release-build
     scriptPath: jenkins/catapult/jenkins/catapult-client-release-build.groovy
     targetDirectory: symbol-mono
+
+  - name: Catapult Dependency Updater
+    jobName: /symbol/catapult-client/catapult-dependency-updater
+    scriptPath: .github/jenkinsfile/catapultDependency.groovy
+    triggers:
+      - type: cron
+        schedule: '@monthly'
+
+  - name: Weekly Job
+    jobName: weeklyJob
+    scriptPath: .github/jenkinsfile/weeklyBuild.groovy
+    triggers:
+      - type: cron
+        schedule: '@weekly'

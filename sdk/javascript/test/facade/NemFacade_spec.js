@@ -1,4 +1,4 @@
-import Bip32 from '../../src/Bip32.js';
+import { Bip32 } from '../../src/Bip32.js';
 import {
 	Hash256, PrivateKey, PublicKey, Signature
 } from '../../src/CryptoTypes.js';
@@ -13,6 +13,14 @@ describe('NEM Facade', () => {
 
 	it('has correct BIP32 constants', () => {
 		expect(NemFacade.BIP32_CURVE_NAME).to.equal('ed25519-keccak');
+	});
+
+	it('has correct static accessor', () => {
+		// Arrange:
+		const facade = new NemFacade('testnet');
+
+		// Assert:
+		expect(NemFacade).to.deep.equal(facade.static);
 	});
 
 	it('has correct KeyPair', () => {
@@ -68,7 +76,7 @@ describe('NEM Facade', () => {
 
 	it('can create around unknown network', () => {
 		// Arrange:
-		const network = new Network('foo', 0xDE);
+		const network = new Network('foo', 0xDE, new Date());
 
 		// Act:
 		const facade = new NemFacade(network);
@@ -83,6 +91,31 @@ describe('NEM Facade', () => {
 
 		expect(transaction.type.value).to.equal(0x0101);
 		expect(transaction.version).to.equal(2);
+	});
+
+	// endregion
+
+	// region now
+
+	it('can create current timestamp for network via now', () => {
+		for (;;) {
+			// Arrange: affinitize test to run so that whole test runs within the context of the same millisecond
+			const startTime = new Date().getTime();
+			const facade = new NemFacade('testnet');
+
+			// Act:
+			const nowFromFacade = facade.now();
+			const nowFromNetwork = facade.network.fromDatetime(new Date(Date.now()));
+
+			const endTime = new Date().getTime();
+			if (startTime !== endTime)
+				continue; // eslint-disable-line no-continue
+
+			// Assert:
+			expect(nowFromFacade).to.deep.equal(nowFromNetwork);
+			expect(0n < nowFromFacade.timestamp).to.equal(true);
+			break;
+		}
 	});
 
 	// endregion

@@ -1,14 +1,26 @@
 pipeline {
 	parameters {
 		gitParameter branchFilter: 'origin/(.*)', defaultValue: 'dev', name: 'MANUAL_GIT_BRANCH', type: 'PT_BRANCH'
+		choice name: 'OPERATING_SYSTEM',
+			choices: ['fedora', 'ubuntu', 'windows'],
+			description: 'operating system'
 		choice name: 'CI_IMAGE',
 			choices: ['cpp', 'java', 'javascript', 'linter', 'postgres', 'python'],
 			description: 'continuous integration image'
+		choice name: 'ARCHITECTURE',
+			choices: ['arm64', 'amd64'],
+			description: 'Computer architecture'
+		choice name: 'BASE_IMAGE',
+			choices: ['lts', 'base', 'latest'],
+			description: 'Base image'
 		booleanParam name: 'SHOULD_PUBLISH_FAIL_JOB_STATUS', description: 'true to publish job status if failed', defaultValue: false
 	}
 
 	agent {
-		label 'ubuntu-agent'
+		label """${
+			env.ARCHITECTURE = env.ARCHITECTURE ?: 'arm64'
+			helper.resolveAgentName(params.OPERATING_SYSTEM, env.ARCHITECTURE, 'medium')
+		}"""
 	}
 
 	environment {
@@ -28,7 +40,13 @@ pipeline {
 					steps {
 						script {
 							helper.runStepAndRecordFailure {
-								destImageName = "symbolplatform/build-ci:${CI_IMAGE}"
+								Object buildEnvironments = jobHelper.loadBuildBaseImages()
+								baseImageName = "${params.OPERATING_SYSTEM}-${params.BASE_IMAGE}"
+								buildEnvironment = buildEnvironments[baseImageName]
+								dockerFromImage = buildEnvironment.image
+
+								multiArchImageName = "symbolplatform/build-ci:${CI_IMAGE}-${baseImageName}"
+								archImageName = "${multiArchImageName}-${env.ARCHITECTURE}"
 							}
 						}
 					}
@@ -37,11 +55,20 @@ pipeline {
 					steps {
 						echo """
 									env.GIT_BRANCH: ${env.GIT_BRANCH}
-								 MANUAL_GIT_BRANCH: ${MANUAL_GIT_BRANCH}
+								 MANUAL_GIT_BRANCH: ${env.MANUAL_GIT_BRANCH}
+								  OPERATING_SYSTEM: ${env.OPERATING_SYSTEM}
+									  ARCHITECTURE: ${env.ARCHITECTURE}
 
-								     destImageName: ${destImageName}
+								     destImageName: ${multiArchImageName}
 						"""
 					}
+				}
+			}
+		}
+		stage('checkout') {
+			steps {
+				script {
+					runScript "git reset --hard origin/${env.MANUAL_GIT_BRANCH}"
 				}
 			}
 		}
@@ -49,12 +76,21 @@ pipeline {
 			steps {
 				script {
 					helper.runStepAndRecordFailure {
-						dir('jenkins/docker')
+						dir("jenkins/docker/${params.OPERATING_SYSTEM}")
 						{
-							String buildArg = "-f ${CI_IMAGE}.Dockerfile ."
+							String versionArg = getVersionArg(params.CI_IMAGE, buildEnvironment)
+							String buildArg = "-f ${CI_IMAGE}.Dockerfile ${versionArg} --build-arg FROM_IMAGE=${dockerFromImage} ."
 							docker.withRegistry(DOCKER_URL, DOCKER_CREDENTIALS_ID) {
-								docker.build(destImageName, buildArg).push()
+								docker.build(archImageName, buildArg).push()
 							}
+
+							dockerHelper.tagDockerImage(
+								params.OPERATING_SYSTEM,
+								"${env.DOCKER_URL}",
+								"${env.DOCKER_CREDENTIALS_ID}",
+								archImageName,
+								multiArchImageName
+							)
 						}
 					}
 				}
@@ -76,4 +112,11 @@ pipeline {
 			}
 		}
 	}
+}
+
+String getVersionArg(String toolName, Object buildEnvironment) {
+	String name = 'javascript' == toolName ? 'nodejs' : toolName
+	String version = buildEnvironment[name]
+
+	return version ? "--build-arg ${name.toUpperCase()}_VERSION=${version}" : ''
 }

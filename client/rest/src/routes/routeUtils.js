@@ -275,6 +275,27 @@ const routeUtils = {
 				res.send(data);
 				next();
 			};
+		},
+
+		/**
+		 * Creates a data handler that forwards binary data result.
+		 * @param {object} res Restify response object.
+		 * @param {Function} next Restify next callback handler.
+		 * @returns {Function} An appropriate object handler.
+		 */
+		sendData(res, next) {
+			const isAttachment = (download, mimeType) => 'true' === download || 'application/octet-stream' === mimeType;
+			return (data, mimeType, fileName, text, download) => {
+				res.setHeader('content-type', mimeType);
+				let disposition = isAttachment(download, mimeType) ? 'attachment;' : 'inline;';
+				disposition += fileName ? ` filename="${fileName}"` : '';
+				res.setHeader('Content-Disposition', disposition);
+				if (text)
+					res.setHeader('Content-MetalText', text);
+				res.write(data);
+				res.end();
+				next();
+			};
 		}
 	}),
 
@@ -309,8 +330,8 @@ const routeUtils = {
 
 	/**
 	 * Adds PUT route for sending a packet to an api server.
- 	 * @param {object} server Server on which to register the routes.
- 	 * @param {object} connections Api server connection pool.
+	 * @param {object} server Server on which to register the routes.
+	 * @param {object} connections Api server connection pool.
 	 * @param {object} routeInfo Information about the route.
 	 * @param {Function} parser Parser to use to parse the route parameters into a packet payload.
 	 */

@@ -5,6 +5,12 @@ import { hexToUint8, uint8ToHex } from './utils/converter.js';
  */
 export default class ByteArray {
 	/**
+	 * Byte array name (required because `constructor.name` is dropped during minification).
+	 * @type {string}
+	 */
+	static NAME = 'ByteArray';
+
+	/**
 	 * Creates a byte array.
 	 * @param {number} fixedSize Size of the array.
 	 * @param {Uint8Array|string} arrayInput Byte array or hex string.
@@ -17,6 +23,10 @@ export default class ByteArray {
 		if (fixedSize !== rawBytes.length)
 			throw RangeError(`bytes was size ${rawBytes.length} but must be ${fixedSize}`);
 
+		/**
+		 * Underlying bytes.
+		 * @type {Uint8Array}
+		 */
 		this.bytes = new Uint8Array(rawBytes);
 	}
 

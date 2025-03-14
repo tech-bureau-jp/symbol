@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.23)
 project(catapult_server)
 option(ENABLE_CODE_COVERAGE "Enable code coverage" OFF)
 option(ENABLE_TESTS "Enable tests" ON)
@@ -33,7 +33,7 @@ endfunction()
 
 ### setup boost
 message("--- locating boost dependencies ---")
-find_package(Boost 1.80.0 EXACT COMPONENTS ${CATAPULT_BOOST_COMPONENTS} REQUIRED)
+find_package(Boost 1.83.0 EXACT COMPONENTS ${CATAPULT_BOOST_COMPONENTS} REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 
 message("boost     ver: ${Boost_VERSION}")
@@ -44,17 +44,23 @@ message("boost    libs: ${Boost_LIBRARIES}")
 if(ENABLE_TESTS)
 	message("--- locating gtest dependencies ---")
 
-	find_package(GTest 1.13.0 EXACT REQUIRED)
+	find_package(GTest 1.14.0 EXACT REQUIRED)
 	message("GTest   found: ${GTest_FOUND}")
-	message("GTest     inc: ${GTEST_INCLUDE_DIRS}")
+	message("GTest     inc: ${GTest_INCLUDE_DIRS}")
 	message("GTest     ver: ${GTest_VERSION}")
-	message("GTest    libs: ${GTEST_LIBRARIES}")
+
+	# GTest_LIBRARIES is when using Conan 2, GTEST_LIBRARIES is set for metal builds
+	if (NOT GTest_LIBRARIES AND GTEST_LIBRARIES)
+		set(GTest_LIBRARIES ${GTEST_LIBRARIES})
+	endif()
+
+	message("GTest    libs: ${GTest_LIBRARIES}")
 endif()
 
 ### setup openssl
 message("--- locating openssl dependencies ---")
 
-find_package(OpenSSL 3.1.0 EXACT REQUIRED)
+find_package(OpenSSL 3.2.1 EXACT REQUIRED)
 message("OpenSSL   ver: ${OPENSSL_VERSION}")
 message("OpenSSL  root: ${OPENSSL_ROOT_DIR}")
 message("OpenSSL   inc: ${OPENSSL_INCLUDE_DIR}")
@@ -68,7 +74,7 @@ endfunction()
 
 ### setup rocksdb
 message("--- locating rocksdb dependencies ---")
-find_package(RocksDB 7.10.2 EXACT REQUIRED)
+find_package(RocksDB 8.9.1 EXACT REQUIRED)
 
 if(WIN32)
 	set(RocksDB_LIBRARY RocksDB::rocksdb)
@@ -114,3 +120,8 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/internal/CMakeLists.txt")
 endif()
 
 add_subdirectory(tools)
+
+if(USE_CONAN)
+	message("--- copy conan deps ---")
+	install(DIRECTORY ${CMAKE_BINARY_DIR}/deps/ DESTINATION deps)
+endif()

@@ -1,4 +1,4 @@
-FROM postgres:15
+FROM postgres:15-bullseye
 
 # install dependencies (install tzdata first to prevent 'geographic area' prompt)
 RUN apt-get update \
@@ -14,7 +14,8 @@ RUN apt-get install -y shellcheck \
 	&& pip install gitlint
 
 # codecov uploader
-RUN curl -Os https://uploader.codecov.io/latest/linux/codecov \
+RUN ARCH=$([ "$(uname -m)" = "x86_64" ] && echo "linux" || echo "aarch64") \
+	&& curl -Os "https://uploader.codecov.io/latest/${ARCH}/codecov" \
 	&& chmod +x codecov \
 	&& mv codecov /usr/local/bin
 

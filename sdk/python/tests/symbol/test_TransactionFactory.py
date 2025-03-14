@@ -172,6 +172,26 @@ class SymbolTransactionFactoryTest(AbstractBasicTransactionFactoryExSignatureTes
 		expected_id = generate_mosaic_id(factory.network.public_key_to_address(PublicKey(TEST_SIGNER_PUBLIC_KEY)), 123)
 		self.assertEqual(expected_id, transaction.id.value)
 
+	def test_can_autogenerate_mosaic_definition_flags(self):
+		# Arrange:
+		factory = self.create_factory()
+
+		# Act:
+		transaction = self.create_transaction(factory)({
+			'type': 'mosaic_definition_transaction_v1',
+			'signer_public_key': TEST_SIGNER_PUBLIC_KEY,
+			'nonce': 123,
+			'flags': 'supply_mutable restrictable transferable revokable'
+		})
+
+		# Assert:
+		self.assertEqual(sc.MosaicFlags, type(transaction.flags))
+		self.assertEqual(15, transaction.flags.value)
+		self.assertTrue(sc.MosaicFlags.SUPPLY_MUTABLE in transaction.flags)
+		self.assertTrue(sc.MosaicFlags.RESTRICTABLE in transaction.flags)
+		self.assertTrue(sc.MosaicFlags.TRANSFERABLE in transaction.flags)
+		self.assertTrue(sc.MosaicFlags.REVOKABLE in transaction.flags)
+
 	# endregion
 
 
@@ -230,5 +250,18 @@ class TransactionFactoryTest(BasicTransactionFactoryTest, SymbolTransactionFacto
 			'array[UnresolvedMosaicId]', 'array[TransactionType]', 'array[UnresolvedAddress]', 'array[UnresolvedMosaic]'
 		]
 		self.assertEqual(set(expected_rule_names), set(factory.factory.rules.keys()))
+
+	# endregion
+
+	# region lookup_transaction_name
+
+	def test_lookup_transaction_name_can_lookup_known_transaction(self):
+		self.assertEqual('transfer_transaction_v1', TransactionFactory.lookup_transaction_name(sc.TransactionType.TRANSFER, 1))
+		self.assertEqual('transfer_transaction_v2', TransactionFactory.lookup_transaction_name(sc.TransactionType.TRANSFER, 2))
+		self.assertEqual('hash_lock_transaction_v1', TransactionFactory.lookup_transaction_name(sc.TransactionType.HASH_LOCK, 1))
+
+	def test_lookup_transaction_name_cannot_lookup_unknown_transaction(self):
+		with self.assertRaises(ValueError):
+			TransactionFactory.lookup_transaction_name(sc.TransactionType(123), 1)
 
 	# endregion
