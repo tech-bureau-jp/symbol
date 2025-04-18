@@ -16,16 +16,10 @@ def load_versions_map(filepath):
 
 
 def load_compiler_configuration(filepath):
-    # print(filepath)
-    with open(filepath, "rt", encoding="utf8") as configuration_infile:
-        configuration_yaml = yaml.load(configuration_infile, Loader=yaml.SafeLoader)
-        # print(configuration_yaml)
-        with open(
-            Path(filepath).parent.parent / configuration_yaml["compiler"],
-            "rt",
-            encoding="utf8",
-        ) as compiler_infile:
-            compiler_yaml = yaml.load(compiler_infile, Loader=yaml.SafeLoader)
+	with open(filepath, 'rt', encoding='utf8') as configuration_infile:
+		configuration_yaml = yaml.load(configuration_infile, Loader=yaml.SafeLoader)
+		with open(Path(filepath).parent.parent / configuration_yaml['compiler'], 'rt', encoding='utf8') as compiler_infile:
+			compiler_yaml = yaml.load(compiler_infile, Loader=yaml.SafeLoader)
 
             compiler_keys = ["c", "cpp", "version", "deps"]
             compiler = namedtuple("Compiler", compiler_keys)(

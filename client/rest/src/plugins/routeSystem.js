@@ -19,20 +19,24 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const aggregate = require('./aggregate/aggregate');
-const empty = require('./empty');
-const lockHash = require('./lockHash/lockHash');
-const lockSecret = require('./lockSecret/lockSecret');
-const metadata = require('./metadata/metadata');
-const mosaic = require('./mosaic/mosaic');
-const multisig = require('./multisig/multisig');
-const namespace = require('./namespace/namespace');
-const receipts = require('./receipts/receipts');
-const restrictions = require('./restrictions/restrictions');
-const catapult = require('../catapult-sdk/index');
-const MessageChannelBuilder = require('../connection/MessageChannelBuilder');
+import aggregate from './aggregate/aggregate.js';
+import empty from './empty.js';
+import lockHash from './lockHash/lockHash.js';
+import lockSecret from './lockSecret/lockSecret.js';
+import metadata from './metadata/metadata.js';
+import mosaic from './mosaic/mosaic.js';
+import multisig from './multisig/multisig.js';
+import namespace from './namespace/namespace.js';
+import receipts from './receipts/receipts.js';
+import restrictions from './restrictions/restrictions.js';
+import nemRosetta from './rosetta/nem/rosetta.js';
+import symbolRosetta from './rosetta/symbol/rosetta.js';
+import MessageChannelBuilder from '../connection/MessageChannelBuilder.js';
+import { NetworkLocator } from 'symbol-sdk';
+import { Network } from 'symbol-sdk/symbol';
 
 const plugins = {
+	// transactions
 	accountLink: empty,
 	aggregate,
 	lockHash,
@@ -43,10 +47,14 @@ const plugins = {
 	namespace,
 	receipts,
 	restrictions,
-	transfer: empty
+	transfer: empty,
+
+	// rosetta
+	nemRosetta,
+	symbolRosetta
 };
 
-module.exports = {
+export default {
 	/**
 	 * Gets the names of all supported plugins.
 	 * @returns {Array<string>} Names of all supported plugins.
@@ -63,7 +71,7 @@ module.exports = {
 	 */
 	configure: (pluginNames, server, db, services) => {
 		const transactionStates = [];
-		const networkIdentifier = catapult.model.networkInfo.networks[services.config.network.name].id;
+		const networkIdentifier = NetworkLocator.findByName(Network.NETWORKS, services.config.network.name).identifier;
 		const messageChannelBuilder = new MessageChannelBuilder(services.config.websocket, networkIdentifier);
 		(pluginNames || []).forEach(pluginName => {
 			if (!plugins[pluginName])

@@ -5,6 +5,42 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 
 ## next
 
+## [3.2.3] - 04-Dec-2024
+
+### Added
+- add to_json() to the generated model classes to get a JSON-safe representation of the model.
+- add extract_signing_payload() to facade to get signing payload which allows signing by hardware keys.
+- add cosign_transaction_hash() to facade and account to allow cosigning of transaction hash.
+
+### Changed
+- (BREAKING NEM) NEM cosignature transaction multisig_transaction_hash field renamed to other_transaction_hash
+
+### Fixed
+- (NEM) add non-verifiable cosignature transaction to allow signing of the cosignature transaction.
+
+## [3.2.2] - 28-May-2024
+
+### Added
+- use sphinx to generate basic readthedocs-style class level documentation
+- add additional Symbol address utilities
+  - create address alias from namespace id
+  - extract namespace id from address alias
+  - create address from decoded address hex string (REST format)
+-  add metadata_generate_key() since there is no built-in way to convert a string to a metadata key.
+- Added SymbolAccount class
+  - add sign_transaction() to the SymbolAccount to match facade functionality
+  - add cosign_transaction() to the SymbolAccount to match facade functionality
+  - to improve discoverability, add a helper function(message_encoder) to SymbolAccount, which creates a MessageEncoder used to encrypt/encode messages
+- add SymbolPublicAccount class
+  - add properties address and publicKey for better discoverability
+- Added NemAccount class
+  - add sign_transaction() to the NemAccount to match facade functionality
+  - to improve discoverability, add a helper function(message_encoder) to NemAccount, which creates a MessageEncoder used to encrypt/encode messages
+- Add NemPublicAccount class
+  - add properties address and publicKey for better discoverability
+  - add a create_public_account() and create_account() to the facade for both NEM and Symbol
+- add deserialize() function to TransactionFactory in SDK for better discoverability
+
 ## [3.2.0] - 09-Apr-2024
 
 ### Added
@@ -111,6 +147,9 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 ### Added
  - initial code release
 
+[3.2.3]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.2.2...sdk%2Fpython%2Fv3.2.3
+[3.2.2]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.2.0...sdk%2Fpython%2Fv3.2.2
+[3.2.0]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.1.0...sdk%2Fpython%2Fv3.2.0
 [3.1.0]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.0.11...sdk%2Fpython%2Fv3.1.0
 [3.0.11]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.0.7...sdk%2Fpython%2Fv3.0.11
 [3.0.7]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.0.3...sdk%2Fpython%2Fv3.0.7
