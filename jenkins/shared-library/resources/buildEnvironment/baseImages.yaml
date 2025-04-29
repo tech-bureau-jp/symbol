@@ -13,4 +13,4 @@ ubuntu-latest:
   python: 3.13
   nodejs: 21
 windows-lts:
-  image: symbolplatform/symbol-server-compiler:windows-msvc-17
+  image: techbureauhd/catapult-server-compiler:windows-msvc-17

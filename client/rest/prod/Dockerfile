@@ -1,4 +1,4 @@
-FROM buildpack-deps:buster
+FROM buildpack-deps:bookworm
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ RUN set -ex; \
 
 RUN groupadd --gid 1000 node   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
-ENV NODE_VERSION=16.18.0
+ENV NODE_VERSION=20.19.1
 
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     && case "${dpkgArch##*-}" in \
@@ -52,7 +52,7 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
     && node --version \
     && npm --version
 
-ENV YARN_VERSION=1.22.19
+ENV YARN_VERSION=1.22.22
 
 RUN set -ex \
   && curl -fsSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz" \

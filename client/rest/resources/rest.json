@@ -5,7 +5,7 @@
   },
 
   "port": 3000,
-  "protocol": "HTTPS",
+  "protocol": "HTTP",
   "sslKeyPath": "",
   "sslCertificatePath": "",
   "crossDomain": {
@@ -31,10 +31,9 @@
     "restrictions",
     "transfer"
   ],
-  "routeExtensions": [
-  ],
+  "routeExtensions": [],
   "db": {
-    "url": "mongodb://localhost:27017/",
+    "url": "mongodb://192.168.5.80:27017/",
     "name": "catapult",
     "pageSizeMin": 10,
     "pageSizeMax": 100,
@@ -46,12 +45,12 @@
   },
 
   "apiNode": {
-    "host": "127.0.0.1",
+    "host": "192.168.5.80",
     "port": 7900,
     "timeout": 1000,
-    "tlsClientCertificatePath": "/",
-    "tlsClientKeyPath": "/",
-    "tlsCaCertificatePath": "/",
+    "tlsClientCertificatePath": "resources/cert/node.crt.pem",
+    "tlsClientKeyPath": "resources/cert/node.key.pem",
+    "tlsCaCertificatePath": "resources/cert/ca.cert.pem",
 
     "inflationPropertyFilePath": "/",
     "networkPropertyFilePath": "/",

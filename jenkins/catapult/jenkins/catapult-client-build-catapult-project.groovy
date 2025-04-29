@@ -82,7 +82,7 @@ pipeline {
 								).trim()
 
 								buildImageLabel = TEST_IMAGE_LABEL?.trim() ? TEST_IMAGE_LABEL : resolveBuildImageLabel()
-								buildImageFullName = "symbolplatform/symbol-server-test:${buildImageLabel}"
+								buildImageFullName = "techbureauhd/catapult-server-test:${buildImageLabel}"
 
 								compilerConfiguratonFilePath = "catapult-src/jenkins/catapult/configurations/${ARCHITECTURE}/${COMPILER_CONFIGURATION}.yaml"
 								buildConfigurationFilePath = "catapult-src/jenkins/catapult/configurations/${BUILD_CONFIGURATION}.yaml"
@@ -159,7 +159,7 @@ pipeline {
 							helper.runStepAndRecordFailure {
 								sh """
 									python3 catapult-src/jenkins/catapult/runDockerTests.py \
-										--image registry.hub.docker.com/symbolplatform/symbol-server-test-base:${OPERATING_SYSTEM} \
+										--image techbureauhd/catapult-server-test-base:${OPERATING_SYSTEM} \
 										--compiler-configuration ${compilerConfiguratonFilePath} \
 										--user ${fullyQualifiedUser} \
 										--mode lint \
@@ -229,8 +229,8 @@ pipeline {
 						script {
 							helper.runStepAndRecordFailure {
 								testImageName = isCustomTestImage()
-										? "registry.hub.docker.com/symbolplatform/symbol-server-test:${buildImageLabel}"
-										: "symbolplatform/symbol-server-test:${buildImageLabel}"
+										? "registry.hub.docker.com/techbureauhd/catapult-server-test:${buildImageLabel}"
+										: "techbureauhd/catapult-server-test:${buildImageLabel}"
 
 								sh """
 									python3 catapult-src/jenkins/catapult/runDockerTests.py \

@@ -1,4 +1,4 @@
-FROM symbolplatform/symbol-server-build-base:ubuntu-gcc-13-conan
+FROM techbureauhd/catapult-server-build-base:ubuntu-gcc-13-conan
 
 # install shellcheck
 RUN apt-get install -y shellcheck

@@ -1,26 +1,63 @@
+# --- Builder stage ---
+FROM ubuntu:24.04 AS builder
+
+# 必要なパッケージインストール
+RUN apt-get update && apt-get install -y \
+    git \
+    build-essential \
+    flex \
+    bison \
+    libelf-dev \
+    libssl-dev \
+    zlib1g-dev \
+    libdw-dev \
+    libiberty-dev \
+    libnuma-dev \
+    libslang2-dev \
+    perl \
+    libperl-dev \
+    systemtap-sdt-dev \
+    python3 \
+    python3-dev \
+    python-is-python3 \
+    rsync \
+    bc \
+    kmod \
+    cpio \
+    && rm -rf /var/lib/apt/lists/*
+
+# カーネルソースをクローン
+WORKDIR /usr/src
+RUN git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git
+
+# ビルド
+WORKDIR /usr/src/linux
+RUN ARCH=$(uname -m | sed -e 's/x86_64/x86_64/' -e 's/aarch64/arm64/') \
+    && echo "Detected architecture: $ARCH" \
+    && make ARCH=$ARCH headers_install \
+    && cd /usr/src/linux/tools/perf \
+    && EXTRA_CFLAGS="-I/usr/src/linux/arch/$ARCH/include/generated/uapi" \
+    NO_LIBTRACEEVENT=1 NO_JEVENTS=1 make ARCH=$ARCH -j$(nproc)
+
+# --- Final stage ---
 FROM ubuntu:24.04
 
-CMD ["/bin/bash"]
-ENV DEBIAN_FRONTEND=noninteractive
-MAINTAINER Catapult Development Team
+# 必要最小限だけ
+RUN apt-get update && apt-get install -y \
+    libelf1 \
+    libssl3 \
+    zlib1g \
+    libdw1 \
+    libnuma1 \
+    libslang2 \
+    perl \
+    python3 \
+    python3-dev \
+    python-is-python3 \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get -y update
+# builderからperfバイナリをコピー
+COPY --from=builder /usr/src/linux/tools/perf/perf /usr/bin/perf
 
-RUN apt-get -y install --reinstall pkg-config cmake-data
-
-RUN  apt-get install -y bison gdb git \
-    flex python3 python3-ply python3-pip \
-    shellcheck inotify-tools libdw-dev \
-    libtraceevent-dev \
-    libelf-dev libiberty-dev libslang2-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN  pip3 install --break-system-packages -U colorama cryptography \
-    gitpython pycodestyle pylint pylint-quotes PyYAML
-
-RUN git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git linux.git && \
-    cd linux.git/tools/perf && \
-    make && \
-    cp perf /usr/bin && \
-    cd ../../.. && \
-    rm -rf linux.git
+# デフォルトコマンド
+CMD ["bash"]

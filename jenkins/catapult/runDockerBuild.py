@@ -14,9 +14,9 @@ CACHE_ROOT = Path(
 CCACHE_ROOT = CACHE_ROOT / "ccache"
 CONAN_ROOT = CACHE_ROOT / "conan"
 
-OUTPUT_DIR = Path.cwd() / 'output'
-BINARIES_DIR = OUTPUT_DIR / 'binaries'
-USER_HOME = Path(EnvironmentManager.root_directory('usr/catapult')).resolve()
+OUTPUT_DIR = Path.cwd() / "output"
+BINARIES_DIR = OUTPUT_DIR / "binaries"
+USER_HOME = Path(EnvironmentManager.root_directory("usr/catapult")).resolve()
 
 
 class OptionsManager(BasicBuildManager):
@@ -43,7 +43,7 @@ class OptionsManager(BasicBuildManager):
         else:
             name_parts = [self.operating_system, self.compilation_friendly_name]
 
-        return f'techbureauhd/catapult-server-build-base:{"-".join(name_parts)}'
+        return f"techbureauhd/catapult-server-build-base:{'-'.join(name_parts)}"
 
     @property
     def prepare_base_image_name(self):
@@ -52,20 +52,22 @@ class OptionsManager(BasicBuildManager):
             image_name += "-sanitizer"
         return image_name
 
-	@property
-	def ccache_path(self):
-		ccache_architecture_path = CCACHE_ROOT / self.architecture / self.versioned_compiler
-		if self.enable_code_coverage:
-			return ccache_architecture_path / 'cc'
+    @property
+    def ccache_path(self):
+        ccache_architecture_path = (
+            CCACHE_ROOT / self.architecture / self.versioned_compiler
+        )
+        if self.enable_code_coverage:
+            return ccache_architecture_path / "cc"
 
-		if self.is_release:
-			return ccache_architecture_path / 'release'
+        if self.is_release:
+            return ccache_architecture_path / "release"
 
-		return ccache_architecture_path / ('conan' if self.use_conan else 'all')
+        return ccache_architecture_path / ("conan" if self.use_conan else "all")
 
-	@property
-	def conan_path(self):
-		return CONAN_ROOT / self.architecture / self.versioned_compiler
+    @property
+    def conan_path(self):
+        return CONAN_ROOT / self.architecture / self.versioned_compiler
 
     def docker_run_settings(self):
         settings = [("CCACHE_DIR", "/ccache")]
@@ -106,23 +108,28 @@ def create_docker_run_command(options, prepare_replacements):
     if EnvironmentManager.is_windows_platform():
         docker_args.extend(["--storage-opt", "size=50GB"])
     else:
-        docker_args.extend([f'--user={prepare_replacements["user"]}'])
+        docker_args.extend([f"--user={prepare_replacements['user']}"])
 
-	docker_args.extend(docker_run_settings)
-	docker_args.extend(volume_mappings)
-	compiler_config_filepath = Path(prepare_replacements['compiler_configuration_filepath'])
-	inner_compiler_configuration_path = f'{inner_configuration_path}/{compiler_config_filepath.parent.name}/{compiler_config_filepath.name}'
-	docker_args.extend([
-		options.build_base_image_name,
-		'python3', '/scripts/runDockerBuildInnerBuild.py',
-		# assume paths are relative to workdir
-		f'--compiler-configuration={inner_compiler_configuration_path}',
-		f'--build-configuration={inner_configuration_path}/{get_base_from_path(prepare_replacements["build_configuration_filepath"])}',
-		'--source-path=/catapult-src/client/catapult',
-		'--out-dir=/binaries'
-	])
+    docker_args.extend(docker_run_settings)
+    docker_args.extend(volume_mappings)
+    compiler_config_filepath = Path(
+        prepare_replacements["compiler_configuration_filepath"]
+    )
+    inner_compiler_configuration_path = f"{inner_configuration_path}/{compiler_config_filepath.parent.name}/{compiler_config_filepath.name}"
+    docker_args.extend(
+        [
+            options.build_base_image_name,
+            "python3",
+            "/scripts/runDockerBuildInnerBuild.py",
+            # assume paths are relative to workdir
+            f"--compiler-configuration={inner_compiler_configuration_path}",
+            f"--build-configuration={inner_configuration_path}/{get_base_from_path(prepare_replacements['build_configuration_filepath'])}",
+            "--source-path=/catapult-src/client/catapult",
+            "--out-dir=/binaries",
+        ]
+    )
 
-	return docker_args
+    return docker_args
 
 
 def cleanup_directories(
@@ -144,38 +151,49 @@ def prepare_docker_image(process_manager, container_id, prepare_replacements):
 
     build_disposition = prepare_replacements["build_disposition"]
     disposition_to_repository_map = {
-        "tests": "symbol-server-test",
-        "private": "symbol-server-private",
+        "tests": "catapult-server-test",
+        "private": "catapult-server-private",
         "mijin": "catapult-server",
         "mijintest": "catapult-server-test",
-        "public": "symbol-server",
+        "public": "catapult-server",
     }
     destination_repository = disposition_to_repository_map[build_disposition]
 
-	destination_image_name = f'symbolplatform/{destination_repository}:{destination_image_label}'
-	script_path = prepare_replacements['script_path']
-	process_manager.dispatch_subprocess([
-		'docker', 'run',
-		f'--cidfile={cid_filepath}',
-		f'--volume={script_path}:{EnvironmentManager.root_directory("scripts")}',
-		f'--volume={OUTPUT_DIR}:{EnvironmentManager.root_directory("data")}',
-		f'registry.hub.docker.com/{prepare_replacements["base_image_name"]}',
-		'python3', '/scripts/runDockerBuildInnerPrepare.py',
-		f'--disposition={build_disposition}',
-		f'--user-home={USER_HOME}'
-	])
+    destination_image_name = (
+        f"techbureauhd/{destination_repository}:{destination_image_label}"
+    )
+    script_path = prepare_replacements["script_path"]
+    process_manager.dispatch_subprocess(
+        [
+            "docker",
+            "run",
+            f"--cidfile={cid_filepath}",
+            f"--volume={script_path}:{EnvironmentManager.root_directory('scripts')}",
+            f"--volume={OUTPUT_DIR}:{EnvironmentManager.root_directory('data')}",
+            f"{prepare_replacements['base_image_name']}",
+            "python3",
+            "/scripts/runDockerBuildInnerPrepare.py",
+            f"--disposition={build_disposition}",
+            f"--user-home={USER_HOME}",
+        ]
+    )
 
     if not container_id:
         with open(cid_filepath, "rt", encoding="utf8") as cid_infile:
             container_id = cid_infile.read()
 
-	process_manager.dispatch_subprocess([
-		'docker', 'commit',
-		'--change', f'WORKDIR {USER_HOME}',
-		'--change', f'ENV LD_LIBRARY_PATH="{USER_HOME}/lib:{USER_HOME}/deps"',
-		container_id,
-		destination_image_name
-	])
+    process_manager.dispatch_subprocess(
+        [
+            "docker",
+            "commit",
+            "--change",
+            f"WORKDIR {USER_HOME}",
+            "--change",
+            f'ENV LD_LIBRARY_PATH="{USER_HOME}/lib:{USER_HOME}/deps"',
+            container_id,
+            destination_image_name,
+        ]
+    )
 
 
 def get_script_path():
@@ -246,9 +264,11 @@ def main():
 
     process_manager = ProcessManager(args.dry_run)
 
-	return_code = process_manager.dispatch_subprocess(docker_run, handle_error=not environment_manager.is_windows_platform())
-	if return_code:
-		sys.exit(return_code)
+    return_code = process_manager.dispatch_subprocess(
+        docker_run, handle_error=not environment_manager.is_windows_platform()
+    )
+    if return_code:
+        sys.exit(return_code)
 
     print("copying files")
 
