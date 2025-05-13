@@ -31,6 +31,7 @@ import receipts from "./receipts/receipts.js";
 import restrictions from "./restrictions/restrictions.js";
 import nemRosetta from "./rosetta/nem/rosetta.js";
 import symbolRosetta from "./rosetta/symbol/rosetta.js";
+import mijin from "./mijin/mijin.js";
 import MessageChannelBuilder from "../connection/MessageChannelBuilder.js";
 import { NetworkLocator } from "symbol-sdk";
 import { Network } from "symbol-sdk/symbol";
@@ -52,6 +53,9 @@ const plugins = {
   // rosetta
   nemRosetta,
   symbolRosetta,
+
+  // mijin
+  mijin,
 };
 
 export default {
