@@ -133,7 +133,6 @@ const registerRoutes = (server, db, services) => {
     config.apiNode.nodePublicKey = nodeCertKey.toPublic().part.A.data;
 
     let network;
-    console.log(config.network.name);
 
     switch (config.network.name) {
       case "mijin":

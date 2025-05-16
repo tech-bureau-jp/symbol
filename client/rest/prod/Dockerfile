@@ -65,9 +65,13 @@ RUN set -ex \
   # smoke test
   && yarn --version
 
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends libzmq3-dev && \
+  rm -rf /var/lib/apt/lists/*
+
 COPY . .
 
-RUN npm uninstall . && rm -rf node_modules && npm install
+RUN rm -rf node_modules && yarn install
 
 COPY ./prod/dockerd-entrypoint.sh /usr/local/bin/
 RUN chown root:root /usr/local/bin/dockerd-entrypoint.sh && \
