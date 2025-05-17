@@ -646,16 +646,20 @@ export class NetworkType {
 
 	static TESTNET = new NetworkType(152);
 
+	static MIJIN = new NetworkType(96);
+
+	static MIJIN_TESTNET = new NetworkType(144);
+
 	constructor(value) {
 		this.value = value;
 	}
 
 	static valueToKey(value) {
 		const values = [
-			104, 152
+			104, 152, 96, 144
 		];
 		const keys = [
-			'MAINNET', 'TESTNET'
+			'MAINNET', 'TESTNET', 'MIJIN', 'MIJIN_TESTNET'
 		];
 
 		const index = values.indexOf(value);
