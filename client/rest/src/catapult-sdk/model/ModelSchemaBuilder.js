@@ -20,318 +20,347 @@
  */
 
 /** @module model/ModelSchemaBuilder */
-import ModelType from './ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import ModelType from "./ModelType.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 /**
  * Builder for creating a model schema.
  */
 export default class ModelSchemaBuilder {
-	/**
-	 * Creates a model schema builder.
-	 */
-	constructor() {
-		this.schema = {
-			// region verifiable entity
+  /**
+   * Creates a model schema builder.
+   */
+  constructor() {
+    this.schema = {
+      // region verifiable entity
 
-			verifiableEntity: {
-				signature: ModelType.binary,
-				signerPublicKey: ModelType.binary
-			},
+      verifiableEntity: {
+        signature: ModelType.binary,
+        signerPublicKey: ModelType.binary,
+      },
 
-			// endregion
+      // endregion
 
-			// region block
-			blockHeader: {
-				size: ModelType.int,
-				version: ModelType.uint8,
-				network: ModelType.uint8,
-				type: ModelType.int,
-				height: ModelType.uint64,
-				timestamp: ModelType.uint64,
-				difficulty: ModelType.uint64,
-				proofGamma: ModelType.binary,
-				proofVerificationHash: ModelType.binary,
-				proofScalar: ModelType.binary,
-				previousBlockHash: ModelType.binary,
-				transactionsHash: ModelType.binary,
-				receiptsHash: ModelType.binary,
-				stateHash: ModelType.binary,
-				beneficiaryAddress: ModelType.encodedAddress,
-				feeMultiplier: ModelType.uint32,
-				// optional. How to create subclasses?
-				votingEligibleAccountsCount: ModelType.uint32,
-				harvestingEligibleAccountsCount: ModelType.uint64,
-				totalVotingBalance: ModelType.uint64,
-				previousImportanceBlockHash: ModelType.binary
-			},
-			blockHeaderMetadata: {
-				hash: ModelType.binary,
-				generationHash: ModelType.binary,
-				totalFee: ModelType.uint64,
-				stateHashSubCacheMerkleRoots: { type: ModelType.array, schemaName: ModelType.binary },
-				totalTransactionsCount: ModelType.int,
-				transactionsCount: ModelType.int,
-				statementsCount: ModelType.int
-			},
-			blockHeaderWithMetadata: {
-				id: ModelType.objectId,
-				meta: { type: ModelType.object, schemaName: 'blockHeaderMetadata' },
-				block: { type: ModelType.object, schemaName: 'blockHeader' }
-			},
-			merkleProofInfo: {
-				merklePath: { type: ModelType.array, schemaName: 'merkleProofInfoPathNode' }
-			},
-			merkleProofInfoPathNode: {
-				hash: ModelType.binary,
-				position: ModelType.string
-			},
+      // region block
+      blockHeader: {
+        size: ModelType.int,
+        version: ModelType.uint8,
+        network: ModelType.uint8,
+        type: ModelType.int,
+        height: ModelType.uint64,
+        timestamp: ModelType.uint64,
+        difficulty: ModelType.uint64,
+        proofGamma: ModelType.binary,
+        proofVerificationHash: ModelType.binary,
+        proofScalar: ModelType.binary,
+        previousBlockHash: ModelType.binary,
+        transactionsHash: ModelType.binary,
+        receiptsHash: ModelType.binary,
+        stateHash: ModelType.binary,
+        beneficiaryAddress: ModelType.encodedAddress,
+        feeMultiplier: ModelType.uint32,
+        // optional. How to create subclasses?
+        votingEligibleAccountsCount: ModelType.uint32,
+        harvestingEligibleAccountsCount: ModelType.uint64,
+        totalVotingBalance: ModelType.uint64,
+        previousImportanceBlockHash: ModelType.binary,
+      },
+      blockHeaderMetadata: {
+        hash: ModelType.binary,
+        generationHash: ModelType.binary,
+        totalFee: ModelType.uint64,
+        stateHashSubCacheMerkleRoots: {
+          type: ModelType.array,
+          schemaName: ModelType.binary,
+        },
+        totalTransactionsCount: ModelType.int,
+        transactionsCount: ModelType.int,
+        statementsCount: ModelType.int,
+      },
+      blockHeaderWithMetadata: {
+        id: ModelType.objectId,
+        meta: { type: ModelType.object, schemaName: "blockHeaderMetadata" },
+        block: { type: ModelType.object, schemaName: "blockHeader" },
+      },
+      merkleProofInfo: {
+        merklePath: {
+          type: ModelType.array,
+          schemaName: "merkleProofInfoPathNode",
+        },
+      },
+      merkleProofInfoPathNode: {
+        hash: ModelType.binary,
+        position: ModelType.string,
+      },
 
-			finalizedBlock: {
-				height: ModelType.uint64,
-				hash: ModelType.binary,
-				finalizationEpoch: ModelType.uint32,
-				finalizationPoint: ModelType.uint32
-			},
+      finalizedBlock: {
+        height: ModelType.uint64,
+        hash: ModelType.binary,
+        finalizationEpoch: ModelType.uint32,
+        finalizationPoint: ModelType.uint32,
+      },
 
-			finalizationProof: {
-				version: ModelType.uint32,
-				finalizationEpoch: ModelType.uint32,
-				finalizationPoint: ModelType.uint32,
-				height: ModelType.uint64,
-				hash: ModelType.binary,
-				messageGroups: { type: ModelType.array, schemaName: 'messageGroup' }
-			},
-			messageGroup: {
-				stage: ModelType.uint32,
-				height: ModelType.uint64,
-				hashes: { type: ModelType.array, schemaName: ModelType.binary },
-				signatures: { type: ModelType.array, schemaName: 'bmTreeSignature' }
-			},
-			bmTreeSignature: {
-				root: { type: ModelType.object, schemaName: 'parentPublicKeySignaturePair' },
-				bottom: { type: ModelType.object, schemaName: 'parentPublicKeySignaturePair' }
-			},
-			parentPublicKeySignaturePair: {
-				parentPublicKey: ModelType.binary,
-				signature: ModelType.binary
-			},
+      finalizationProof: {
+        version: ModelType.uint32,
+        finalizationEpoch: ModelType.uint32,
+        finalizationPoint: ModelType.uint32,
+        height: ModelType.uint64,
+        hash: ModelType.binary,
+        messageGroups: { type: ModelType.array, schemaName: "messageGroup" },
+      },
+      messageGroup: {
+        stage: ModelType.uint32,
+        height: ModelType.uint64,
+        hashes: { type: ModelType.array, schemaName: ModelType.binary },
+        signatures: { type: ModelType.array, schemaName: "bmTreeSignature" },
+      },
+      bmTreeSignature: {
+        root: {
+          type: ModelType.object,
+          schemaName: "parentPublicKeySignaturePair",
+        },
+        bottom: {
+          type: ModelType.object,
+          schemaName: "parentPublicKeySignaturePair",
+        },
+      },
+      parentPublicKeySignaturePair: {
+        parentPublicKey: ModelType.binary,
+        signature: ModelType.binary,
+      },
 
-			// endregion
+      // endregion
 
-			// region transaction
+      // region transaction
 
-			transaction: {
-				size: ModelType.int,
-				version: ModelType.uint8,
-				network: ModelType.uint8,
-				type: ModelType.int,
-				deadline: ModelType.uint64,
-				maxFee: ModelType.uint64
-			},
-			transactionMetadata: {
-				aggregateHash: ModelType.binary,
-				aggregateId: ModelType.objectId,
-				height: ModelType.uint64,
-				hash: ModelType.binary,
-				merkleComponentHash: ModelType.binary,
-				index: ModelType.int,
-				timestamp: ModelType.uint64,
-				feeMultiplier: ModelType.uint32
-			},
-			transactionWithMetadata: {
-				id: ModelType.objectId,
-				meta: { type: ModelType.object, schemaName: 'transactionMetadata' },
-				transaction: {
-					type: ModelType.object,
-					// notice that this needs to be set in build to allow graceful fallback when some txes are not registered
-					schemaName: undefined
-				}
-			},
+      transaction: {
+        size: ModelType.int,
+        version: ModelType.uint8,
+        network: ModelType.uint8,
+        type: ModelType.int,
+        deadline: ModelType.uint64,
+        maxFee: ModelType.uint64,
+      },
+      transactionMetadata: {
+        aggregateHash: ModelType.binary,
+        aggregateId: ModelType.objectId,
+        height: ModelType.uint64,
+        hash: ModelType.binary,
+        merkleComponentHash: ModelType.binary,
+        index: ModelType.int,
+        timestamp: ModelType.uint64,
+        feeMultiplier: ModelType.uint32,
+      },
+      transactionWithMetadata: {
+        id: ModelType.objectId,
+        meta: { type: ModelType.object, schemaName: "transactionMetadata" },
+        transaction: {
+          type: ModelType.object,
+          // notice that this needs to be set in build to allow graceful fallback when some txes are not registered
+          schemaName: undefined,
+        },
+      },
 
-			// endregion
+      // endregion
 
-			// region transactionStatus
+      // region transactionStatus
 
-			transactionStatus: {
-				group: ModelType.string,
-				hash: ModelType.binary,
-				code: ModelType.statusCode,
-				deadline: ModelType.uint64,
-				height: ModelType.uint64
-			},
+      transactionStatus: {
+        group: ModelType.string,
+        hash: ModelType.binary,
+        code: ModelType.statusCode,
+        deadline: ModelType.uint64,
+        height: ModelType.uint64,
+      },
 
-			// endregion
+      // endregion
 
-			// region account
+      // region account
 
-			accountWithMetadata: {
-				id: ModelType.objectId,
-				account: { type: ModelType.object, schemaName: 'account' }
-			},
-			account: {
-				version: ModelType.uint16,
-				address: ModelType.encodedAddress,
-				addressHeight: ModelType.uint64,
-				publicKey: ModelType.binary,
-				publicKeyHeight: ModelType.uint64,
-				accountType: ModelType.uint8,
-				supplementalPublicKeys: { type: ModelType.object, schemaName: 'supplementalPublicKey' },
-				importance: ModelType.uint64,
-				importanceHeight: ModelType.uint64,
-				activityBuckets: { type: ModelType.array, schemaName: 'activityBucket' },
-				mosaics: { type: ModelType.array, schemaName: 'mosaic' }
-			},
-			supplementalPublicKey: {
-				linked: { type: ModelType.object, schemaName: 'accountLinkPublicKey' },
-				node: { type: ModelType.object, schemaName: 'accountLinkPublicKey' },
-				vrf: { type: ModelType.object, schemaName: 'accountLinkPublicKey' },
-				voting: { type: ModelType.object, schemaName: 'accountLinkPublicKey.voting' }
-			},
-			activityBucket: {
-				startHeight: ModelType.uint64,
-				totalFeesPaid: ModelType.uint64,
-				beneficiaryCount: ModelType.uint32,
-				rawScore: ModelType.uint64
-			},
-			mosaic: {
-				id: ModelType.uint64HexIdentifier,
-				amount: ModelType.uint64
-			},
-			accountLinkPublicKey: {
-				publicKey: ModelType.binary
-			},
-			'accountLinkPublicKey.voting': {
-				publicKeys: { type: ModelType.array, schemaName: 'votingPublicKey' }
-			},
-			votingPublicKey: {
-				publicKey: ModelType.binary,
-				startEpoch: ModelType.uint32,
-				endEpoch: ModelType.uint32
-			},
+      accountWithMetadata: {
+        id: ModelType.objectId,
+        account: { type: ModelType.object, schemaName: "account" },
+      },
+      account: {
+        version: ModelType.uint16,
+        address: ModelType.encodedAddress,
+        addressHeight: ModelType.uint64,
+        publicKey: ModelType.binary,
+        publicKeyHeight: ModelType.uint64,
+        accountType: ModelType.uint8,
+        supplementalPublicKeys: {
+          type: ModelType.object,
+          schemaName: "supplementalPublicKey",
+        },
+        importance: ModelType.uint64,
+        importanceHeight: ModelType.uint64,
+        activityBuckets: {
+          type: ModelType.array,
+          schemaName: "activityBucket",
+        },
+        mosaics: { type: ModelType.array, schemaName: "mosaic" },
+      },
+      supplementalPublicKey: {
+        linked: { type: ModelType.object, schemaName: "accountLinkPublicKey" },
+        node: { type: ModelType.object, schemaName: "accountLinkPublicKey" },
+        vrf: { type: ModelType.object, schemaName: "accountLinkPublicKey" },
+        voting: {
+          type: ModelType.object,
+          schemaName: "accountLinkPublicKey.voting",
+        },
+      },
+      activityBucket: {
+        startHeight: ModelType.uint64,
+        totalFeesPaid: ModelType.uint64,
+        beneficiaryCount: ModelType.uint32,
+        rawScore: ModelType.uint64,
+      },
+      mosaic: {
+        id: ModelType.uint64HexIdentifier,
+        amount: ModelType.uint64,
+      },
+      accountLinkPublicKey: {
+        publicKey: ModelType.binary,
+      },
+      "accountLinkPublicKey.voting": {
+        publicKeys: { type: ModelType.array, schemaName: "votingPublicKey" },
+      },
+      votingPublicKey: {
+        publicKey: ModelType.binary,
+        startEpoch: ModelType.uint32,
+        endEpoch: ModelType.uint32,
+      },
 
-			// endregion
+      // endregion
 
-			// region other
+      // region other
 
-			chainInfo: {
-				height: ModelType.uint64,
-				scoreLow: ModelType.uint64,
-				scoreHigh: ModelType.uint64,
-				latestFinalizedBlock: { type: ModelType.object, schemaName: 'finalizedBlock' }
-			},
-			nodeHealth: {
-				status: { type: ModelType.object, schemaName: 'nodeHealthStatus' }
-			},
-			nodeHealthStatus: {
-				apiNode: ModelType.string,
-				db: ModelType.string
-			},
-			nodeInfo: {
-				version: ModelType.uint8,
-				roles: ModelType.int,
-				port: ModelType.int,
-				networkIdentifier: ModelType.int,
-				friendlyName: ModelType.string,
-				host: ModelType.string,
-				publicKey: ModelType.binary,
-				networkGenerationHashSeed: ModelType.binary,
-				nodePublicKey: ModelType.binary
-			},
-			communicationTimestamps: {
-				receiveTimestamp: ModelType.uint64,
-				sendTimestamp: ModelType.uint64
-			},
-			nodeTime: {
-				communicationTimestamps: { type: ModelType.object, schemaName: 'communicationTimestamps' }
-			},
-			serverInfo: {
-				serverInfo: { type: ModelType.object, schemaName: 'serverInfoData' }
-			},
-			serverInfoData: {
-				restVersion: ModelType.string,
-				sdkVersion: ModelType.string,
-				deployment: { type: ModelType.object, schemaName: 'deploymentData' }
-			},
-			deploymentData: {
-				deploymentTool: ModelType.string,
-				deploymentToolVersion: ModelType.string,
-				lastUpdatedDate: ModelType.string
-			},
-			stateTree: {
-				tree: { type: ModelType.array, schemaName: ModelType.binary }
-			},
-			storageInfo: {
-				numBlocks: ModelType.int,
-				numTransactions: ModelType.int,
-				numAccounts: ModelType.int,
+      chainInfo: {
+        height: ModelType.uint64,
+        scoreLow: ModelType.uint64,
+        scoreHigh: ModelType.uint64,
+        latestFinalizedBlock: {
+          type: ModelType.object,
+          schemaName: "finalizedBlock",
+        },
+      },
+      nodeHealth: {
+        status: { type: ModelType.object, schemaName: "nodeHealthStatus" },
+      },
+      nodeHealthStatus: {
+        apiNode: ModelType.string,
+        db: ModelType.string,
+      },
+      nodeInfo: {
+        version: ModelType.uint8,
+        roles: ModelType.int,
+        port: ModelType.int,
+        networkIdentifier: ModelType.int,
+        friendlyName: ModelType.string,
+        host: ModelType.string,
+        publicKey: ModelType.binary,
+        networkGenerationHashSeed: ModelType.binary,
+        nodePublicKey: ModelType.binary,
+      },
+      communicationTimestamps: {
+        receiveTimestamp: ModelType.uint64,
+        sendTimestamp: ModelType.uint64,
+      },
+      nodeTime: {
+        communicationTimestamps: {
+          type: ModelType.object,
+          schemaName: "communicationTimestamps",
+        },
+      },
+      serverInfo: {
+        serverInfo: { type: ModelType.object, schemaName: "serverInfoData" },
+      },
+      serverInfoData: {
+        restVersion: ModelType.string,
+        sdkVersion: ModelType.string,
+        deployment: { type: ModelType.object, schemaName: "deploymentData" },
+      },
+      deploymentData: {
+        deploymentTool: ModelType.string,
+        deploymentToolVersion: ModelType.string,
+        lastUpdatedDate: ModelType.string,
+      },
+      stateTree: {
+        tree: { type: ModelType.array, schemaName: ModelType.binary },
+      },
+      storageInfo: {
+        numBlocks: ModelType.int,
+        numTransactions: ModelType.int,
+        numAccounts: ModelType.int,
 
-				database: { type: ModelType.object, schemaName: 'storageInfoDatabase' }
-			},
-			storageInfoDatabase: {
-				numIndexes: ModelType.int,
-				numObjects: ModelType.int,
+        database: { type: ModelType.object, schemaName: "storageInfoDatabase" },
+      },
+      storageInfoDatabase: {
+        numIndexes: ModelType.int,
+        numObjects: ModelType.int,
 
-				dataSize: ModelType.int,
-				indexSize: ModelType.int,
-				storageSize: ModelType.int
-			}
+        dataSize: ModelType.int,
+        indexSize: ModelType.int,
+        storageSize: ModelType.int,
+      },
 
-			// endregion
-		};
+      // endregion
+    };
 
-		Object.assign(this.schema.blockHeader, this.schema.verifiableEntity);
-		Object.assign(this.schema.transaction, this.schema.verifiableEntity);
-	}
+    Object.assign(this.schema.blockHeader, this.schema.verifiableEntity);
+    Object.assign(this.schema.transaction, this.schema.verifiableEntity);
+  }
 
-	/**
-	 * Adds support for a transaction type.
-	 * @param {models.TransactionType} transactionType Transaction type.
-	 * @param {object} schema Transaction schema.
-	 */
-	addTransactionSupport(transactionType, schema) {
-		const name = transactionType.toString();
-		this.addSchema(name, schema);
-		Object.assign(this.schema[name], this.schema.transaction);
-	}
+  /**
+   * Adds support for a transaction type.
+   * @param {models.TransactionType} transactionType Transaction type.
+   * @param {object} schema Transaction schema.
+   */
+  addTransactionSupport(transactionType, schema) {
+    const name = transactionType.toString();
+    this.addSchema(name, schema);
+    Object.assign(this.schema[name], this.schema.transaction);
+  }
 
-	/**
-	 * Adds support for a named schema.
-	 * @param {string} name Schema name.
-	 * @param {object} schema Schema.
-	 */
-	addSchema(name, schema) {
-		if (this.schema[name])
-			throw Error(`schema already registered for '${name}'`);
+  /**
+   * Adds support for a named schema.
+   * @param {string} name Schema name.
+   * @param {object} schema Schema.
+   */
+  addSchema(name, schema) {
+    if (this.schema[name])
+      throw Error(`schema already registered for '${name}'`);
 
-		this.schema[name] = schema;
-	}
+    this.schema[name] = schema;
+  }
 
-	/**
-	 * Returns a function that returns the best known schema for a given transaction.
-	 * @returns {Function} Transaction schema lookup function.
-	 */
-	transactionSchemaNameSupplier() {
-		return transaction => {
-			try {
-				const transactionName = new models.TransactionType(transaction.type).toString();
-				if (this.schema[transactionName])
-					return transactionName;
-			} catch (RuntimeError) {
-				// ignore, unknown transaction type
-			}
+  /**
+   * Returns a function that returns the best known schema for a given transaction.
+   * @returns {Function} Transaction schema lookup function.
+   */
+  transactionSchemaNameSupplier() {
+    return (transaction) => {
+      try {
+        const transactionName = new models.TransactionType(
+          transaction.type
+        ).toString();
+        if (this.schema[transactionName]) return transactionName;
+      } catch (RuntimeError) {
+        // ignore, unknown transaction type
+      }
 
-			// default to untyped transaction
-			return 'transaction';
-		};
-	}
+      // default to untyped transaction
+      return "transaction";
+    };
+  }
 
-	/**
-	 * Builds the schema and returns an appropriate aggregate schema object.
-	 * @returns {object} Aggregate schema object.
-	 */
-	build() {
-		this.schema.transactionWithMetadata.transaction.schemaName = this.transactionSchemaNameSupplier();
-		return this.schema;
-	}
+  /**
+   * Builds the schema and returns an appropriate aggregate schema object.
+   * @returns {object} Aggregate schema object.
+   */
+  build() {
+    this.schema.transactionWithMetadata.transaction.schemaName =
+      this.transactionSchemaNameSupplier();
+    return this.schema;
+  }
 }

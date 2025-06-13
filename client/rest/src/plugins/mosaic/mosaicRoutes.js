@@ -19,43 +19,56 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import catapult from '../../catapult-sdk/index.js';
-import merkleUtils from '../../routes/merkleUtils.js';
-import routeUtils from '../../routes/routeUtils.js';
-import { utils } from 'symbol-sdk';
+import catapult from "../../catapult-sdk/index.js";
+import merkleUtils from "../../routes/merkleUtils.js";
+import routeUtils from "../../routes/routeUtils.js";
+import { utils } from "@tech-bureau/symbol-sdk";
 
 const { PacketType } = catapult.packet;
 
 export default {
-	register: (server, db, services) => {
-		const mosaicSender = routeUtils.createSender('mosaicDescriptor');
+  register: (server, db, services) => {
+    const mosaicSender = routeUtils.createSender("mosaicDescriptor");
 
-		server.get('/mosaics', (req, res, next) => {
-			const ownerAddress = req.params.ownerAddress ? routeUtils.parseArgument(req.params, 'ownerAddress', 'address') : undefined;
+    server.get("/mosaics", (req, res, next) => {
+      const ownerAddress = req.params.ownerAddress
+        ? routeUtils.parseArgument(req.params, "ownerAddress", "address")
+        : undefined;
 
-			const options = routeUtils.parsePaginationArguments(req.params, services.config.pageSize, { id: 'objectId' });
+      const options = routeUtils.parsePaginationArguments(
+        req.params,
+        services.config.pageSize,
+        { id: "objectId" }
+      );
 
-			return db.mosaics(ownerAddress, options)
-				.then(result => mosaicSender.sendPage(res, next)(result));
-		});
+      return db
+        .mosaics(ownerAddress, options)
+        .then((result) => mosaicSender.sendPage(res, next)(result));
+    });
 
-		routeUtils.addGetPostDocumentRoutes(
-			server,
-			mosaicSender,
-			{ base: '/mosaics', singular: 'mosaicId', plural: 'mosaicIds' },
-			params => db.mosaicsByIds(params),
-			routeUtils.namedParserMap.uint64hex
-		);
+    routeUtils.addGetPostDocumentRoutes(
+      server,
+      mosaicSender,
+      { base: "/mosaics", singular: "mosaicId", plural: "mosaicIds" },
+      (params) => db.mosaicsByIds(params),
+      routeUtils.namedParserMap.uint64hex
+    );
 
-		// this endpoint is here because it is expected to support requests by block other than <current block>
-		server.get('/mosaics/:mosaicId/merkle', (req, res, next) => {
-			const mosaicId = routeUtils.parseArgument(req.params, 'mosaicId', 'uint64hex');
-			const state = PacketType.mosaicStatePath;
+    // this endpoint is here because it is expected to support requests by block other than <current block>
+    server.get("/mosaics/:mosaicId/merkle", (req, res, next) => {
+      const mosaicId = routeUtils.parseArgument(
+        req.params,
+        "mosaicId",
+        "uint64hex"
+      );
+      const state = PacketType.mosaicStatePath;
 
-			return merkleUtils.requestTree(services, state, utils.intToBytes(mosaicId, 8)).then(response => {
-				res.send(response);
-				next();
-			});
-		});
-	}
+      return merkleUtils
+        .requestTree(services, state, utils.intToBytes(mosaicId, 8))
+        .then((response) => {
+          res.send(response);
+          next();
+        });
+    });
+  },
 };

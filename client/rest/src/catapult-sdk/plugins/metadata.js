@@ -20,56 +20,56 @@
  */
 
 /** @module plugins/metadata */
-import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import ModelType from "../model/ModelType.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 /**
  * Creates a metadata plugin.
  * @type {module:plugins/CatapultPlugin}
  */
 export default {
-	registerSchema: builder => {
-		builder.addTransactionSupport(models.TransactionType.ACCOUNT_METADATA, {
-			targetAddress: ModelType.encodedAddress,
-			scopedMetadataKey: ModelType.uint64HexIdentifier,
-			valueSizeDelta: ModelType.int,
-			valueSize: ModelType.uint16,
-			value: ModelType.binary
-		});
+  registerSchema: (builder) => {
+    builder.addTransactionSupport(models.TransactionType.ACCOUNT_METADATA, {
+      targetAddress: ModelType.encodedAddress,
+      scopedMetadataKey: ModelType.uint64HexIdentifier,
+      valueSizeDelta: ModelType.int,
+      valueSize: ModelType.uint16,
+      value: ModelType.binary,
+    });
 
-		builder.addTransactionSupport(models.TransactionType.MOSAIC_METADATA, {
-			targetAddress: ModelType.encodedAddress,
-			scopedMetadataKey: ModelType.uint64HexIdentifier,
-			targetMosaicId: ModelType.uint64HexIdentifier,
-			valueSizeDelta: ModelType.int,
-			valueSize: ModelType.uint16,
-			value: ModelType.binary
-		});
+    builder.addTransactionSupport(models.TransactionType.MOSAIC_METADATA, {
+      targetAddress: ModelType.encodedAddress,
+      scopedMetadataKey: ModelType.uint64HexIdentifier,
+      targetMosaicId: ModelType.uint64HexIdentifier,
+      valueSizeDelta: ModelType.int,
+      valueSize: ModelType.uint16,
+      value: ModelType.binary,
+    });
 
-		builder.addTransactionSupport(models.TransactionType.NAMESPACE_METADATA, {
-			targetAddress: ModelType.encodedAddress,
-			scopedMetadataKey: ModelType.uint64HexIdentifier,
-			targetNamespaceId: ModelType.uint64HexIdentifier,
-			valueSizeDelta: ModelType.int,
-			valueSize: ModelType.uint16,
-			value: ModelType.binary
-		});
+    builder.addTransactionSupport(models.TransactionType.NAMESPACE_METADATA, {
+      targetAddress: ModelType.encodedAddress,
+      scopedMetadataKey: ModelType.uint64HexIdentifier,
+      targetNamespaceId: ModelType.uint64HexIdentifier,
+      valueSizeDelta: ModelType.int,
+      valueSize: ModelType.uint16,
+      value: ModelType.binary,
+    });
 
-		builder.addSchema('metadata', {
-			id: ModelType.objectId,
-			metadataEntry: { type: ModelType.object, schemaName: 'metadataEntry' }
-		});
+    builder.addSchema("metadata", {
+      id: ModelType.objectId,
+      metadataEntry: { type: ModelType.object, schemaName: "metadataEntry" },
+    });
 
-		builder.addSchema('metadataEntry', {
-			version: ModelType.uint16,
-			compositeHash: ModelType.binary,
-			sourceAddress: ModelType.encodedAddress,
-			targetAddress: ModelType.encodedAddress,
-			scopedMetadataKey: ModelType.uint64HexIdentifier,
-			targetId: ModelType.uint64HexIdentifier,
-			metadataType: ModelType.int,
-			valueSize: ModelType.uint16,
-			value: ModelType.binary
-		});
-	}
+    builder.addSchema("metadataEntry", {
+      version: ModelType.uint16,
+      compositeHash: ModelType.binary,
+      sourceAddress: ModelType.encodedAddress,
+      targetAddress: ModelType.encodedAddress,
+      scopedMetadataKey: ModelType.uint64HexIdentifier,
+      targetId: ModelType.uint64HexIdentifier,
+      metadataType: ModelType.int,
+      valueSize: ModelType.uint16,
+      value: ModelType.binary,
+    });
+  },
 };

@@ -19,10 +19,10 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import errors from '../server/errors.js';
-import MongoDb from 'mongodb';
-import { utils } from 'symbol-sdk';
-import { Address } from 'symbol-sdk/symbol';
+import errors from "../server/errors.js";
+import MongoDb from "mongodb";
+import { utils } from "@tech-bureau/symbol-sdk";
+import { Address } from "@tech-bureau/symbol-sdk/symbol";
 
 const { Long, ObjectId } = MongoDb;
 
@@ -31,17 +31,16 @@ const { Long, ObjectId } = MongoDb;
  * @param {object} value Value to convert.
  * @returns {MongoDb.Long} Converted value.
  */
-export const convertToLong = value => {
-	if ('bigint' === typeof value)
-		return Long.fromBigInt(value);
+export const convertToLong = (value) => {
+  if ("bigint" === typeof value) return Long.fromBigInt(value);
 
-	if (Number.isInteger(value))
-		return Long.fromNumber(value);
+  if (Number.isInteger(value)) return Long.fromNumber(value);
 
-	if (value instanceof Long)
-		return value;
+  if (value instanceof Long) return value;
 
-	throw errors.createInvalidArgumentError(`${value} has an invalid format: not integer or bigint`);
+  throw errors.createInvalidArgumentError(
+    `${value} has an invalid format: not integer or bigint`
+  );
 };
 
 /**
@@ -49,13 +48,15 @@ export const convertToLong = value => {
  * @param {Long} value Value to convert.
  * @returns {bigint} Converted value.
  */
-export const longToUint64 = value => {
-	if (!(value instanceof Long))
-		throw errors.createInvalidArgumentError(`${value} has an invalid format: not long`);
+export const longToUint64 = (value) => {
+  if (!(value instanceof Long))
+    throw errors.createInvalidArgumentError(
+      `${value} has an invalid format: not long`
+    );
 
-	// mongo stores signed 64-bit integers, so always reinterpret the bytes as unsigned
-	const bytes = new Uint8Array(value.toBytesLE());
-	return utils.bytesToBigInt(bytes, 8);
+  // mongo stores signed 64-bit integers, so always reinterpret the bytes as unsigned
+  const bytes = new Uint8Array(value.toBytesLE());
+  return utils.bytesToBigInt(bytes, 8);
 };
 
 /**
@@ -65,18 +66,26 @@ export const longToUint64 = value => {
  * @returns {object} Offset condition if offset was provided, otherwise returns undefined.
  */
 export const buildOffsetCondition = (options, sortFieldDbRelation) => {
-	const offsetTypeToDbObject = {
-		objectId: objectIdString => new ObjectId(objectIdString),
-		uint64: convertToLong,
-		uint64Hex: convertToLong
-	};
+  const offsetTypeToDbObject = {
+    objectId: (objectIdString) => new ObjectId(objectIdString),
+    uint64: convertToLong,
+    uint64Hex: convertToLong,
+  };
 
-	if (undefined !== options.offset) {
-		const offsetRequiresParsing = Object.keys(offsetTypeToDbObject).includes(options.offsetType);
-		const offset = offsetRequiresParsing ? offsetTypeToDbObject[options.offsetType](options.offset) : options.offset;
-		return { [sortFieldDbRelation[options.sortField]]: { [1 === options.sortDirection ? '$gt' : '$lt']: offset } };
-	}
-	return undefined;
+  if (undefined !== options.offset) {
+    const offsetRequiresParsing = Object.keys(offsetTypeToDbObject).includes(
+      options.offsetType
+    );
+    const offset = offsetRequiresParsing
+      ? offsetTypeToDbObject[options.offsetType](options.offset)
+      : options.offset;
+    return {
+      [sortFieldDbRelation[options.sortField]]: {
+        [1 === options.sortDirection ? "$gt" : "$lt"]: offset,
+      },
+    };
+  }
+  return undefined;
 };
 
 /**
@@ -86,19 +95,20 @@ export const buildOffsetCondition = (options, sortFieldDbRelation) => {
  * @returns {string} the address in base32 format or hex format depending on formatAddressUsingBase32
  */
 export const bufferToUnresolvedAddress = (binary, formatAddressUsingBase32) => {
-	if (!binary)
-		return undefined;
+  if (!binary) return undefined;
 
-	const getBuffer = () => {
-		if ((binary instanceof MongoDb.Binary))
-			return binary.buffer;
+  const getBuffer = () => {
+    if (binary instanceof MongoDb.Binary) return binary.buffer;
 
-		if ((binary instanceof Uint8Array))
-			return binary;
+    if (binary instanceof Uint8Array) return binary;
 
-		throw new Error(`Cannot convert binary address, unknown ${binary.constructor.name} type`);
-	};
-	return formatAddressUsingBase32 ? new Address(getBuffer()).toString() : utils.uint8ToHex(getBuffer());
+    throw new Error(
+      `Cannot convert binary address, unknown ${binary.constructor.name} type`
+    );
+  };
+  return formatAddressUsingBase32
+    ? new Address(getBuffer()).toString()
+    : utils.uint8ToHex(getBuffer());
 };
 
 /**
@@ -106,5 +116,9 @@ export const bufferToUnresolvedAddress = (binary, formatAddressUsingBase32) => {
  * @param {Long[]} duplicatedIds of {Long} objects.
  * @returns {Long[]} copy of the original list without duplicated values.
  */
-export const uniqueLongList = duplicatedIds => duplicatedIds.filter((height, index) =>
-	index === duplicatedIds.findIndex(anotherHeight => anotherHeight.equals(height)));
+export const uniqueLongList = (duplicatedIds) =>
+  duplicatedIds.filter(
+    (height, index) =>
+      index ===
+      duplicatedIds.findIndex((anotherHeight) => anotherHeight.equals(height))
+  );

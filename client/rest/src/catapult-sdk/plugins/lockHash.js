@@ -20,34 +20,34 @@
  */
 
 /** @module plugins/lockHash */
-import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import ModelType from "../model/ModelType.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 /**
  * Creates a lock hash plugin.
  * @type {module:plugins/CatapultPlugin}
  */
 export default {
-	registerSchema: builder => {
-		builder.addSchema('hashLockInfo', {
-			id: ModelType.objectId,
-			lock: { type: ModelType.object, schemaName: 'hashLockInfo.lock' }
-		});
-		builder.addSchema('hashLockInfo.lock', {
-			version: ModelType.uint16,
-			ownerAddress: ModelType.encodedAddress,
-			mosaicId: ModelType.uint64HexIdentifier,
-			amount: ModelType.uint64,
-			endHeight: ModelType.uint64,
-			status: ModelType.int,
-			hash: ModelType.binary
-		});
+  registerSchema: (builder) => {
+    builder.addSchema("hashLockInfo", {
+      id: ModelType.objectId,
+      lock: { type: ModelType.object, schemaName: "hashLockInfo.lock" },
+    });
+    builder.addSchema("hashLockInfo.lock", {
+      version: ModelType.uint16,
+      ownerAddress: ModelType.encodedAddress,
+      mosaicId: ModelType.uint64HexIdentifier,
+      amount: ModelType.uint64,
+      endHeight: ModelType.uint64,
+      status: ModelType.int,
+      hash: ModelType.binary,
+    });
 
-		builder.addTransactionSupport(models.TransactionType.HASH_LOCK, {
-			mosaicId: ModelType.uint64HexIdentifier,
-			amount: ModelType.uint64,
-			duration: ModelType.uint64,
-			hash: ModelType.binary
-		});
-	}
+    builder.addTransactionSupport(models.TransactionType.HASH_LOCK, {
+      mosaicId: ModelType.uint64HexIdentifier,
+      amount: ModelType.uint64,
+      duration: ModelType.uint64,
+      hash: ModelType.binary,
+    });
+  },
 };

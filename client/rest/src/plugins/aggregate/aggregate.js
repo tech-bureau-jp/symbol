@@ -20,10 +20,10 @@
  */
 
 /** @module plugins/aggregate */
-import aggregateRoutes from './aggregateRoutes.js';
-import catapult from '../../catapult-sdk/index.js';
-import ServerMessageHandler from '../../connection/serverMessageHandlers.js';
-import { Hash256, PublicKey, Signature } from 'symbol-sdk';
+import aggregateRoutes from "./aggregateRoutes.js";
+import catapult from "../../catapult-sdk/index.js";
+import ServerMessageHandler from "../../connection/serverMessageHandlers.js";
+import { Hash256, PublicKey, Signature } from "@tech-bureau/symbol-sdk";
 
 const { BinaryParser } = catapult.parser;
 
@@ -32,36 +32,40 @@ const { BinaryParser } = catapult.parser;
  * @type {module:plugins/CatapultRestPlugin}
  */
 export default {
-	createDb: () => {},
+  createDb: () => {},
 
-	registerTransactionStates: states => {
-		states.push({ friendlyName: 'partial', dbPostfix: 'Partial', routePostfix: '/partial' });
-	},
+  registerTransactionStates: (states) => {
+    states.push({
+      friendlyName: "partial",
+      dbPostfix: "Partial",
+      routePostfix: "/partial",
+    });
+  },
 
-	registerMessageChannels: builder => {
-		builder.add('partialAdded', 'p', ServerMessageHandler.transaction);
-		builder.add('partialRemoved', 'q', ServerMessageHandler.transactionHash);
-		builder.add('cosignature', 'c', emit => (topic, buffer) => {
-			const parser = new BinaryParser();
-			parser.push(buffer);
+  registerMessageChannels: (builder) => {
+    builder.add("partialAdded", "p", ServerMessageHandler.transaction);
+    builder.add("partialRemoved", "q", ServerMessageHandler.transactionHash);
+    builder.add("cosignature", "c", (emit) => (topic, buffer) => {
+      const parser = new BinaryParser();
+      parser.push(buffer);
 
-			const version = parser.uint64();
-			const signerPublicKey = parser.buffer(PublicKey.SIZE);
-			const signature = parser.buffer(Signature.SIZE);
-			const parentHash = parser.buffer(Hash256.SIZE);
-			emit({
-				type: 'aggregate.cosignature',
-				payload: {
-					version,
-					signerPublicKey,
-					signature,
-					parentHash
-				}
-			});
-		});
-	},
+      const version = parser.uint64();
+      const signerPublicKey = parser.buffer(PublicKey.SIZE);
+      const signature = parser.buffer(Signature.SIZE);
+      const parentHash = parser.buffer(Hash256.SIZE);
+      emit({
+        type: "aggregate.cosignature",
+        payload: {
+          version,
+          signerPublicKey,
+          signature,
+          parentHash,
+        },
+      });
+    });
+  },
 
-	registerRoutes: (...args) => {
-		aggregateRoutes.register(...args);
-	}
+  registerRoutes: (...args) => {
+    aggregateRoutes.register(...args);
+  },
 };

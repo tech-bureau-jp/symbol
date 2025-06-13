@@ -33,8 +33,8 @@ import nemRosetta from "./rosetta/nem/rosetta.js";
 import symbolRosetta from "./rosetta/symbol/rosetta.js";
 import mijin from "./mijin/mijin.js";
 import MessageChannelBuilder from "../connection/MessageChannelBuilder.js";
-import { NetworkLocator } from "symbol-sdk";
-import { Network } from "symbol-sdk/symbol";
+import { NetworkLocator } from "@tech-bureau/symbol-sdk";
+import { Network } from "@tech-bureau/symbol-sdk/symbol";
 
 const plugins = {
   // transactions

@@ -44,10 +44,10 @@ import TransactionIdentifierResponse from '../openApi/model/TransactionIdentifie
 import {
 	RosettaErrorFactory, RosettaPublicKeyProcessor, extractTransferDescriptorAt, rosettaPostRouteWithNetwork
 } from '../rosettaUtils.js';
-import { PrivateKey, PublicKey, utils } from 'symbol-sdk';
+import { PrivateKey, PublicKey, utils } from '@tech-bureau/symbol-sdk';
 import {
 	KeyPair, NetworkTimestamp, SymbolFacade, generateMosaicAliasId, models
-} from 'symbol-sdk/symbol';
+} from '@tech-bureau/symbol-sdk/symbol';
 
 export default {
 	register: (server, db, services) => {

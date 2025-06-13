@@ -19,31 +19,44 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import catapult from '../../catapult-sdk/index.js';
-import routeUtils from '../../routes/routeUtils.js';
-import { utils } from 'symbol-sdk';
+import catapult from "../../catapult-sdk/index.js";
+import routeUtils from "../../routes/routeUtils.js";
+import { utils } from "@tech-bureau/symbol-sdk";
 
 const { PacketType } = catapult.packet;
 
 export default {
-	register: (server, db, services) => {
-		const parseUint64StringToUint8Buffer = numericString => utils.intToBytes(BigInt(numericString), 8);
-		const parseHexParam = (params, key) => routeUtils.parseArgument(params, key, utils.hexToUint8);
+  register: (server, db, services) => {
+    const parseUint64StringToUint8Buffer = (numericString) =>
+      utils.intToBytes(BigInt(numericString), 8);
+    const parseHexParam = (params, key) =>
+      routeUtils.parseArgument(params, key, utils.hexToUint8);
 
-		routeUtils.addPutPacketRoute(
-			server,
-			services.connections,
-			{ routeName: '/transactions/partial', packetType: PacketType.pushPartialTransactions },
-			params => parseHexParam(params, 'payload')
-		);
+    routeUtils.addPutPacketRoute(
+      server,
+      services.connections,
+      {
+        routeName: "/transactions/partial",
+        packetType: PacketType.pushPartialTransactions,
+      },
+      (params) => parseHexParam(params, "payload")
+    );
 
-		routeUtils.addPutPacketRoute(
-			server,
-			services.connections,
-			{ routeName: '/transactions/cosignature', packetType: PacketType.pushDetachedCosignatures },
-			params => Buffer.concat([parseUint64StringToUint8Buffer(params.version)].concat([
-				'signerPublicKey', 'signature', 'parentHash'
-			].map(key => parseHexParam(params, key))))
-		);
-	}
+    routeUtils.addPutPacketRoute(
+      server,
+      services.connections,
+      {
+        routeName: "/transactions/cosignature",
+        packetType: PacketType.pushDetachedCosignatures,
+      },
+      (params) =>
+        Buffer.concat(
+          [parseUint64StringToUint8Buffer(params.version)].concat(
+            ["signerPublicKey", "signature", "parentHash"].map((key) =>
+              parseHexParam(params, key)
+            )
+          )
+        )
+    );
+  },
 };

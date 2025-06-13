@@ -21,7 +21,7 @@
 
 import { mosaicIdToString } from './rosettaUtils.js';
 import { RosettaErrorFactory } from '../rosettaUtils.js';
-import { models } from 'symbol-sdk/nem';
+import { models } from '@tech-bureau/symbol-sdk/nem';
 
 const mosaicDefinitionToMosaicProperties = mosaicDefinition => {
 	const findProperty = (properties, name) => properties.find(property => name === property.name);

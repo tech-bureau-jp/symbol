@@ -19,10 +19,10 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { bufferToUnresolvedAddress, longToUint64 } from './dbUtils.js';
-import catapult from '../catapult-sdk/index.js';
-import { Binary } from 'mongodb';
-import { utils } from 'symbol-sdk';
+import { bufferToUnresolvedAddress, longToUint64 } from "./dbUtils.js";
+import catapult from "../catapult-sdk/index.js";
+import { Binary } from "mongodb";
+import { utils } from "@tech-bureau/symbol-sdk";
 
 const { ModelType, status } = catapult.model;
 
@@ -35,31 +35,37 @@ const { ModelType, status } = catapult.model;
  * this has not been decoupled yet.
  */
 
-const formatBigInt = value => value.toString(16).padStart(16, '0').toUpperCase();
+const formatBigInt = (value) =>
+  value.toString(16).padStart(16, "0").toUpperCase();
 
 export default {
-	[ModelType.none]: value => value,
-	[ModelType.binary]: value => (utils.uint8ToHex(value.buffer instanceof ArrayBuffer ? value : value.buffer)),
-	[ModelType.objectId]: value => (undefined === value ? '' : value.toHexString().toUpperCase()),
-	[ModelType.statusCode]: value => status.toString(value >>> 0),
-	[ModelType.string]: value => value.toString(),
-	[ModelType.uint8]: value => value,
-	// `uint16` required solely because accountRestrictions->restrictionAdditions array has uint16 provided as binary
-	[ModelType.uint16]: value => (value instanceof Binary ? Buffer.from(value.buffer).readInt16LE(0) : value),
-	// `uint32` might be returned by mongo as signed, so always reinterpret the underlying bytes as unsigned
-	[ModelType.uint32]: value => (value & 0xFFFFFFFF) >>> 0,
-	[ModelType.uint64]: value => longToUint64(value).toString(),
-	// `uint64HexIdentifier` requires branching because accountRestrictions.restrictionAdditions provides bigint as binary
-	[ModelType.uint64HexIdentifier]: value => {
-		if (value instanceof Binary) {
-			// make a copy of the Binary's buffer to ensure compatability with BigUint64Array
-			const copy = Uint8Array.from(value.value());
-			return formatBigInt(utils.bytesToBigInt(copy, 8));
-		}
+  [ModelType.none]: (value) => value,
+  [ModelType.binary]: (value) =>
+    utils.uint8ToHex(
+      value.buffer instanceof ArrayBuffer ? value : value.buffer
+    ),
+  [ModelType.objectId]: (value) =>
+    undefined === value ? "" : value.toHexString().toUpperCase(),
+  [ModelType.statusCode]: (value) => status.toString(value >>> 0),
+  [ModelType.string]: (value) => value.toString(),
+  [ModelType.uint8]: (value) => value,
+  // `uint16` required solely because accountRestrictions->restrictionAdditions array has uint16 provided as binary
+  [ModelType.uint16]: (value) =>
+    value instanceof Binary ? Buffer.from(value.buffer).readInt16LE(0) : value,
+  // `uint32` might be returned by mongo as signed, so always reinterpret the underlying bytes as unsigned
+  [ModelType.uint32]: (value) => (value & 0xffffffff) >>> 0,
+  [ModelType.uint64]: (value) => longToUint64(value).toString(),
+  // `uint64HexIdentifier` requires branching because accountRestrictions.restrictionAdditions provides bigint as binary
+  [ModelType.uint64HexIdentifier]: (value) => {
+    if (value instanceof Binary) {
+      // make a copy of the Binary's buffer to ensure compatability with BigUint64Array
+      const copy = Uint8Array.from(value.value());
+      return formatBigInt(utils.bytesToBigInt(copy, 8));
+    }
 
-		return formatBigInt(longToUint64(value));
-	},
-	[ModelType.int]: value => value.valueOf(),
-	[ModelType.boolean]: value => value,
-	[ModelType.encodedAddress]: value => bufferToUnresolvedAddress(value)
+    return formatBigInt(longToUint64(value));
+  },
+  [ModelType.int]: (value) => value.valueOf(),
+  [ModelType.boolean]: (value) => value,
+  [ModelType.encodedAddress]: (value) => bufferToUnresolvedAddress(value),
 };

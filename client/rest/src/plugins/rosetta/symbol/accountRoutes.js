@@ -30,8 +30,8 @@ import BlockIdentifier from '../openApi/model/BlockIdentifier.js';
 import Coin from '../openApi/model/Coin.js';
 import CoinIdentifier from '../openApi/model/CoinIdentifier.js';
 import { RosettaErrorFactory, evaluateOperationsAndUpdateAmounts, rosettaPostRouteWithNetwork } from '../rosettaUtils.js';
-import { NetworkLocator } from 'symbol-sdk';
-import { Network } from 'symbol-sdk/symbol';
+import { NetworkLocator } from '@tech-bureau/symbol-sdk';
+import { Network } from '@tech-bureau/symbol-sdk/symbol';
 
 export default {
 	register: (server, db, services) => {

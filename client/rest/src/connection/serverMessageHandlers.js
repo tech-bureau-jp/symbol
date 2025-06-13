@@ -19,94 +19,114 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import catapult from '../catapult-sdk/index.js';
-import { Hash256, utils } from 'symbol-sdk';
-import { models } from 'symbol-sdk/symbol';
+import catapult from "../catapult-sdk/index.js";
+import { Hash256, utils } from "@tech-bureau/symbol-sdk";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
-const parserFromData = binaryData => {
-	const parser = new catapult.parser.BinaryParser();
-	parser.push(binaryData);
-	return parser;
+const parserFromData = (binaryData) => {
+  const parser = new catapult.parser.BinaryParser();
+  parser.push(binaryData);
+  return parser;
 };
 
-const fixupBlockJson = blockJson => {
-	if (blockJson.generationHashProof) {
-		blockJson.proofGamma = blockJson.generationHashProof.gamma;
-		blockJson.proofVerificationHash = blockJson.generationHashProof.verificationHash;
-		blockJson.proofScalar = blockJson.generationHashProof.scalar;
-		delete blockJson.generationHashProof;
-	}
+const fixupBlockJson = (blockJson) => {
+  if (blockJson.generationHashProof) {
+    blockJson.proofGamma = blockJson.generationHashProof.gamma;
+    blockJson.proofVerificationHash =
+      blockJson.generationHashProof.verificationHash;
+    blockJson.proofScalar = blockJson.generationHashProof.scalar;
+    delete blockJson.generationHashProof;
+  }
 
-	return blockJson;
+  return blockJson;
 };
 
-const fixupTransactionJson = transactionJson => {
-	if (transactionJson.mosaics) {
-		transactionJson.mosaics = transactionJson.mosaics.map(mosaic => ({
-			id: mosaic.mosaicId,
-			amount: mosaic.amount
-		}));
-	}
+const fixupTransactionJson = (transactionJson) => {
+  if (transactionJson.mosaics) {
+    transactionJson.mosaics = transactionJson.mosaics.map((mosaic) => ({
+      id: mosaic.mosaicId,
+      amount: mosaic.amount,
+    }));
+  }
 
-	if (transactionJson.mosaic) {
-		Object.assign(transactionJson, transactionJson.mosaic);
-		delete transactionJson.mosaic;
-	}
+  if (transactionJson.mosaic) {
+    Object.assign(transactionJson, transactionJson.mosaic);
+    delete transactionJson.mosaic;
+  }
 
-	if (transactionJson.transactions) {
-		transactionJson.transactions = transactionJson.transactions.map(subTransaction => ({
-			transaction: fixupTransactionJson(subTransaction)
-		}));
-	}
+  if (transactionJson.transactions) {
+    transactionJson.transactions = transactionJson.transactions.map(
+      (subTransaction) => ({
+        transaction: fixupTransactionJson(subTransaction),
+      })
+    );
+  }
 
-	return transactionJson;
+  return transactionJson;
 };
 
 export default Object.freeze({
-	block: emit => (topic, binaryBlock, hash, generationHash) => {
-		// rewrite block size to block header size, which is necessary for parser to work
-		const block = models.BlockFactory.deserialize(new Uint8Array([
-			...utils.intToBytes(binaryBlock.length, 4),
-			...binaryBlock.subarray(4)
-		]));
+  block: (emit) => (topic, binaryBlock, hash, generationHash) => {
+    // rewrite block size to block header size, which is necessary for parser to work
+    const block = models.BlockFactory.deserialize(
+      new Uint8Array([
+        ...utils.intToBytes(binaryBlock.length, 4),
+        ...binaryBlock.subarray(4),
+      ])
+    );
 
-		const blockJson = fixupBlockJson(block.toJson());
-		emit({ type: 'blockHeaderWithMetadata', payload: { block: blockJson, meta: { hash, generationHash } } });
-	},
+    const blockJson = fixupBlockJson(block.toJson());
+    emit({
+      type: "blockHeaderWithMetadata",
+      payload: { block: blockJson, meta: { hash, generationHash } },
+    });
+  },
 
-	finalizedBlock: emit => (topic, binaryBlock) => {
-		const parser = parserFromData(binaryBlock);
+  finalizedBlock: (emit) => (topic, binaryBlock) => {
+    const parser = parserFromData(binaryBlock);
 
-		const finalizationEpoch = parser.uint32();
-		const finalizationPoint = parser.uint32();
-		const height = parser.uint64();
-		const hash = parser.buffer(Hash256.SIZE);
-		emit({
-			type: 'finalizedBlock',
-			payload: {
-				finalizationEpoch, finalizationPoint, height, hash
-			}
-		});
-	},
+    const finalizationEpoch = parser.uint32();
+    const finalizationPoint = parser.uint32();
+    const height = parser.uint64();
+    const hash = parser.buffer(Hash256.SIZE);
+    emit({
+      type: "finalizedBlock",
+      payload: {
+        finalizationEpoch,
+        finalizationPoint,
+        height,
+        hash,
+      },
+    });
+  },
 
-	transaction: emit => (topic, binaryTransaction, hash, merkleComponentHash, height) => {
-		const transaction = models.TransactionFactory.deserialize(binaryTransaction);
-		const meta = { hash, merkleComponentHash, height: utils.bytesToBigInt(height, 8) };
+  transaction:
+    (emit) => (topic, binaryTransaction, hash, merkleComponentHash, height) => {
+      const transaction =
+        models.TransactionFactory.deserialize(binaryTransaction);
+      const meta = {
+        hash,
+        merkleComponentHash,
+        height: utils.bytesToBigInt(height, 8),
+      };
 
-		const transactionJson = fixupTransactionJson(transaction.toJson());
-		emit({ type: 'transactionWithMetadata', payload: { transaction: transactionJson, meta } });
-	},
+      const transactionJson = fixupTransactionJson(transaction.toJson());
+      emit({
+        type: "transactionWithMetadata",
+        payload: { transaction: transactionJson, meta },
+      });
+    },
 
-	transactionHash: emit => (topic, hash) => {
-		emit({ type: 'transactionWithMetadata', payload: { meta: { hash } } });
-	},
+  transactionHash: (emit) => (topic, hash) => {
+    emit({ type: "transactionWithMetadata", payload: { meta: { hash } } });
+  },
 
-	transactionStatus: emit => (topic, buffer) => {
-		const parser = parserFromData(buffer);
+  transactionStatus: (emit) => (topic, buffer) => {
+    const parser = parserFromData(buffer);
 
-		const hash = parser.buffer(Hash256.SIZE);
-		const deadline = parser.uint64();
-		const code = parser.uint32();
-		emit({ type: 'transactionStatus', payload: { hash, code, deadline } });
-	}
+    const hash = parser.buffer(Hash256.SIZE);
+    const deadline = parser.uint64();
+    const code = parser.uint32();
+    emit({ type: "transactionStatus", payload: { hash, code, deadline } });
+  },
 });

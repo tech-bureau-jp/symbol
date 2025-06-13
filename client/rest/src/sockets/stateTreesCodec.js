@@ -20,19 +20,18 @@
  */
 
 /** @module sockets/stateTreesCodec */
-import { Hash256 } from 'symbol-sdk';
+import { Hash256 } from "@tech-bureau/symbol-sdk";
 
 export default {
-	/**
-	 * Parses state trees.
-	 * @param {object} parser Parser.
-	 * @returns {object} Parsed state tree.
-	 */
-	deserialize: parser => {
-		const tree = [];
-		while (parser.numUnprocessedBytes())
-			tree.push(parser.buffer(Hash256.SIZE));
+  /**
+   * Parses state trees.
+   * @param {object} parser Parser.
+   * @returns {object} Parsed state tree.
+   */
+  deserialize: (parser) => {
+    const tree = [];
+    while (parser.numUnprocessedBytes()) tree.push(parser.buffer(Hash256.SIZE));
 
-		return { tree };
-	}
+    return { tree };
+  },
 };

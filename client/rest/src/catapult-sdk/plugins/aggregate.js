@@ -20,29 +20,41 @@
  */
 
 /** @module plugins/aggregate */
-import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import ModelType from "../model/ModelType.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 /**
  * Creates an aggregate plugin.
  * @type {module:plugins/CatapultPlugin}
  */
 export default {
-	registerSchema: builder => {
-		const aggregateSchema = {
-			transactionsHash: ModelType.binary,
-			transactions: { type: ModelType.array, schemaName: 'transactionWithMetadata' },
-			cosignatures: { type: ModelType.array, schemaName: 'aggregate.cosignature' }
-		};
+  registerSchema: (builder) => {
+    const aggregateSchema = {
+      transactionsHash: ModelType.binary,
+      transactions: {
+        type: ModelType.array,
+        schemaName: "transactionWithMetadata",
+      },
+      cosignatures: {
+        type: ModelType.array,
+        schemaName: "aggregate.cosignature",
+      },
+    };
 
-		builder.addTransactionSupport(models.TransactionType.AGGREGATE_COMPLETE, aggregateSchema);
-		builder.addTransactionSupport(models.TransactionType.AGGREGATE_BONDED, aggregateSchema);
+    builder.addTransactionSupport(
+      models.TransactionType.AGGREGATE_COMPLETE,
+      aggregateSchema
+    );
+    builder.addTransactionSupport(
+      models.TransactionType.AGGREGATE_BONDED,
+      aggregateSchema
+    );
 
-		builder.addSchema('aggregate.cosignature', {
-			version: ModelType.uint64,
-			signerPublicKey: ModelType.binary,
-			signature: ModelType.binary,
-			parentHash: ModelType.binary
-		});
-	}
+    builder.addSchema("aggregate.cosignature", {
+      version: ModelType.uint64,
+      signerPublicKey: ModelType.binary,
+      signature: ModelType.binary,
+      parentHash: ModelType.binary,
+    });
+  },
 };

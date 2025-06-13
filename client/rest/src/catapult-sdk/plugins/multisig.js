@@ -20,36 +20,54 @@
  */
 
 /** @module plugins/multisig */
-import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import ModelType from "../model/ModelType.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 /**
  * Creates a multisig plugin.
  * @type {module:plugins/CatapultPlugin}
  */
 export default {
-	registerSchema: builder => {
-		builder.addTransactionSupport(models.TransactionType.MULTISIG_ACCOUNT_MODIFICATION, {
-			minRemovalDelta: ModelType.int,
-			minApprovalDelta: ModelType.int,
-			addressAdditions: { type: ModelType.array, schemaName: ModelType.encodedAddress },
-			addressDeletions: { type: ModelType.array, schemaName: ModelType.encodedAddress }
-		});
+  registerSchema: (builder) => {
+    builder.addTransactionSupport(
+      models.TransactionType.MULTISIG_ACCOUNT_MODIFICATION,
+      {
+        minRemovalDelta: ModelType.int,
+        minApprovalDelta: ModelType.int,
+        addressAdditions: {
+          type: ModelType.array,
+          schemaName: ModelType.encodedAddress,
+        },
+        addressDeletions: {
+          type: ModelType.array,
+          schemaName: ModelType.encodedAddress,
+        },
+      }
+    );
 
-		builder.addSchema('multisigEntry', {
-			multisig: { type: ModelType.object, schemaName: 'multisigEntry.multisig' }
-		});
-		builder.addSchema('multisigEntry.multisig', {
-			version: ModelType.uint16,
-			accountAddress: ModelType.encodedAddress,
-			minApproval: ModelType.int,
-			minRemoval: ModelType.int,
-			multisigAddresses: { type: ModelType.array, schemaName: ModelType.encodedAddress },
-			cosignatoryAddresses: { type: ModelType.array, schemaName: ModelType.encodedAddress }
-		});
-		builder.addSchema('multisigGraph', {
-			level: ModelType.none,
-			multisigEntries: { type: ModelType.array, schemaName: 'multisigEntry' }
-		});
-	}
+    builder.addSchema("multisigEntry", {
+      multisig: {
+        type: ModelType.object,
+        schemaName: "multisigEntry.multisig",
+      },
+    });
+    builder.addSchema("multisigEntry.multisig", {
+      version: ModelType.uint16,
+      accountAddress: ModelType.encodedAddress,
+      minApproval: ModelType.int,
+      minRemoval: ModelType.int,
+      multisigAddresses: {
+        type: ModelType.array,
+        schemaName: ModelType.encodedAddress,
+      },
+      cosignatoryAddresses: {
+        type: ModelType.array,
+        schemaName: ModelType.encodedAddress,
+      },
+    });
+    builder.addSchema("multisigGraph", {
+      level: ModelType.none,
+      multisigEntries: { type: ModelType.array, schemaName: "multisigEntry" },
+    });
+  },
 };

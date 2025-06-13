@@ -20,50 +20,53 @@
  */
 
 /** @module plugins/mosaic */
-import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import ModelType from "../model/ModelType.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 /**
  * Creates a mosaic plugin.
  * @type {module:plugins/CatapultPlugin}
  */
 export default {
-	registerSchema: builder => {
-		builder.addTransactionSupport(models.TransactionType.MOSAIC_DEFINITION, {
-			id: ModelType.uint64HexIdentifier,
-			duration: ModelType.uint64,
-			nonce: ModelType.uint32,
-			flags: ModelType.uint8,
-			divisibility: ModelType.uint8
-		});
+  registerSchema: (builder) => {
+    builder.addTransactionSupport(models.TransactionType.MOSAIC_DEFINITION, {
+      id: ModelType.uint64HexIdentifier,
+      duration: ModelType.uint64,
+      nonce: ModelType.uint32,
+      flags: ModelType.uint8,
+      divisibility: ModelType.uint8,
+    });
 
-		builder.addTransactionSupport(models.TransactionType.MOSAIC_SUPPLY_CHANGE, {
-			mosaicId: ModelType.uint64HexIdentifier,
-			delta: ModelType.uint64,
-			action: ModelType.uint8
-		});
+    builder.addTransactionSupport(models.TransactionType.MOSAIC_SUPPLY_CHANGE, {
+      mosaicId: ModelType.uint64HexIdentifier,
+      delta: ModelType.uint64,
+      action: ModelType.uint8,
+    });
 
-		builder.addTransactionSupport(models.TransactionType.MOSAIC_SUPPLY_REVOCATION, {
-			sourceAddress: ModelType.encodedAddress,
-			mosaicId: ModelType.uint64HexIdentifier,
-			amount: ModelType.uint64
-		});
+    builder.addTransactionSupport(
+      models.TransactionType.MOSAIC_SUPPLY_REVOCATION,
+      {
+        sourceAddress: ModelType.encodedAddress,
+        mosaicId: ModelType.uint64HexIdentifier,
+        amount: ModelType.uint64,
+      }
+    );
 
-		builder.addSchema('mosaicDescriptor', {
-			id: ModelType.objectId,
-			mosaic: { type: ModelType.object, schemaName: 'mosaicDescriptor.mosaic' }
-		});
+    builder.addSchema("mosaicDescriptor", {
+      id: ModelType.objectId,
+      mosaic: { type: ModelType.object, schemaName: "mosaicDescriptor.mosaic" },
+    });
 
-		builder.addSchema('mosaicDescriptor.mosaic', {
-			version: ModelType.uint16,
-			id: ModelType.uint64HexIdentifier,
-			supply: ModelType.uint64,
-			startHeight: ModelType.uint64,
-			ownerAddress: ModelType.encodedAddress,
-			revision: ModelType.int,
-			flags: ModelType.uint8,
-			divisibility: ModelType.uint8,
-			duration: ModelType.uint64
-		});
-	}
+    builder.addSchema("mosaicDescriptor.mosaic", {
+      version: ModelType.uint16,
+      id: ModelType.uint64HexIdentifier,
+      supply: ModelType.uint64,
+      startHeight: ModelType.uint64,
+      ownerAddress: ModelType.encodedAddress,
+      revision: ModelType.int,
+      flags: ModelType.uint8,
+      divisibility: ModelType.uint8,
+      duration: ModelType.uint64,
+    });
+  },
 };

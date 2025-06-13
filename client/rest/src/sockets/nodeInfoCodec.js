@@ -20,27 +20,30 @@
  */
 
 /** @module sockets/nodeInfoCodec */
-import { Hash256, PublicKey } from 'symbol-sdk';
+import { Hash256, PublicKey } from "@tech-bureau/symbol-sdk";
 
 export default {
-	/**
-	 * Parses a node info.
-	 * @param {object} parser Parser.
-	 * @returns {object} Parsed node info.
-	 */
-	deserialize: parser => {
-		const nodeInfo = {};
-		parser.uint32(); // Node size
-		nodeInfo.version = parser.uint32();
-		nodeInfo.publicKey = parser.buffer(PublicKey.SIZE);
-		nodeInfo.networkGenerationHashSeed = parser.buffer(Hash256.SIZE);
-		nodeInfo.roles = parser.uint32();
-		nodeInfo.port = parser.uint16();
-		nodeInfo.networkIdentifier = parser.uint8();
-		const hostSize = parser.uint8();
-		const friendlyNameSize = parser.uint8();
-		nodeInfo.host = 0 === hostSize ? Buffer.alloc(0) : parser.buffer(hostSize);
-		nodeInfo.friendlyName = 0 === friendlyNameSize ? Buffer.alloc(0) : parser.buffer(friendlyNameSize);
-		return nodeInfo;
-	}
+  /**
+   * Parses a node info.
+   * @param {object} parser Parser.
+   * @returns {object} Parsed node info.
+   */
+  deserialize: (parser) => {
+    const nodeInfo = {};
+    parser.uint32(); // Node size
+    nodeInfo.version = parser.uint32();
+    nodeInfo.publicKey = parser.buffer(PublicKey.SIZE);
+    nodeInfo.networkGenerationHashSeed = parser.buffer(Hash256.SIZE);
+    nodeInfo.roles = parser.uint32();
+    nodeInfo.port = parser.uint16();
+    nodeInfo.networkIdentifier = parser.uint8();
+    const hostSize = parser.uint8();
+    const friendlyNameSize = parser.uint8();
+    nodeInfo.host = 0 === hostSize ? Buffer.alloc(0) : parser.buffer(hostSize);
+    nodeInfo.friendlyName =
+      0 === friendlyNameSize
+        ? Buffer.alloc(0)
+        : parser.buffer(friendlyNameSize);
+    return nodeInfo;
+  },
 };

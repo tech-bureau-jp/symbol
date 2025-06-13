@@ -20,7 +20,7 @@
  */
 
 import { sha3_256 } from '@noble/hashes/sha3';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 export default class MerkleTree {
 	/**

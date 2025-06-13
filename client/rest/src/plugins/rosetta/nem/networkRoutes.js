@@ -32,8 +32,8 @@ import OperationStatus from '../openApi/model/OperationStatus.js';
 import Peer from '../openApi/model/Peer.js';
 import Version from '../openApi/model/Version.js';
 import { RosettaErrorFactory, rosettaPostRouteWithNetwork } from '../rosettaUtils.js';
-import { NetworkLocator } from 'symbol-sdk';
-import { Network, NetworkTimestamp } from 'symbol-sdk/nem';
+import { NetworkLocator } from '@tech-bureau/symbol-sdk';
+import { Network, NetworkTimestamp } from '@tech-bureau/symbol-sdk/nem';
 
 export default {
 	register: (server, db, services) => {

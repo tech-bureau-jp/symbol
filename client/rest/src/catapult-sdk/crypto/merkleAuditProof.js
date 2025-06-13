@@ -19,17 +19,17 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { utils } from 'symbol-sdk';
+import { utils } from "@tech-bureau/symbol-sdk";
 
 export const NodePosition = Object.freeze({
-	left: 'left',
-	right: 'right'
+  left: "left",
+  right: "right",
 });
 
 export class HashNotFoundError extends Error {}
 export class InvalidTree extends Error {}
 
-export const evenify = number => (number % 2 ? number + 1 : number);
+export const evenify = (number) => (number % 2 ? number + 1 : number);
 
 /**
  * Returns the index of a hash in a Merkle tree.
@@ -37,21 +37,22 @@ export const evenify = number => (number % 2 ? number + 1 : number);
  * @param {object} tree Merkle tree object containing the number of hashed elements and the tree of hashes.
  * @returns {number} Index of the first element in the tree matching the given hash, otherwise -1 is returned.
  */
-export const indexOfLeafWithHash = (hash, tree) => tree.nodes
-	.slice(0, evenify(tree.count))
-	.findIndex(element => 0 === utils.deepCompare(element, hash));
+export const indexOfLeafWithHash = (hash, tree) =>
+  tree.nodes
+    .slice(0, evenify(tree.count))
+    .findIndex((element) => 0 === utils.deepCompare(element, hash));
 
-export const siblingOf = nodeIndex => {
-	if (nodeIndex % 2) {
-		return {
-			position: NodePosition.left,
-			index: nodeIndex - 1
-		};
-	}
-	return {
-		position: NodePosition.right,
-		index: nodeIndex + 1
-	};
+export const siblingOf = (nodeIndex) => {
+  if (nodeIndex % 2) {
+    return {
+      position: NodePosition.left,
+      index: nodeIndex - 1,
+    };
+  }
+  return {
+    position: NodePosition.right,
+    index: nodeIndex + 1,
+  };
 };
 
 /**
@@ -61,27 +62,25 @@ export const siblingOf = nodeIndex => {
  * @returns {Array<object>} Array of objects containing the Merkle tree hash, and its relative position (left or right).
  */
 export const buildAuditPath = (hash, tree) => {
-	if (0 === tree.count)
-		throw new InvalidTree();
+  if (0 === tree.count) throw new InvalidTree();
 
-	let layerStart = 0;
-	let currentLayerCount = tree.count;
-	let layerSubindexOfHash = indexOfLeafWithHash(hash, tree);
-	if (-1 === layerSubindexOfHash)
-		throw new HashNotFoundError();
+  let layerStart = 0;
+  let currentLayerCount = tree.count;
+  let layerSubindexOfHash = indexOfLeafWithHash(hash, tree);
+  if (-1 === layerSubindexOfHash) throw new HashNotFoundError();
 
-	const auditPath = [];
-	while (1 !== currentLayerCount) {
-		currentLayerCount = evenify(currentLayerCount);
-		const sibling = siblingOf(layerStart + layerSubindexOfHash);
-		const siblingPathNode = {
-			hash: tree.nodes[sibling.index],
-			position: sibling.position
-		};
-		auditPath.push(siblingPathNode);
-		layerStart += currentLayerCount;
-		currentLayerCount /= 2;
-		layerSubindexOfHash = Math.floor(layerSubindexOfHash / 2);
-	}
-	return auditPath;
+  const auditPath = [];
+  while (1 !== currentLayerCount) {
+    currentLayerCount = evenify(currentLayerCount);
+    const sibling = siblingOf(layerStart + layerSubindexOfHash);
+    const siblingPathNode = {
+      hash: tree.nodes[sibling.index],
+      position: sibling.position,
+    };
+    auditPath.push(siblingPathNode);
+    layerStart += currentLayerCount;
+    currentLayerCount /= 2;
+    layerSubindexOfHash = Math.floor(layerSubindexOfHash / 2);
+  }
+  return auditPath;
 };

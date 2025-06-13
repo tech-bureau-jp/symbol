@@ -23,7 +23,7 @@ import createConnectionService from "./connection/connectionService.js";
 import routeResultTypes from "../../routes/routeResultTypes.js";
 import catapult from "../../catapult-sdk/index.js";
 import routeUtils from "../../routes/routeUtils.js";
-import { utils } from "symbol-sdk";
+import { utils } from "@tech-bureau/symbol-sdk";
 import winston from "winston";
 import nodeInfoCodec from "../../sockets/nodeInfoCodec.js";
 import nodePeersCodec from "../../sockets/nodePeersCodec.js";

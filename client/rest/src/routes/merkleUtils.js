@@ -22,7 +22,7 @@
 import errors from '../server/errors.js';
 import catapult from '../catapult-sdk/index.js';
 import MerkleTree from './MerkelTree.js';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const packetHeader = catapult.packet.header;
 const { StatePathPacketTypes } = catapult.packet;

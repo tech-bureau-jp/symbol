@@ -30,8 +30,8 @@ import BlockTransactionResponse from '../openApi/model/BlockTransactionResponse.
 import Transaction from '../openApi/model/Transaction.js';
 import TransactionIdentifier from '../openApi/model/TransactionIdentifier.js';
 import { RosettaErrorFactory, rosettaPostRouteWithNetwork } from '../rosettaUtils.js';
-import { NetworkLocator } from 'symbol-sdk';
-import { Network, NetworkTimestamp } from 'symbol-sdk/nem';
+import { NetworkLocator } from '@tech-bureau/symbol-sdk';
+import { Network, NetworkTimestamp } from '@tech-bureau/symbol-sdk/nem';
 
 export default {
 	register: (server, db, services) => {

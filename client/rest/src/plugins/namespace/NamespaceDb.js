@@ -19,144 +19,163 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import catapult from '../../catapult-sdk/index.js';
-import { buildOffsetCondition, convertToLong, longToUint64 } from '../../db/dbUtils.js';
-import { models } from 'symbol-sdk/symbol';
+import catapult from "../../catapult-sdk/index.js";
+import {
+  buildOffsetCondition,
+  convertToLong,
+  longToUint64,
+} from "../../db/dbUtils.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 const createLatestConditions = (catapultDb, height) => {
-	if (height) {
-		return ({
-			$and: [{ 'meta.latest': true }, {
-				$or: [
-					{ 'namespace.endHeight': convertToLong(-1) },
-					{ 'namespace.endHeight': { $gt: height } }]
-			}]
-		});
-	}
-	return { 'meta.latest': true };
+  if (height) {
+    return {
+      $and: [
+        { "meta.latest": true },
+        {
+          $or: [
+            { "namespace.endHeight": convertToLong(-1) },
+            { "namespace.endHeight": { $gt: height } },
+          ],
+        },
+      ],
+    };
+  }
+  return { "meta.latest": true };
 };
 
 const addActiveFlag = (namespace, height) => {
-	if (!namespace)
-		return namespace;
+  if (!namespace) return namespace;
 
-	// What about calculated fields in mongo?
-	const endHeightUint64 = longToUint64(namespace.namespace.endHeight);
-	const heightUint64 = longToUint64(convertToLong(height));
-	namespace.meta.active = endHeightUint64 > heightUint64;
-	return namespace;
+  // What about calculated fields in mongo?
+  const endHeightUint64 = longToUint64(namespace.namespace.endHeight);
+  const heightUint64 = longToUint64(convertToLong(height));
+  namespace.meta.active = endHeightUint64 > heightUint64;
+  return namespace;
 };
 
 export default class NamespaceDb {
-	/**
-	 * Creates NamespaceDb around CatapultDb.
-	 * @param {module:db/CatapultDb} db Catapult db instance.
-	 */
-	constructor(db) {
-		this.catapultDb = db;
-	}
+  /**
+   * Creates NamespaceDb around CatapultDb.
+   * @param {module:db/CatapultDb} db Catapult db instance.
+   */
+  constructor(db) {
+    this.catapultDb = db;
+  }
 
-	// region namespace retrieval
+  // region namespace retrieval
 
-	/**
-	 * Retrieves filtered and paginated namespaces.
-	 * @param {number} aliasType Namespace alias type
-	 * @param {bigint} level0 Namespace level0
-	 * @param {Uint8Array} ownerAddress Namespace owner address
-	 * @param {number} registrationType Namespace registration type
-	 * @param {object} options Options for ordering and pagination. Can have an `offset`, and must contain the `sortField`, `sortDirection`,
-	 * `pageSize` and `pageNumber`. 'sortField' must be within allowed 'sortingOptions'.
-	 * @returns {Promise<object>} Namespaces page.
-	 */
-	async namespaces(aliasType, level0, ownerAddress, registrationType, options) {
-		const sortingOptions = { id: '_id' };
-		let conditions = {};
-		const { height } = await this.catapultDb.chainStatisticCurrent();
-		const activeConditions = createLatestConditions(this.catapultDb);
-		const offsetCondition = buildOffsetCondition(options, sortingOptions);
-		if (offsetCondition)
-			conditions = Object.assign(conditions, offsetCondition);
+  /**
+   * Retrieves filtered and paginated namespaces.
+   * @param {number} aliasType Namespace alias type
+   * @param {bigint} level0 Namespace level0
+   * @param {Uint8Array} ownerAddress Namespace owner address
+   * @param {number} registrationType Namespace registration type
+   * @param {object} options Options for ordering and pagination. Can have an `offset`, and must contain the `sortField`, `sortDirection`,
+   * `pageSize` and `pageNumber`. 'sortField' must be within allowed 'sortingOptions'.
+   * @returns {Promise<object>} Namespaces page.
+   */
+  async namespaces(aliasType, level0, ownerAddress, registrationType, options) {
+    const sortingOptions = { id: "_id" };
+    let conditions = {};
+    const { height } = await this.catapultDb.chainStatisticCurrent();
+    const activeConditions = createLatestConditions(this.catapultDb);
+    const offsetCondition = buildOffsetCondition(options, sortingOptions);
+    if (offsetCondition)
+      conditions = Object.assign(conditions, offsetCondition);
 
-		if (undefined !== aliasType)
-			conditions['namespace.alias.type'] = aliasType;
+    if (undefined !== aliasType) conditions["namespace.alias.type"] = aliasType;
 
-		if (undefined !== level0)
-			conditions['namespace.level0'] = convertToLong(level0);
+    if (undefined !== level0)
+      conditions["namespace.level0"] = convertToLong(level0);
 
-		if (undefined !== ownerAddress)
-			conditions['namespace.ownerAddress'] = Buffer.from(ownerAddress);
+    if (undefined !== ownerAddress)
+      conditions["namespace.ownerAddress"] = Buffer.from(ownerAddress);
 
-		if (undefined !== registrationType)
-			conditions['namespace.registrationType'] = registrationType;
+    if (undefined !== registrationType)
+      conditions["namespace.registrationType"] = registrationType;
 
-		const sortConditions = { [sortingOptions[options.sortField]]: options.sortDirection };
-		return this.catapultDb.queryPagedDocuments(
-			{ $and: [activeConditions, conditions] },
-			[],
-			sortConditions,
-			'namespaces',
-			options,
-			n => addActiveFlag(n, height)
-		);
-	}
+    const sortConditions = {
+      [sortingOptions[options.sortField]]: options.sortDirection,
+    };
+    return this.catapultDb.queryPagedDocuments(
+      { $and: [activeConditions, conditions] },
+      [],
+      sortConditions,
+      "namespaces",
+      options,
+      (n) => addActiveFlag(n, height)
+    );
+  }
 
-	/**
-	 * Retrieves a namespace.
-	 * @param {bigint} id Namespace id.
-	 * @returns {Promise<object>} Namespace.
-	 */
-	async namespaceById(id) {
-		const { height } = await this.catapultDb.chainStatisticCurrent();
-		const activeConditions = createLatestConditions(this.catapultDb);
-		const topLevelConditions = { $or: [] };
+  /**
+   * Retrieves a namespace.
+   * @param {bigint} id Namespace id.
+   * @returns {Promise<object>} Namespace.
+   */
+  async namespaceById(id) {
+    const { height } = await this.catapultDb.chainStatisticCurrent();
+    const activeConditions = createLatestConditions(this.catapultDb);
+    const topLevelConditions = { $or: [] };
 
-		for (let level = 0; 3 > level; ++level) {
-			const conditions = [];
-			conditions.push(activeConditions);
-			conditions.push({ [`namespace.level${level}`]: convertToLong(id) });
-			conditions.push({ 'namespace.depth': level + 1 });
-			topLevelConditions.$or.push({ $and: conditions });
-		}
+    for (let level = 0; 3 > level; ++level) {
+      const conditions = [];
+      conditions.push(activeConditions);
+      conditions.push({ [`namespace.level${level}`]: convertToLong(id) });
+      conditions.push({ "namespace.depth": level + 1 });
+      topLevelConditions.$or.push({ $and: conditions });
+    }
 
-		return this.catapultDb.queryDocument('namespaces', topLevelConditions)
-			.then(this.catapultDb.sanitizer.renameId).then(n => addActiveFlag(n, height));
-	}
+    return this.catapultDb
+      .queryDocument("namespaces", topLevelConditions)
+      .then(this.catapultDb.sanitizer.renameId)
+      .then((n) => addActiveFlag(n, height));
+  }
 
-	/**
-	 * Retrieves non expired namespaces aliasing mosaics or addresses.
-	 * @param {Array<module:catapult.model.NamespaceAliasType>} aliasType Alias type.
-	 * @param {*} ids Set of mosaic or address ids.
-	 * @returns {Promise<Array<object>>} Active namespaces aliasing ids.
-	 */
-	async activeNamespacesWithAlias(aliasType, ids) {
-		const aliasFilterCondition = {
-			[catapult.model.NamespaceAliasType.MOSAIC_ID.value]: () => ({ 'namespace.alias.mosaicId': { $in: ids.map(convertToLong) } }),
-			[catapult.model.NamespaceAliasType.ADDRESS.value]: () => ({
-				'namespace.alias.address': { $in: ids.map(id => Buffer.from(id)) }
-			})
-		};
-		const { height } = await this.catapultDb.chainStatisticCurrent();
-		const activeConditions = await createLatestConditions(this.catapultDb, height);
+  /**
+   * Retrieves non expired namespaces aliasing mosaics or addresses.
+   * @param {Array<module:catapult.model.NamespaceAliasType>} aliasType Alias type.
+   * @param {*} ids Set of mosaic or address ids.
+   * @returns {Promise<Array<object>>} Active namespaces aliasing ids.
+   */
+  async activeNamespacesWithAlias(aliasType, ids) {
+    const aliasFilterCondition = {
+      [catapult.model.NamespaceAliasType.MOSAIC_ID.value]: () => ({
+        "namespace.alias.mosaicId": { $in: ids.map(convertToLong) },
+      }),
+      [catapult.model.NamespaceAliasType.ADDRESS.value]: () => ({
+        "namespace.alias.address": { $in: ids.map((id) => Buffer.from(id)) },
+      }),
+    };
+    const { height } = await this.catapultDb.chainStatisticCurrent();
+    const activeConditions = await createLatestConditions(
+      this.catapultDb,
+      height
+    );
 
-		const conditions = { $and: [] };
-		conditions.$and.push(aliasFilterCondition[aliasType.value]());
-		conditions.$and.push({ 'namespace.alias.type': aliasType.value });
-		conditions.$and.push(activeConditions);
+    const conditions = { $and: [] };
+    conditions.$and.push(aliasFilterCondition[aliasType.value]());
+    conditions.$and.push({ "namespace.alias.type": aliasType.value });
+    conditions.$and.push(activeConditions);
 
-		return this.catapultDb.queryDocuments('namespaces', conditions).then(ns => ns.map(n => addActiveFlag(n, height)));
-	}
+    return this.catapultDb
+      .queryDocuments("namespaces", conditions)
+      .then((ns) => ns.map((n) => addActiveFlag(n, height)));
+  }
 
-	// endregion
+  // endregion
 
-	/**
-	 * Retrieves transactions that registered the specified namespaces.
-	 * @param {Array<bigint>} namespaceIds Namespace ids.
-	 * @returns {Promise<Array<object>>} Register namespace transactions.
-	 */
-	registerNamespaceTransactionsByNamespaceIds(namespaceIds) {
-		const conditions = { $and: [] };
-		conditions.$and.push({ 'transaction.id': { $in: namespaceIds } });
-		conditions.$and.push({ 'transaction.type': models.TransactionType.NAMESPACE_REGISTRATION.value });
-		return this.catapultDb.queryDocuments('transactions', conditions);
-	}
+  /**
+   * Retrieves transactions that registered the specified namespaces.
+   * @param {Array<bigint>} namespaceIds Namespace ids.
+   * @returns {Promise<Array<object>>} Register namespace transactions.
+   */
+  registerNamespaceTransactionsByNamespaceIds(namespaceIds) {
+    const conditions = { $and: [] };
+    conditions.$and.push({ "transaction.id": { $in: namespaceIds } });
+    conditions.$and.push({
+      "transaction.type": models.TransactionType.NAMESPACE_REGISTRATION.value,
+    });
+    return this.catapultDb.queryDocuments("transactions", conditions);
+  }
 }

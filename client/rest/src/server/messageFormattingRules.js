@@ -19,25 +19,28 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import catapult from '../catapult-sdk/index.js';
-import { bufferToUnresolvedAddress } from '../db/dbUtils.js';
-import { utils } from 'symbol-sdk';
+import catapult from "../catapult-sdk/index.js";
+import { bufferToUnresolvedAddress } from "../db/dbUtils.js";
+import { utils } from "@tech-bureau/symbol-sdk";
 
 const { ModelType, status } = catapult.model;
 
-const stringOrFormat = (value, formatter) => ('string' === typeof value ? value : formatter(value));
+const stringOrFormat = (value, formatter) =>
+  "string" === typeof value ? value : formatter(value);
 
 export default {
-	[ModelType.none]: value => value,
-	[ModelType.binary]: value => stringOrFormat(value, utils.uint8ToHex),
-	[ModelType.statusCode]: status.toString,
-	[ModelType.string]: value => value.toString(),
-	[ModelType.uint8]: value => value,
-	[ModelType.uint16]: value => value,
-	[ModelType.uint32]: value => value,
-	[ModelType.uint64]: value => value.toString(),
-	[ModelType.uint64HexIdentifier]: value => BigInt(value).toString(16).padStart(16, '0').toUpperCase(),
-	[ModelType.int]: value => value,
-	[ModelType.boolean]: value => value,
-	[ModelType.encodedAddress]: value => stringOrFormat(value, bufferToUnresolvedAddress)
+  [ModelType.none]: (value) => value,
+  [ModelType.binary]: (value) => stringOrFormat(value, utils.uint8ToHex),
+  [ModelType.statusCode]: status.toString,
+  [ModelType.string]: (value) => value.toString(),
+  [ModelType.uint8]: (value) => value,
+  [ModelType.uint16]: (value) => value,
+  [ModelType.uint32]: (value) => value,
+  [ModelType.uint64]: (value) => value.toString(),
+  [ModelType.uint64HexIdentifier]: (value) =>
+    BigInt(value).toString(16).padStart(16, "0").toUpperCase(),
+  [ModelType.int]: (value) => value,
+  [ModelType.boolean]: (value) => value,
+  [ModelType.encodedAddress]: (value) =>
+    stringOrFormat(value, bufferToUnresolvedAddress),
 };

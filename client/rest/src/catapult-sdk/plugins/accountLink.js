@@ -20,35 +20,35 @@
  */
 
 /** @module plugins/accountLink */
-import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import ModelType from "../model/ModelType.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 /**
  * Creates an accountLink plugin.
  * @type {module:plugins/CatapultPlugin}
  */
 export default {
-	registerSchema: builder => {
-		builder.addTransactionSupport(models.TransactionType.ACCOUNT_KEY_LINK, {
-			linkedPublicKey: ModelType.binary,
-			linkAction: ModelType.uint8
-		});
+  registerSchema: (builder) => {
+    builder.addTransactionSupport(models.TransactionType.ACCOUNT_KEY_LINK, {
+      linkedPublicKey: ModelType.binary,
+      linkAction: ModelType.uint8,
+    });
 
-		builder.addTransactionSupport(models.TransactionType.NODE_KEY_LINK, {
-			linkedPublicKey: ModelType.binary,
-			linkAction: ModelType.uint8
-		});
+    builder.addTransactionSupport(models.TransactionType.NODE_KEY_LINK, {
+      linkedPublicKey: ModelType.binary,
+      linkAction: ModelType.uint8,
+    });
 
-		builder.addTransactionSupport(models.TransactionType.VOTING_KEY_LINK, {
-			linkedPublicKey: ModelType.binary,
-			startEpoch: ModelType.uint32,
-			endEpoch: ModelType.uint32,
-			linkAction: ModelType.uint8
-		});
+    builder.addTransactionSupport(models.TransactionType.VOTING_KEY_LINK, {
+      linkedPublicKey: ModelType.binary,
+      startEpoch: ModelType.uint32,
+      endEpoch: ModelType.uint32,
+      linkAction: ModelType.uint8,
+    });
 
-		builder.addTransactionSupport(models.TransactionType.VRF_KEY_LINK, {
-			linkedPublicKey: ModelType.binary,
-			linkAction: ModelType.uint8
-		});
-	}
+    builder.addTransactionSupport(models.TransactionType.VRF_KEY_LINK, {
+      linkedPublicKey: ModelType.binary,
+      linkAction: ModelType.uint8,
+    });
+  },
 };

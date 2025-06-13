@@ -24,7 +24,7 @@ import catapult from '../catapult-sdk/index.js';
 import nodeInfoCodec from '../sockets/nodeInfoCodec.js';
 import nodePeersCodec from '../sockets/nodePeersCodec.js';
 import nodeTimeCodec from '../sockets/nodeTimeCodec.js';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 import fs from 'fs';
 import path from 'path';
 

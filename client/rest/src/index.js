@@ -31,8 +31,8 @@ import formatters from "./server/formatters.js";
 import messageFormattingRules from "./server/messageFormattingRules.js";
 import runProcess from "./server/process.js";
 import sshpk from "sshpk";
-import { NetworkLocator, Hash256 } from "symbol-sdk";
-import { Network } from "symbol-sdk/symbol";
+import { NetworkLocator, Hash256 } from "@tech-bureau/symbol-sdk";
+import { Network } from "@tech-bureau/symbol-sdk/symbol";
 import winston from "winston";
 import fs from "fs";
 

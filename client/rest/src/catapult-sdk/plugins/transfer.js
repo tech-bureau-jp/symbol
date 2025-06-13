@@ -20,19 +20,19 @@
  */
 
 /** @module plugins/transfer */
-import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import ModelType from "../model/ModelType.js";
+import { models } from "@tech-bureau/symbol-sdk/symbol";
 
 /**
  * Creates a transfer plugin.
  * @type {module:plugins/CatapultPlugin}
  */
 export default {
-	registerSchema: builder => {
-		builder.addTransactionSupport(models.TransactionType.TRANSFER, {
-			recipientAddress: ModelType.encodedAddress,
-			message: ModelType.binary,
-			mosaics: { type: ModelType.array, schemaName: 'mosaic' }
-		});
-	}
+  registerSchema: (builder) => {
+    builder.addTransactionSupport(models.TransactionType.TRANSFER, {
+      recipientAddress: ModelType.encodedAddress,
+      message: ModelType.binary,
+      mosaics: { type: ModelType.array, schemaName: "mosaic" },
+    });
+  },
 };

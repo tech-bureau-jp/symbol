@@ -32,7 +32,7 @@ import OperationStatus from '../openApi/model/OperationStatus.js';
 import Peer from '../openApi/model/Peer.js';
 import Version from '../openApi/model/Version.js';
 import { RosettaErrorFactory, rosettaPostRouteWithNetwork } from '../rosettaUtils.js';
-import { generateMosaicAliasId } from 'symbol-sdk/symbol';
+import { generateMosaicAliasId } from '@tech-bureau/symbol-sdk/symbol';
 
 export default {
 	register: (server, db, services) => {

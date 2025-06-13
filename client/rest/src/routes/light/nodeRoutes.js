@@ -19,102 +19,122 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import catapult from '../../catapult-sdk/index.js';
-import nodeInfoCodec from '../../sockets/nodeInfoCodec.js';
-import nodePeersCodec from '../../sockets/nodePeersCodec.js';
-import routeResultTypes from '../routeResultTypes.js';
-import { utils } from 'symbol-sdk';
-import fs from 'fs';
-import path from 'path';
+import catapult from "../../catapult-sdk/index.js";
+import nodeInfoCodec from "../../sockets/nodeInfoCodec.js";
+import nodePeersCodec from "../../sockets/nodePeersCodec.js";
+import routeResultTypes from "../routeResultTypes.js";
+import { utils } from "@tech-bureau/symbol-sdk";
+import fs from "fs";
+import path from "path";
 
 const packetHeader = catapult.packet.header;
 const { PacketType } = catapult.packet;
 const { BinaryParser } = catapult.parser;
 
-const restVersion = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '../../../package.json'), 'UTF-8')).version;
+const restVersion = JSON.parse(
+  fs.readFileSync(
+    path.resolve(import.meta.dirname, "../../../package.json"),
+    "UTF-8"
+  )
+).version;
 
 const buildResponse = (packet, codec, resultType) => {
-	const binaryParser = new BinaryParser();
-	binaryParser.push(packet.payload);
-	return {
-		payload: codec.deserialize(binaryParser),
-		type: resultType,
-		formatter: 'ws'
-	};
+  const binaryParser = new BinaryParser();
+  binaryParser.push(packet.payload);
+  return {
+    payload: codec.deserialize(binaryParser),
+    type: resultType,
+    formatter: "ws",
+  };
 };
 
 export default {
-	register: (server, db, services) => {
-		const { connections } = services;
-		const { timeout } = services.config.apiNode;
+  register: (server, db, services) => {
+    const { connections } = services;
+    const { timeout } = services.config.apiNode;
 
-		server.get('/node/info', (req, res, next) => {
-			const packetBuffer = packetHeader.createBuffer(
-				PacketType.nodeDiscoveryPullPing,
-				packetHeader.size
-			);
+    server.get("/node/info", (req, res, next) => {
+      const packetBuffer = packetHeader.createBuffer(
+        PacketType.nodeDiscoveryPullPing,
+        packetHeader.size
+      );
 
-			return connections
-				.singleUse()
-				.then(connection => connection.pushPull(packetBuffer, timeout))
-				.then(packet => {
-					const response = buildResponse(packet, nodeInfoCodec, routeResultTypes.nodeInfo);
-					response.payload.nodePublicKey = services.config.apiNode.nodePublicKey;
-					res.send(response);
-					next();
-				});
-		});
+      return connections
+        .singleUse()
+        .then((connection) => connection.pushPull(packetBuffer, timeout))
+        .then((packet) => {
+          const response = buildResponse(
+            packet,
+            nodeInfoCodec,
+            routeResultTypes.nodeInfo
+          );
+          response.payload.nodePublicKey =
+            services.config.apiNode.nodePublicKey;
+          res.send(response);
+          next();
+        });
+    });
 
-		server.get('/node/peers', (req, res, next) => {
-			const packetBuffer = packetHeader.createBuffer(
-				PacketType.nodeDiscoveryPullPeers,
-				packetHeader.size
-			);
-			return connections
-				.singleUse()
-				.then(connection => connection.pushPull(packetBuffer, timeout))
-				.then(packet => {
-					res.send(buildResponse(packet, nodePeersCodec, routeResultTypes.nodeInfo));
-					next();
-				});
-		});
+    server.get("/node/peers", (req, res, next) => {
+      const packetBuffer = packetHeader.createBuffer(
+        PacketType.nodeDiscoveryPullPeers,
+        packetHeader.size
+      );
+      return connections
+        .singleUse()
+        .then((connection) => connection.pushPull(packetBuffer, timeout))
+        .then((packet) => {
+          res.send(
+            buildResponse(packet, nodePeersCodec, routeResultTypes.nodeInfo)
+          );
+          next();
+        });
+    });
 
-		server.get('/node/server', (req, res, next) => {
-			const { deployment } = services.config;
-			res.send({
-				payload: {
-					serverInfo: {
-						restVersion,
-						deployment: {
-							deploymentTool: deployment && deployment.deploymentTool ? deployment.deploymentTool : 'N/A',
-							deploymentToolVersion: deployment && deployment.deploymentToolVersion
-								? deployment.deploymentToolVersion
-								: 'N/A',
-							lastUpdatedDate: deployment && deployment.lastUpdatedDate ? deployment.lastUpdatedDate : 'N/A'
-						}
-					}
-				},
-				type: routeResultTypes.serverInfo,
-				formatter: 'ws'
-			});
-			return next();
-		});
+    server.get("/node/server", (req, res, next) => {
+      const { deployment } = services.config;
+      res.send({
+        payload: {
+          serverInfo: {
+            restVersion,
+            deployment: {
+              deploymentTool:
+                deployment && deployment.deploymentTool
+                  ? deployment.deploymentTool
+                  : "N/A",
+              deploymentToolVersion:
+                deployment && deployment.deploymentToolVersion
+                  ? deployment.deploymentToolVersion
+                  : "N/A",
+              lastUpdatedDate:
+                deployment && deployment.lastUpdatedDate
+                  ? deployment.lastUpdatedDate
+                  : "N/A",
+            },
+          },
+        },
+        type: routeResultTypes.serverInfo,
+        formatter: "ws",
+      });
+      return next();
+    });
 
-		server.get('/node/unlockedaccount', (req, res, next) => {
-			const headerBuffer = packetHeader.createBuffer(
-				PacketType.unlockedAccount,
-				packetHeader.size
-			);
-			const packetBuffer = headerBuffer;
-			return connections
-				.singleUse()
-				.then(connection => connection.pushPull(packetBuffer, timeout))
-				.then(packet => {
-					const unlockedKeys = utils.uint8ToHex(packet.payload)
-						.match(/.{1,64}/g);
-					res.send({ unlockedAccount: !unlockedKeys ? [] : unlockedKeys });
-					next();
-				});
-		});
-	}
+    server.get("/node/unlockedaccount", (req, res, next) => {
+      const headerBuffer = packetHeader.createBuffer(
+        PacketType.unlockedAccount,
+        packetHeader.size
+      );
+      const packetBuffer = headerBuffer;
+      return connections
+        .singleUse()
+        .then((connection) => connection.pushPull(packetBuffer, timeout))
+        .then((packet) => {
+          const unlockedKeys = utils
+            .uint8ToHex(packet.payload)
+            .match(/.{1,64}/g);
+          res.send({ unlockedAccount: !unlockedKeys ? [] : unlockedKeys });
+          next();
+        });
+    });
+  },
 };

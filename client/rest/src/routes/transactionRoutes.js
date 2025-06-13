@@ -24,7 +24,7 @@ import routeUtils from './routeUtils.js';
 import catapult from '../catapult-sdk/index.js';
 import errors from '../server/errors.js';
 import restifyErrors from 'restify-errors';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const { PacketType } = catapult.packet;
 const { InvalidArgumentError, NotFoundError } = restifyErrors;
