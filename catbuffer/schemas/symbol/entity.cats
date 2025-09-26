@@ -8,6 +8,12 @@ enum NetworkType : uint8
 	# Public test network.
 	TESTNET = 0x98
 
+	# Mijin network.
+	MIJIN = 0x60
+
+	# Mijin test network.
+	MIJIN_TESTNET = 0x90
+
 # Serialization of an entity that has its size stated as a prefix (header).
 inline struct SizePrefixedEntity
 	# Entity size in bytes.
