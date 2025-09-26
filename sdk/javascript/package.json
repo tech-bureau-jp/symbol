@@ -1,6 +1,6 @@
 {
   "name": "@tech-bureau/symbol-sdk",
-  "version": "3.3.0-dev",
+  "version": "3.3.0-mijin",
   "type": "module",
   "description": "JavaScript SDK for Symbol",
   "main": "./src/index.js",
