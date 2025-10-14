@@ -8,6 +8,7 @@ class MethodDescriptor:
 		self.body = body
 		self.annotations = []
 		self.disabled_warnings = []
+		self.documentation = []
 
 
 class AbstractTypeFormatter(ABC):
@@ -23,6 +24,10 @@ class AbstractTypeFormatter(ABC):
 	def get_base_class(self):
 		# pylint: disable=no-self-use
 		return ''
+
+	@staticmethod
+	def get_class_documentation():
+		return None
 
 	@abstractmethod
 	def get_ctor_descriptor(self) -> MethodDescriptor:
@@ -55,6 +60,10 @@ class AbstractTypeFormatter(ABC):
 		return []
 
 	def get_str_descriptor(self) -> MethodDescriptor:
+		# pylint: disable=no-self-use
+		return None
+
+	def get_json_descriptor(self) -> MethodDescriptor:
 		# pylint: disable=no-self-use
 		return None
 

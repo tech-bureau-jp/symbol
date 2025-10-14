@@ -12,6 +12,7 @@ import {
 } from '../CryptoTypes.js';
 import { NetworkLocator } from '../Network.js';
 import { KeyPair, Verifier } from '../nem/KeyPair.js';
+import MessageEncoder from '../nem/MessageEncoder.js';
 import {
 	Address,
 	Network,
@@ -24,12 +25,82 @@ import TransactionFactory from '../nem/TransactionFactory.js';
 /* eslint-disable no-unused-vars */
 import * as nc from '../nem/models.js';
 /* eslint-enable no-unused-vars */
-import { keccak_256 } from '@noble/hashes/sha3';
+import { keccak_256 } from '@noble/hashes/sha3.js';
+
+// region NemPublicAccount / NemAccount
+
+/**
+ * NEM public account.
+ */
+export class NemPublicAccount {
+	/**
+	 * Creates a NEM public account.
+	 * @param {NemFacade} facade NEM facade.
+	 * @param {PublicKey} publicKey Account public key.
+	 */
+	constructor(facade, publicKey) {
+		/**
+		 * @protected
+		 */
+		this._facade = facade;
+
+		/**
+		 * Account public key.
+		 * @type {PublicKey}
+		 */
+		this.publicKey = publicKey;
+
+		/**
+		 * Account address.
+		 * @type {Address}
+		 */
+		this.address = this._facade.network.publicKeyToAddress(this.publicKey);
+	}
+}
+
+/**
+ * NEM account.
+ */
+export class NemAccount extends NemPublicAccount {
+	/**
+	 * Creates a NEM account.
+	 * @param {NemFacade} facade NEM facade.
+	 * @param {KeyPair} keyPair Account key pair.
+	 */
+	constructor(facade, keyPair) {
+		super(facade, keyPair.publicKey);
+
+		/**
+		 * Account key pair.
+		 * @type {KeyPair}
+		 */
+		this.keyPair = keyPair;
+	}
+
+	/**
+	 * Creates a message encoder that can be used for encrypting and encoding messages between two parties.
+	 * @returns {MessageEncoder} Message encoder using this account as one party.
+	 */
+	messageEncoder() {
+		return new MessageEncoder(this.keyPair);
+	}
+
+	/**
+	 * Signs a NEM transaction.
+	 * @param {nc.Transaction} transaction Transaction object.
+	 * @returns {Signature} Transaction signature.
+	 */
+	signTransaction(transaction) {
+		return this._facade.signTransaction(this.keyPair, transaction);
+	}
+}
+
+// endregion
 
 /**
  * Facade used to interact with NEM blockchain.
  */
-export default class NemFacade {
+export class NemFacade {
 	/**
 	 * BIP32 curve name.
 	 * @type {string}
@@ -90,10 +161,49 @@ export default class NemFacade {
 
 	/**
 	 * Creates a network timestamp representing the current time.
-	 * @returns {NetworkTimestamp} Network timestamp representing the current time
+	 * @returns {NetworkTimestamp} Network timestamp representing the current time.
 	 */
 	now() {
 		return this.network.fromDatetime(new Date());
+	}
+
+	/**
+	 * Creates a NEM public account from a public key.
+	 * @param {PublicKey} publicKey Account public key.
+	 * @returns {NemPublicAccount} NEM public account.
+	 */
+	createPublicAccount(publicKey) {
+		return new NemPublicAccount(this, publicKey);
+	}
+
+	/**
+	 * Creates a NEM account from a private key.
+	 * @param {PrivateKey} privateKey Account private key.
+	 * @returns {NemAccount} NEM account.
+	 */
+	createAccount(privateKey) {
+		return new NemAccount(this, new KeyPair(privateKey));
+	}
+
+	/**
+	 * Creates a transaction from a (typed) transaction descriptor.
+	 * @param {object} typedDescriptor Transaction (typed) descriptor.
+	 * @param {PublicKey} signerPublicKey Signer public key.
+	 * @param {bigint} fee Transaction fee.
+	 * @param {number} deadlineSeconds Approximate seconds from now for deadline.
+	 * @returns {nc.Transaction} Created transaction.
+	 */
+	createTransactionFromTypedDescriptor(typedDescriptor, signerPublicKey, fee, deadlineSeconds) {
+		const now = this.now();
+		const transaction = this.transactionFactory.create({
+			...typedDescriptor.toMap(),
+
+			signerPublicKey,
+			fee,
+			timestamp: now.timestamp,
+			deadline: now.addSeconds(deadlineSeconds).timestamp
+		});
+		return transaction;
 	}
 
 	// the following three functions are NOT static in order for NemFacade and SymbolFacade to conform to the same interface
@@ -109,14 +219,23 @@ export default class NemFacade {
 	}
 
 	/**
+	 * Gets the payload to sign given a NEM transaction.
+	 * @param {nc.Transaction} transaction Transaction object.
+	 * @returns {Uint8Array} Verifiable data to sign.
+	 */
+	extractSigningPayload(transaction) { // eslint-disable-line class-methods-use-this
+		const nonVerifiableTransaction = TransactionFactory.toNonVerifiableTransaction(transaction);
+		return nonVerifiableTransaction.serialize();
+	}
+
+	/**
 	 * Signs a NEM transaction.
 	 * @param {KeyPair} keyPair Key pair.
 	 * @param {nc.Transaction} transaction Transaction object.
 	 * @returns {Signature} Transaction signature.
 	 */
-	signTransaction(keyPair, transaction) { // eslint-disable-line class-methods-use-this
-		const nonVerifiableTransaction = TransactionFactory.toNonVerifiableTransaction(transaction);
-		return keyPair.sign(nonVerifiableTransaction.serialize());
+	signTransaction(keyPair, transaction) {
+		return keyPair.sign(this.extractSigningPayload(transaction));
 	}
 
 	/**
@@ -125,9 +244,8 @@ export default class NemFacade {
 	 * @param {Signature} signature Signature to verify.
 	 * @returns {boolean} \c true if transaction signature is verified.
 	 */
-	verifyTransaction(transaction, signature) { // eslint-disable-line class-methods-use-this
-		const nonVerifiableTransaction = TransactionFactory.toNonVerifiableTransaction(transaction);
-		return new Verifier(transaction.signerPublicKey).verify(nonVerifiableTransaction.serialize(), signature);
+	verifyTransaction(transaction, signature) {
+		return new Verifier(transaction.signerPublicKey).verify(this.extractSigningPayload(transaction), signature);
 	}
 
 	/**

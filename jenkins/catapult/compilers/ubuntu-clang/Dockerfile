@@ -1,4 +1,4 @@
-ARG FROM_IMAGE=ubuntu:23.10
+ARG FROM_IMAGE=ubuntu:24.04
 FROM ${FROM_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -28,3 +28,8 @@ RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | gpg --dearmor > /etc/
 	update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++ 100 && \
 	rm -rf /var/lib/apt/lists/* && \
 	clang --version
+
+# set default user (used by jenkins)
+ARG HOME_DIR=/home/ubuntu
+USER ubuntu
+WORKDIR ${HOME_DIR}

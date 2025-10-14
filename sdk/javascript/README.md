@@ -2,10 +2,10 @@
 
 [![lint][sdk-javascript-lint]][sdk-javascript-job] [![test][sdk-javascript-test]][sdk-javascript-job] [![vectors][sdk-javascript-vectors]][sdk-javascript-job] [![][sdk-javascript-cov]][sdk-javascript-cov-link] [![][sdk-javascript-package]][sdk-javascript-package-link]
 
-[sdk-javascript-job]: https://jenkins.symboldev.com/blue/organizations/jenkins/Symbol%2Fgenerated%2Fsymbol%2Fjavascript/activity?branch=dev
-[sdk-javascript-lint]: https://jenkins.symboldev.com/buildStatus/icon?job=Symbol%2Fgenerated%2Fsymbol%2Fjavascript%2Fdev%2F&config=sdk-javascript-lint
-[sdk-javascript-test]: https://jenkins.symboldev.com/buildStatus/icon?job=Symbol%2Fgenerated%2Fsymbol%2Fjavascript%2Fdev%2F&config=sdk-javascript-test
-[sdk-javascript-vectors]: https://jenkins.symboldev.com/buildStatus/icon?job=Symbol%2Fgenerated%2Fsymbol%2Fjavascript%2Fdev%2F&config=sdk-javascript-vectors
+[sdk-javascript-job]: https://jenkins.symbolsyndicate.us/blue/organizations/jenkins/Symbol%2Fgenerated%2Fsymbol%2Fjavascript/activity?branch=dev
+[sdk-javascript-lint]: https://jenkins.symbolsyndicate.us/buildStatus/icon?job=Symbol%2Fgenerated%2Fsymbol%2Fjavascript%2Fdev%2F&config=sdk-javascript-lint
+[sdk-javascript-test]: https://jenkins.symbolsyndicate.us/buildStatus/icon?job=Symbol%2Fgenerated%2Fsymbol%2Fjavascript%2Fdev%2F&config=sdk-javascript-test
+[sdk-javascript-vectors]: https://jenkins.symbolsyndicate.us/buildStatus/icon?job=Symbol%2Fgenerated%2Fsymbol%2Fjavascript%2Fdev%2F&config=sdk-javascript-vectors
 [sdk-javascript-cov]: https://codecov.io/gh/symbol/symbol/branch/dev/graph/badge.svg?token=SSYYBMK0M7&flag=sdk-javascript
 [sdk-javascript-cov-link]: https://codecov.io/gh/symbol/symbol/tree/dev/sdk/javascript
 [sdk-javascript-package]: https://img.shields.io/npm/v/symbol-sdk
@@ -15,6 +15,34 @@ JavaScript SDK for interacting with the Symbol and NEM blockchains.
 
 Most common functionality is grouped under facades so that the same programming paradigm can be used for interacting with both Symbol and NEM.
 
+## Building the SDK
+
+* Manually install dependencies:
+    * [Node.js](https://nodejs.org/) (any [actively supported version](https://nodejs.org/en/about/previous-releases))
+    * [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+    * [Rustup](https://rustup.rs/)
+    * [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
+    * [Python 3](https://www.python.org/downloads/)
+
+* Install requirements for the generator module:
+
+    ```sh
+    python3 -m pip install -r generator/requirements.txt
+    ```
+
+* Run:
+
+    ```sh
+    npm install
+    scripts/ci/build.sh
+    ```
+
+* Optionally, to build the documentation, run:
+
+    ```sh
+    scripts/generate_docs.sh
+    ```
+
 ## Sending a Transaction
 
 To send a transaction, first create a facade for the desired network:
@@ -22,7 +50,7 @@ To send a transaction, first create a facade for the desired network:
 _Symbol_
 ```javascript
 import { PrivateKey } from 'symbol-sdk';
-import { SymbolFacade } from 'symbol-sdk/symbol';
+import { SymbolFacade, descriptors, models } from 'symbol-sdk/symbol';
 
 const facade = new SymbolFacade('testnet');
 ```
@@ -30,7 +58,7 @@ const facade = new SymbolFacade('testnet');
 _NEM_
 ```javascript
 import { PrivateKey } from 'symbol-sdk';
-import { NemFacade } from 'symbol-sdk/nem';
+import { NemFacade, descriptors, models } from 'symbol-sdk/nem';
 
 const facade = new NemFacade('testnet');
 ````
@@ -63,6 +91,42 @@ const transaction = facade.transactionFactory.create({
 	amount: 5100000n
 });
 ````
+
+Alternatively, strongly typed transaction bindings are provided:
+
+_Symbol_
+```javascript
+	const typedDescriptor = new descriptors.TransferTransactionV1Descriptor(
+		new Address('TCHBDENCLKEBILBPWP3JPB2XNY64OE7PYHHE32I'),
+		[
+			new descriptors.UnresolvedMosaicDescriptor(new models.UnresolvedMosaicId(0x7CDF3B117A3C40CCn), new models.Amount(1000000n))
+		],
+		'hello symbol'
+	);
+
+	const transaction = facade.createTransactionFromTypedDescriptor(
+		typedDescriptor,
+		new PublicKey('87DA603E7BE5656C45692D5FC7F6D0EF8F24BB7A5C10ED5FDA8C5CFBC49FCBC8'),
+		100,
+		60 * 60
+	);
+```
+
+_NEM_
+```javascript
+	const typedDescriptor = new descriptors.TransferTransactionV1Descriptor(
+		new Address('TALICE5VF6J5FYMTCB7A3QG6OIRDRUXDWJGFVXNW'),
+		new models.Amount(5100000n),
+		new descriptors.MessageDescriptor(models.MessageType.PLAIN, 'hello nem')
+	);
+
+	const transaction = facade.createTransactionFromTypedDescriptor(
+		typedDescriptor,
+		new PublicKey('A59277D56E9F4FA46854F5EFAAA253B09F8AE69A473565E01FD9E6A738E4AB74'),
+		0x186A0n,
+		60 * 60
+	);
+```
 
 Third, sign the transaction and attach the signature:
 
@@ -164,6 +228,20 @@ export default {
 
 If everything is set up correctly, the same syntax as the Node example can be used.
 
+### TypeScript Support
+
+JavaScript SDK uses [node subpath exports](https://nodejs.org/api/packages.html#subpath-exports) for cleaner imports and depends on ES2020 functionality.
+For TypeScript compatibility, the following minimum settings must be specified in `tsconfig.json`:
+
+```json
+	{
+		"compilerOptions": {
+			"target": "ES2020",
+			"module": "Node16",
+			"moduleResolution": "Node16"
+		}
+	}
+```
 
 ## NEM Cheat Sheet
 

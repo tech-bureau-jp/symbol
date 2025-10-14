@@ -12,7 +12,7 @@ RUN apt-get update >/dev/null && \
 	xz-utils \
 	wget \
 	>/dev/null 
-
+	
 # Use the latest gcc version.
 ARG COMPILER_VERSION=13
 RUN apt-get update >/dev/null && \
@@ -26,3 +26,8 @@ RUN apt-get update >/dev/null && \
 	update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-${COMPILER_VERSION} 100 && \
 	update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-${COMPILER_VERSION} 100 && \
 	rm -rf /var/lib/apt/lists/*
+
+# set default user (used by jenkins)
+ARG HOME_DIR=/home/ubuntu
+USER ubuntu
+WORKDIR ${HOME_DIR}

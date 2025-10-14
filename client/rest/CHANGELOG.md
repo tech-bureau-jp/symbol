@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The changelog format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [v2.5.1] - 23-Sept-2025
+
+### Added
+
+- add support for aggregate transaction v3.
+
+### Fixed
+
+- WebSocket transaction is missing the maxFee property, which was getting dropped.
+
+## [v2.5.0] - 19-Feb-2025
+
+### Added
+
+- Light REST which provides a limited set of endpoints and only communicates with the catapult server.
+- Coinbase Mesh(Rosetta) support for Symbol.
+- Coinbase Mesh(Rosetta) support for NEM.
+
+### Changed
+
+- Upgrade to MongoDB 7.x.
+- Update REST image to Node.js 20.
+- Migrate REST project from CJS to ES6.
+- Replace custom REST serialization to use Javascript SDK.
+
 ## [v2.4.4] - 05-Apr-2024
 
 ### Added
@@ -269,7 +294,7 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 
 - Receipts, AccountProperties, and AccountLink plugins were activated.
 
-### Changed 
+### Changed
 
 - Block schema field beneficiaryPublicKey has been renamed to beneficiary.
 - Transaction schema fee field has been renamed to max_fee.
@@ -297,7 +322,7 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 
 ### Changed
 
--  Namespace schema to add the new alias field.
+- Namespace schema to add the new alias field.
 
 ## [0.7.11] - 8-Feb-2019
 
@@ -320,7 +345,7 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 
 ### Removed
 
--  merkleRootHash field from the block schema.
+- merkleRootHash field from the block schema.
 
 ## [0.7.8] - 3-Aug-2018
 
@@ -336,6 +361,7 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 ## [0.7.7] - 17-May-2018
 
 ### Added
+
 - Basic code coverage support (via nyc + coveralls) .
 
 ### Removed
@@ -348,5 +374,3 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 
 - Initial code release.
 
-[2.4.4]: https://github.com/symbol/symbol/compare/rest%2Fv2.4.3...rest%2Fv2.4.4
-[2.4.3]: https://github.com/symbol/symbol/releases/tag/rest%2Fv2.4.3
