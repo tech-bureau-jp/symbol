@@ -1,6 +1,6 @@
 # image name required as ARG
-ARG BUILD_IMAGE='symbolplatform/symbol-server-build-base:ubuntu-gcc-13'
-ARG RELEASE_BASE_IMAGE='symbolplatform/symbol-server-build-base:ubuntu-gcc-13'
+ARG BUILD_IMAGE='techbureauhd/catapult-server-build-base:ubuntu-gcc-13'
+ARG RELEASE_BASE_IMAGE='techbureauhd/catapult-server-build-base:ubuntu-gcc-13'
 ARG DEBIAN_FRONTEND=noninteractive
 
 FROM ${BUILD_IMAGE} AS builder

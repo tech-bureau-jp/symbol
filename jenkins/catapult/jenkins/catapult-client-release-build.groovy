@@ -63,7 +63,7 @@ pipeline {
 
 							compilerConfigurationFilepath = "symbol-mono/jenkins/catapult/configurations/${ARCHITECTURE}/${COMPILER_CONFIGURATION}.yaml"
 							imageLabel = resolveImageLabel(compilerConfigurationFilepath)
-							dockerRepoName = "symbolplatform/${resolveImageRepo()}"
+							dockerRepoName = "techbureauhd/${resolveImageRepo()}"
 							buildImageFullName = "${dockerRepoName}:${imageLabel}"
 						}
 					}

@@ -1,6 +1,6 @@
 # escape=`
 
-ARG FROM_IMAGE=symbolplatform/symbol-server-compiler:windows-msvc-17
+ARG FROM_IMAGE=techbureauhd/catapult-server-compiler:windows-msvc-17
 
 FROM ${FROM_IMAGE}
 LABEL maintainer="Catapult Development Team"

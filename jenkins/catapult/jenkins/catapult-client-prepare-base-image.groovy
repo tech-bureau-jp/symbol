@@ -95,7 +95,7 @@ pipeline {
 			steps {
 				script {
 					helper.runStepAndRecordFailure {
-						String destImageName = "symbolplatform/symbol-server-${params.IMAGE_TYPE}-base:${params.OPERATING_SYSTEM}"
+						String destImageName = "techbureauhd/catapult-server-${params.IMAGE_TYPE}-base:${params.OPERATING_SYSTEM}"
 						if (SANITIZER_BUILD.toBoolean()) {
 							destImageName += '-sanitizer'
 						}

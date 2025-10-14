@@ -45,7 +45,7 @@ pipeline {
 								buildEnvironment = buildEnvironments[baseImageName]
 								dockerFromImage = buildEnvironment.image
 
-								multiArchImageName = "symbolplatform/build-ci:${CI_IMAGE}-${baseImageName}"
+								multiArchImageName = "techbureauhd/build-ci:${CI_IMAGE}-${baseImageName}"
 								archImageName = "${multiArchImageName}-${env.ARCHITECTURE}"
 							}
 						}
