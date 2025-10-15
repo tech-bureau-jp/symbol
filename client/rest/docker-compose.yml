@@ -1,0 +1,25 @@
+services:
+  rest-gateway:
+    stop_signal: SIGINT
+    restart: always
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "3000:3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20M"
+        max-file: "5"
+    volumes:
+      - ./:/app
+    command: ["yarn", "start", "resources/rest-mijin.json"]
+    networks:
+      container-link:
+        ipv4_address: 172.20.0.9
+
+networks:
+  container-link:
+    name: catapult_default
+    external: true

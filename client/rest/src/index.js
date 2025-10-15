@@ -12,46 +12,60 @@
  *
  * Catapult is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
  * GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
+ * along with Catapult.	If not, see <http://www.gnu.org/licenses/>.
  */
 
-import catapult from './catapult-sdk/index.js';
-import createConnectionService from './connection/connectionService.js';
-import createZmqConnectionService from './connection/zmqService.js';
-import CatapultDb from './db/CatapultDb.js';
-import dbFormattingRules from './db/dbFormattingRules.js';
-import routeSystem from './plugins/routeSystem.js';
-import allRoutes from './routes/allRoutes.js';
-import bootstrapper from './server/bootstrapper.js';
-import formatters from './server/formatters.js';
-import messageFormattingRules from './server/messageFormattingRules.js';
-import runProcess from './server/process.js';
-import sshpk from 'sshpk';
-import { NetworkLocator } from 'symbol-sdk';
-import { Network } from 'symbol-sdk/symbol';
-import winston from 'winston';
-import fs from 'fs';
+import catapult from "./catapult-sdk/index.js";
+import createConnectionService from "./connection/connectionService.js";
+import createZmqConnectionService from "./connection/zmqService.js";
+import CatapultDb from "./db/CatapultDb.js";
+import dbFormattingRules from "./db/dbFormattingRules.js";
+import routeSystem from "./plugins/routeSystem.js";
+import allRoutes from "./routes/allRoutes.js";
+import bootstrapper from "./server/bootstrapper.js";
+import formatters from "./server/formatters.js";
+import messageFormattingRules from "./server/messageFormattingRules.js";
+import runProcess from "./server/process.js";
+import sshpk from "sshpk";
+import { NetworkLocator, Hash256 } from "@tech-bureau/symbol-sdk";
+import { Network } from "@tech-bureau/symbol-sdk/symbol";
+import winston from "winston";
+import fs from "fs";
 
-const connectToDbWithRetry = (db, config) => catapult.utils.future.makeRetryable(
-	() => db.connect(config.url, config.name, config.connectionPoolSize, config.connectionTimeout),
-	config.maxConnectionAttempts,
-	(i, err) => {
-		const waitTime = (2 ** (i - 1)) * config.baseRetryDelay;
-		winston.warn(`db connection failed, retrying in ${waitTime}ms`, err);
-		return waitTime;
-	}
-);
+const connectToDbWithRetry = (db, config) =>
+	catapult.utils.future.makeRetryable(
+		() =>
+			db.connect(
+				config.url,
+				config.name,
+				config.connectionPoolSize,
+				config.connectionTimeout
+			),
+		config.maxConnectionAttempts,
+		(i, err) => {
+			const waitTime = 2 ** (i - 1) * config.baseRetryDelay;
+			winston.warn(`db connection failed, retrying in ${waitTime}ms`, err);
+			return waitTime;
+		}
+	);
 
-const createServer = config => {
-	const modelSystem = catapult.plugins.catapultModelSystem.configure(config.extensions, {
-		json: dbFormattingRules,
-		ws: messageFormattingRules
-	});
-	return bootstrapper.createServer(config, formatters.create(modelSystem.formatters), config.throttling);
+const createServer = (config) => {
+	const modelSystem = catapult.plugins.catapultModelSystem.configure(
+		config.extensions,
+		{
+			json: dbFormattingRules,
+			ws: messageFormattingRules,
+		}
+	);
+	return bootstrapper.createServer(
+		config,
+		formatters.create(modelSystem.formatters),
+		config.throttling
+	);
 };
 
 const registerRoutes = (server, db, services) => {
@@ -63,34 +77,41 @@ const registerRoutes = (server, db, services) => {
 			pageSize: {
 				min: services.config.db.pageSizeMin || 10,
 				max: services.config.db.pageSizeMax || 100,
-				default: services.config.db.pageSizeDefault || 20
+				default: services.config.db.pageSizeDefault || 20,
 			},
 			apiNode: services.config.apiNode,
 			websocket: services.config.websocket,
-			numBlocksTransactionFeeStats: services.config.numBlocksTransactionFeeStats,
+			numBlocksTransactionFeeStats:
+				services.config.numBlocksTransactionFeeStats,
 			deployment: services.config.deployment,
 
-			uncirculatingAccountPublicKeys: services.config.uncirculatingAccountPublicKeys,
+			uncirculatingAccountPublicKeys:
+				services.config.uncirculatingAccountPublicKeys,
 			nodeMetadata: services.config.nodeMetadata,
 
 			metal: services.config.metal,
 
-			rosetta: services.config.rosetta
+			rosetta: services.config.rosetta,
 		},
-		connections: services.connectionService
+		connections: services.connectionService,
 	};
 
 	// 2. configure extension routes
-	const { transactionStates, messageChannelDescriptors } = routeSystem.configure(
-		[].concat(services.config.extensions, services.config.routeExtensions),
-		server,
-		db,
-		servicesView
-	);
+	const { transactionStates, messageChannelDescriptors } =
+		routeSystem.configure(
+			[].concat(services.config.extensions, services.config.routeExtensions),
+			server,
+			db,
+			servicesView
+		);
 
 	// 3. augment services with extension-dependent config and services
 	servicesView.config.transactionStates = transactionStates;
-	servicesView.zmqService = createZmqConnectionService(services.config.websocket.mq, messageChannelDescriptors, winston);
+	servicesView.zmqService = createZmqConnectionService(
+		services.config.websocket.mq,
+		messageChannelDescriptors,
+		winston
+	);
 
 	// 4. configure basic routes
 	allRoutes.register(server, db, servicesView);
@@ -98,8 +119,7 @@ const registerRoutes = (server, db, services) => {
 
 (() => {
 	let configFiles = process.argv.slice(2);
-	if (0 === configFiles.length)
-		configFiles = ['../resources/rest.json'];
+	if (0 === configFiles.length) configFiles = ["../resources/rest.json"];
 
 	runProcess(configFiles, (config, serviceManager) => {
 		// Loading and caching certificates.
@@ -107,38 +127,70 @@ const registerRoutes = (server, db, services) => {
 			...config.apiNode,
 			certificate: fs.readFileSync(config.apiNode.tlsClientCertificatePath),
 			key: fs.readFileSync(config.apiNode.tlsClientKeyPath),
-			caCertificate: fs.readFileSync(config.apiNode.tlsCaCertificatePath)
+			caCertificate: fs.readFileSync(config.apiNode.tlsCaCertificatePath),
 		};
 		const nodeCertKey = sshpk.parsePrivateKey(config.apiNode.key);
 		config.apiNode.nodePublicKey = nodeCertKey.toPublic().part.A.data;
 
-		const network = NetworkLocator.findByName(Network.NETWORKS, config.network.name);
+		let network;
+
+		switch (config.network.name) {
+			case "mijin":
+				network = new Network(
+					"mijin",
+					0x60,
+					new Date(Date.UTC(2019, 6, 11, 23, 0, 0)),
+					new Hash256(
+						"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+					) // dummy
+				);
+				break;
+			case "mijinTest":
+				network = new Network(
+					"mijinTest",
+					0x90,
+					new Date(Date.UTC(2019, 6, 11, 23, 0, 0)),
+					new Hash256(
+						"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+					) // dummy
+				);
+				break;
+			default:
+				network = new NetworkLocator.findByName(
+					Network.NETWORKS,
+					config.network.name
+				);
+				break;
+		}
+
 		const db = new CatapultDb({
 			networkId: network.identifier,
 
 			// to be removed when old pagination is not used anymore
 			// json settings should also be moved from config.db to config.api or similar
 			pageSizeMin: config.db.pageSizeMin,
-			pageSizeMax: config.db.pageSizeMax
+			pageSizeMax: config.db.pageSizeMax,
 		});
 
-		serviceManager.pushService(db, 'close');
+		serviceManager.pushService(db, "close");
 
 		winston.info(`connecting to ${config.db.url} (database:${config.db.name})`);
-		return connectToDbWithRetry(db, config.db)
-			.then(() => {
-				winston.info('registering routes');
-				const server = createServer(config);
-				serviceManager.pushService(server, 'close');
+		return connectToDbWithRetry(db, config.db).then(() => {
+			winston.info("registering routes");
+			const server = createServer(config);
+			serviceManager.pushService(server, "close");
 
-				const connectionConfig = {
-					apiNode: config.apiNode
-				};
-				const connectionService = createConnectionService(connectionConfig, winston.verbose);
-				registerRoutes(server, db, { config, connectionService });
+			const connectionConfig = {
+				apiNode: config.apiNode,
+			};
+			const connectionService = createConnectionService(
+				connectionConfig,
+				winston.verbose
+			);
+			registerRoutes(server, db, { config, connectionService });
 
-				winston.info(`listening on port ${config.port}`);
-				server.listen(config.port);
-			});
+			winston.info(`listening on port ${config.port}`);
+			server.listen(config.port);
+		});
 	});
 })();

@@ -32,6 +32,8 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y curl gnupg \
 	&& apt-get update \
 	&& apt-get install -y nodejs
 
+RUN npm i -g yarn
+
 USER ubuntu
 WORKDIR /app
 COPY --chown=1000:1000 --from=builder /app .
