@@ -20,7 +20,7 @@
  */
 
 import Currency from '../openApi/model/Currency.js';
-import { Network } from 'symbol-sdk/nem';
+import { Network } from '@tech-bureau/symbol-sdk/nem';
 
 /**
  * Extracts blockchain descriptor from services configuration.

@@ -1,6 +1,6 @@
 import { sha3_256 } from '@noble/hashes/sha3.js';
 import bs58 from 'bs58';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const METAL_ID_HEADER_SIGNATURE = [0x0B, 0x2A];
 const METAL_ID_LENGTH = 34;

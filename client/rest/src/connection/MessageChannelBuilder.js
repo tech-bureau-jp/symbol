@@ -20,8 +20,8 @@
  */
 
 import ServerMessageHandler from './serverMessageHandlers.js';
-import { utils } from 'symbol-sdk';
-import { Address, models } from 'symbol-sdk/symbol';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { Address, models } from '@tech-bureau/symbol-sdk/symbol';
 
 const createBlockDescriptor = (marker, handler) => ({
 	filter: topicParam => {

@@ -26,8 +26,8 @@ import routeUtils from '../../src/routes/routeUtils.js';
 import transactionRoutes from '../../src/routes/transactionRoutes.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { utils } from 'symbol-sdk';
-import { Address } from 'symbol-sdk/symbol';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 const TransactionGroups = {
 	confirmed: 'confirmed',

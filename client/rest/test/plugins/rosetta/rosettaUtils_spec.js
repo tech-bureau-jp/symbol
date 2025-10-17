@@ -31,8 +31,8 @@ import {
 	rosettaPostRouteWithNetwork
 } from '../../../src/plugins/rosetta/rosettaUtils.js';
 import { expect } from 'chai';
-import { PublicKey } from 'symbol-sdk';
-import { Network } from 'symbol-sdk/symbol';
+import { PublicKey } from '@tech-bureau/symbol-sdk';
+import { Network } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('rosetta utils', () => {
 	// region test utils

@@ -39,8 +39,8 @@ import TransactionIdentifierResponse from '../../../../src/plugins/rosetta/openA
 import { RosettaErrorFactory } from '../../../../src/plugins/rosetta/rosettaUtils.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { utils } from 'symbol-sdk';
-import { TransactionFactory, models } from 'symbol-sdk/nem';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { TransactionFactory, models } from '@tech-bureau/symbol-sdk/nem';
 
 describe('NEM rosetta construction routes', () => {
 	const FEE_UNIT = 50000n;

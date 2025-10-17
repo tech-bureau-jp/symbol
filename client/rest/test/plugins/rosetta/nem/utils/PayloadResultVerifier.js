@@ -1,7 +1,7 @@
 import AccountIdentifier from '../../../../../src/plugins/rosetta/openApi/model/AccountIdentifier.js';
 import SigningPayload from '../../../../../src/plugins/rosetta/openApi/model/SigningPayload.js';
-import { utils } from 'symbol-sdk';
-import { NemFacade, models } from 'symbol-sdk/nem';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { NemFacade, models } from '@tech-bureau/symbol-sdk/nem';
 
 const FEE_UNIT = 50000n;
 

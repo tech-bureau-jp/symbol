@@ -21,7 +21,7 @@
 
 /** @module plugins/restrictions */
 import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 // const accountRestrictionTypeOutgoingOffset = 0x4000;
 const accountRestrictionTypeBlockOffset = 0x8000;

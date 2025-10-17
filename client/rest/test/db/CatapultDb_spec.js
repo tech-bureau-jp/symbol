@@ -26,8 +26,8 @@ import { uniqueLongList } from '../../src/db/dbUtils.js';
 import { expect } from 'chai';
 import MongoDb from 'mongodb';
 import sinon from 'sinon';
-import { NetworkLocator, PublicKey, utils } from 'symbol-sdk';
-import { Address, Network, models } from 'symbol-sdk/symbol';
+import { NetworkLocator, PublicKey, utils } from '@tech-bureau/symbol-sdk';
+import { Address, Network, models } from '@tech-bureau/symbol-sdk/symbol';
 
 const { TransactionType } = models;
 const { Long, Binary } = MongoDb;

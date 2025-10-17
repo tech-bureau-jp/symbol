@@ -39,8 +39,8 @@ import TransactionIdentifierResponse from '../../../../src/plugins/rosetta/openA
 import { RosettaErrorFactory } from '../../../../src/plugins/rosetta/rosettaUtils.js';
 import constructionRoutes from '../../../../src/plugins/rosetta/symbol/constructionRoutes.js';
 import sinon from 'sinon';
-import { utils } from 'symbol-sdk';
-import { models } from 'symbol-sdk/symbol';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('Symbol rosetta construction routes', () => {
 	const assertRosettaErrorRaisedBasic = (...args) => assertRosettaErrorRaisedBasicWithRoutes(constructionRoutes, ...args);

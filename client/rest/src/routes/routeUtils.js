@@ -23,8 +23,8 @@ import dbFacade from './dbFacade.js';
 import routeResultTypes from './routeResultTypes.js';
 import catapult from '../catapult-sdk/index.js';
 import errors from '../server/errors.js';
-import { utils } from 'symbol-sdk';
-import { Address } from 'symbol-sdk/symbol';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 const { buildAuditPath, indexOfLeafWithHash } = catapult.crypto.merkle;
 const packetHeader = catapult.packet.header;

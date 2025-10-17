@@ -21,7 +21,7 @@
 
 /** @module model/ModelSchemaBuilder */
 import ModelType from './ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 /**
  * Builder for creating a model schema.

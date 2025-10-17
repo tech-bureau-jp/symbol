@@ -27,7 +27,7 @@ import { MetalSeal } from '../../../src/plugins/metadata/metal.js';
 import test from '../../db/utils/dbTestUtils.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('metadata db', () => {
 	const { createObjectId } = test.db;

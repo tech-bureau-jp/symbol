@@ -21,7 +21,7 @@
 
 /** @module plugins/namespace */
 import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 const AliasType = {
 	1: 'namespaceDescriptor.alias.mosaic',

@@ -35,7 +35,7 @@ import { RosettaErrorFactory } from '../../../../src/plugins/rosetta/rosettaUtil
 import { convertTransactionSdkJsonToRestJson } from '../../../../src/plugins/rosetta/symbol/OperationParser.js';
 import blockRoutes from '../../../../src/plugins/rosetta/symbol/blockRoutes.js';
 import { RosettaOperationFactory } from '../utils/rosettaTestUtils.js';
-import { SymbolFacade, generateMosaicAliasId } from 'symbol-sdk/symbol';
+import { SymbolFacade, generateMosaicAliasId } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('Symbol rosetta block routes', () => {
 	const assertRosettaErrorRaisedBasic = (...args) => assertRosettaErrorRaisedBasicWithRoutes(blockRoutes, ...args);

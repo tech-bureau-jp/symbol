@@ -23,7 +23,7 @@ import { convertToLong } from '../../../src/db/dbUtils.js';
 import namespaceUtils from '../../../src/plugins/namespace/namespaceUtils.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 const { aliasNamesRoutesProcessor } = namespaceUtils;
 

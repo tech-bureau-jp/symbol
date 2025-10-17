@@ -26,8 +26,8 @@ import Transaction from '../../../../src/plugins/rosetta/openApi/model/Transacti
 import TransactionIdentifier from '../../../../src/plugins/rosetta/openApi/model/TransactionIdentifier.js';
 import { RosettaOperationFactory } from '../utils/rosettaTestUtils.js';
 import { expect } from 'chai';
-import { utils } from 'symbol-sdk';
-import { NemFacade, models } from 'symbol-sdk/nem';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { NemFacade, models } from '@tech-bureau/symbol-sdk/nem';
 
 describe('NEM OperationParser', () => {
 	// region test accounts

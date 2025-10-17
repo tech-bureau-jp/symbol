@@ -20,7 +20,7 @@
  */
 
 import test from '../../routes/utils/routeTestUtils.js';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 const Valid_Address = test.sets.addresses.valid[0];
 

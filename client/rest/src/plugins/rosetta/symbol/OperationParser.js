@@ -26,8 +26,8 @@ import Operation from '../openApi/model/Operation.js';
 import OperationIdentifier from '../openApi/model/OperationIdentifier.js';
 import Transaction from '../openApi/model/Transaction.js';
 import TransactionIdentifier from '../openApi/model/TransactionIdentifier.js';
-import { NetworkLocator, PublicKey, utils } from 'symbol-sdk';
-import { Address, Network, models } from 'symbol-sdk/symbol';
+import { NetworkLocator, PublicKey, utils } from '@tech-bureau/symbol-sdk';
+import { Address, Network, models } from '@tech-bureau/symbol-sdk/symbol';
 
 const idStringToBigInt = str => BigInt(`0x${str}`);
 const encodeDecodedAddress = address => new Address(utils.hexToUint8(address)).toString();

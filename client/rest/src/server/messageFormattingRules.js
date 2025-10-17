@@ -21,7 +21,7 @@
 
 import catapult from '../catapult-sdk/index.js';
 import { bufferToUnresolvedAddress } from '../db/dbUtils.js';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const { ModelType, status } = catapult.model;
 

@@ -34,8 +34,8 @@ import Operation from '../openApi/model/Operation.js';
 import OperationIdentifier from '../openApi/model/OperationIdentifier.js';
 import Transaction from '../openApi/model/Transaction.js';
 import TransactionIdentifier from '../openApi/model/TransactionIdentifier.js';
-import { NetworkLocator, PublicKey, utils } from 'symbol-sdk';
-import { Network, models } from 'symbol-sdk/nem';
+import { NetworkLocator, PublicKey, utils } from '@tech-bureau/symbol-sdk';
+import { Network, models } from '@tech-bureau/symbol-sdk/nem';
 
 // region convertTransactionSdkJsonToRestJson
 

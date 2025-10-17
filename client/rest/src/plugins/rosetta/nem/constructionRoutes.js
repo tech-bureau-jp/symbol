@@ -43,8 +43,8 @@ import TransactionIdentifierResponse from '../openApi/model/TransactionIdentifie
 import {
 	RosettaErrorFactory, RosettaPublicKeyProcessor, extractTransferDescriptorAt, rosettaPostRouteWithNetwork
 } from '../rosettaUtils.js';
-import { PublicKey, utils } from 'symbol-sdk';
-import { NemFacade, NetworkTimestamp, models } from 'symbol-sdk/nem';
+import { PublicKey, utils } from '@tech-bureau/symbol-sdk';
+import { NemFacade, NetworkTimestamp, models } from '@tech-bureau/symbol-sdk/nem';
 
 export default {
 	register: (server, db, services) => {

@@ -20,7 +20,7 @@
  */
 
 /** @module sockets/nodeInfoCodec */
-import { Hash256, PublicKey } from 'symbol-sdk';
+import { Hash256, PublicKey } from '@tech-bureau/symbol-sdk';
 
 export default {
 	/**

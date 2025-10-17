@@ -27,7 +27,7 @@ import {
 } from './metalUtils.js';
 import { MetalSeal, metal } from '../../../src/plugins/metadata/metal.js';
 import { expect } from 'chai';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 describe('metal', () => {
 	// adapt values stored in json files, which use [low, high] uint64 representation

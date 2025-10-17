@@ -25,8 +25,8 @@ import connector from './connector.js';
 import { buildOffsetCondition, convertToLong, uniqueLongList } from './dbUtils.js';
 import MultisigDb from '../plugins/multisig/MultisigDb.js';
 import MongoDb from 'mongodb';
-import { NetworkLocator, PublicKey } from 'symbol-sdk';
-import { Network, models } from 'symbol-sdk/symbol';
+import { NetworkLocator, PublicKey } from '@tech-bureau/symbol-sdk';
+import { Network, models } from '@tech-bureau/symbol-sdk/symbol';
 
 const { ObjectId } = MongoDb;
 
@@ -105,7 +105,8 @@ export default class CatapultDb {
 		if (!this.networkId)
 			throw Error('network id is required');
 
-		this.network = NetworkLocator.findByIdentifier(Network.NETWORKS, this.networkId);
+		// this.network = NetworkLocator.findByIdentifier(Network.NETWORKS, this.networkId);
+		this.network = new Network(this.networkId);
 		this.pagingOptions = {
 			pageSizeMin: options.pageSizeMin,
 			pageSizeMax: options.pageSizeMax,

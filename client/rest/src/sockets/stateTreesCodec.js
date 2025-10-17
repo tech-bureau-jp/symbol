@@ -20,7 +20,7 @@
  */
 
 /** @module sockets/stateTreesCodec */
-import { Hash256 } from 'symbol-sdk';
+import { Hash256 } from '@tech-bureau/symbol-sdk';
 
 export default {
 	/**

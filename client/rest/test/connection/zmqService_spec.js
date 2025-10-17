@@ -23,7 +23,7 @@ import MessageChannelBuilder from '../../src/connection/MessageChannelBuilder.js
 import createZmqConnectionService from '../../src/connection/zmqService.js';
 import test from '../testUtils.js';
 import { expect } from 'chai';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 import zmq from 'zeromq';
 
 describe('zmq service', () => {

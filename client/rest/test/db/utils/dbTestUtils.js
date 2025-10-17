@@ -24,8 +24,8 @@ import CatapultDb from '../../../src/db/CatapultDb.js';
 import { convertToLong } from '../../../src/db/dbUtils.js';
 import test from '../../testUtils.js';
 import MongoDb from 'mongodb';
-import { NetworkLocator, PublicKey } from 'symbol-sdk';
-import { Network } from 'symbol-sdk/symbol';
+import { NetworkLocator, PublicKey } from '@tech-bureau/symbol-sdk';
+import { Network } from '@tech-bureau/symbol-sdk/symbol';
 
 const { Binary, Long, ObjectId } = MongoDb;
 

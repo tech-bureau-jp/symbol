@@ -22,7 +22,7 @@
 import dbFacade from './dbFacade.js';
 import routeResultTypes from './routeResultTypes.js';
 import routeUtils from './routeUtils.js';
-import { Hash256, utils } from 'symbol-sdk';
+import { Hash256, utils } from '@tech-bureau/symbol-sdk';
 
 export default {
 	register: (server, db, services) => {

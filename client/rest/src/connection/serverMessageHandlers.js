@@ -20,8 +20,8 @@
  */
 
 import catapult from '../catapult-sdk/index.js';
-import { Hash256, utils } from 'symbol-sdk';
-import { models } from 'symbol-sdk/symbol';
+import { Hash256, utils } from '@tech-bureau/symbol-sdk';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 const parserFromData = binaryData => {
 	const parser = new catapult.parser.BinaryParser();

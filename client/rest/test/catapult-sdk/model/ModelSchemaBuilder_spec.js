@@ -22,7 +22,7 @@
 import ModelSchemaBuilder from '../../../src/catapult-sdk/model/ModelSchemaBuilder.js';
 import ModelType from '../../../src/catapult-sdk/model/ModelType.js';
 import { expect } from 'chai';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 const { TransactionType } = models;
 

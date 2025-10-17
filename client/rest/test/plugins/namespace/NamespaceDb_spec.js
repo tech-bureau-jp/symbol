@@ -29,7 +29,7 @@ import testDbOptions from '../../db/utils/testDbOptions.js';
 import { expect } from 'chai';
 import MongoDb from 'mongodb';
 import sinon from 'sinon';
-import { Address, models } from 'symbol-sdk/symbol';
+import { Address, models } from '@tech-bureau/symbol-sdk/symbol';
 
 const { Binary } = MongoDb;
 

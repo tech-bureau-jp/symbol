@@ -24,7 +24,7 @@ import aggregate from '../../../src/plugins/aggregate/aggregate.js';
 import test from '../../routes/utils/routeTestUtils.js';
 import pluginTest from '../utils/pluginTestUtils.js';
 import { expect } from 'chai';
-import { Hash256, PublicKey, Signature } from 'symbol-sdk';
+import { Hash256, PublicKey, Signature } from '@tech-bureau/symbol-sdk';
 
 describe('aggregate plugin', () => {
 	pluginTest.assertThat.pluginDoesNotCreateDb(aggregate);

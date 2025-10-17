@@ -19,7 +19,7 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { PublicKey } from 'symbol-sdk';
+import { PublicKey } from '@tech-bureau/symbol-sdk';
 import crypto from 'crypto';
 
 export default {

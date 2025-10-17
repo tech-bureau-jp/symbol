@@ -21,7 +21,7 @@
 
 /** @module plugins/aggregate */
 import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 /**
  * Creates an aggregate plugin.

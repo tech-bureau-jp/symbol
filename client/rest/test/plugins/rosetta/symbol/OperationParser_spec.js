@@ -26,10 +26,10 @@ import TransactionIdentifier from '../../../../src/plugins/rosetta/openApi/model
 import { OperationParser, convertTransactionSdkJsonToRestJson } from '../../../../src/plugins/rosetta/symbol/OperationParser.js';
 import { RosettaOperationFactory } from '../utils/rosettaTestUtils.js';
 import { expect } from 'chai';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 import {
 	Address, SymbolFacade, generateMosaicAliasId, models
-} from 'symbol-sdk/symbol';
+} from '@tech-bureau/symbol-sdk/symbol';
 
 describe('Symbol OperationParser', () => {
 	// region test accounts

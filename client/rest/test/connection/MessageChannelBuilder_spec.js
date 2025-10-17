@@ -22,7 +22,7 @@
 import MessageChannelBuilder from '../../src/connection/MessageChannelBuilder.js';
 import ServerMessageHandler from '../../src/connection/serverMessageHandlers.js';
 import { expect } from 'chai';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('message channel builder', () => {
 	const networkIdentifier = 152;

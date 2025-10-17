@@ -21,7 +21,7 @@
 
 import catapult from '../../catapult-sdk/index.js';
 import routeUtils from '../../routes/routeUtils.js';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const { PacketType } = catapult.packet;
 

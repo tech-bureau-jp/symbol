@@ -23,7 +23,7 @@
 import aggregateRoutes from './aggregateRoutes.js';
 import catapult from '../../catapult-sdk/index.js';
 import ServerMessageHandler from '../../connection/serverMessageHandlers.js';
-import { Hash256, PublicKey, Signature } from 'symbol-sdk';
+import { Hash256, PublicKey, Signature } from '@tech-bureau/symbol-sdk';
 
 const { BinaryParser } = catapult.parser;
 

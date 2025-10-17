@@ -24,7 +24,7 @@ import routeUtils from './routeUtils.js';
 import catapult from '../catapult-sdk/index.js';
 import finalizationProofCodec from '../sockets/finalizationProofCodec.js';
 import restifyErrors from 'restify-errors';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const packetHeader = catapult.packet.header;
 const { PacketType } = catapult.packet;

@@ -24,7 +24,7 @@ import supplyRoutes from '../../../src/plugins/mosaic/supplyRoutes.js';
 import MockServer from '../../routes/utils/MockServer.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 import tmp from 'tmp';
 import fs from 'fs';
 

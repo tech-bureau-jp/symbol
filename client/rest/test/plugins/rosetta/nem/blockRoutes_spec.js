@@ -35,7 +35,7 @@ import Transaction from '../../../../src/plugins/rosetta/openApi/model/Transacti
 import TransactionIdentifier from '../../../../src/plugins/rosetta/openApi/model/TransactionIdentifier.js';
 import { RosettaErrorFactory } from '../../../../src/plugins/rosetta/rosettaUtils.js';
 import { RosettaOperationFactory } from '../utils/rosettaTestUtils.js';
-import { NemFacade } from 'symbol-sdk/nem';
+import { NemFacade } from '@tech-bureau/symbol-sdk/nem';
 
 describe('NEM block routes', () => {
 	const assertRosettaErrorRaisedBasic = (...args) => assertRosettaErrorRaisedBasicWithRoutes(blockRoutes, ...args);

@@ -22,8 +22,8 @@
 import ServerMessageHandler from '../../src/connection/serverMessageHandlers.js';
 import test from '../testUtils.js';
 import { expect } from 'chai';
-import { Hash256, utils } from 'symbol-sdk';
-import { models } from 'symbol-sdk/symbol';
+import { Hash256, utils } from '@tech-bureau/symbol-sdk';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('server message handlers', () => {
 	// region block handler

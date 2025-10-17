@@ -20,7 +20,7 @@
  */
 
 /** @module sockets/finalizationProofCodec */
-import { Hash256, PublicKey, Signature } from 'symbol-sdk';
+import { Hash256, PublicKey, Signature } from '@tech-bureau/symbol-sdk';
 
 const headerSize = 56;
 

@@ -22,7 +22,7 @@
 import { bufferToUnresolvedAddress, longToUint64 } from './dbUtils.js';
 import catapult from '../catapult-sdk/index.js';
 import { Binary } from 'mongodb';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const { ModelType, status } = catapult.model;
 

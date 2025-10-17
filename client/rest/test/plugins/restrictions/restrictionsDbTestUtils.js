@@ -23,7 +23,7 @@ import RestrictionsDb from '../../../src/plugins/restrictions/RestrictionsDb.js'
 import dbTestUtils from '../../db/utils/dbTestUtils.js';
 import test from '../../testUtils.js';
 import MongoDb from 'mongodb';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 const { Binary } = MongoDb;
 

@@ -26,7 +26,7 @@ import routeUtils from '../../src/routes/routeUtils.js';
 import transactionStatusRoutes from '../../src/routes/transactionStatusRoutes.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 describe('transaction status routes', () => {
 	describe('calls addGetPostDocumentRoutes once with correct params', () => {

@@ -25,8 +25,8 @@ import MockServer from '../../routes/utils/MockServer.js';
 import test from '../../routes/utils/routeTestUtils.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { utils } from 'symbol-sdk';
-import { Address } from 'symbol-sdk/symbol';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('lock secret routes', () => {
 	describe('secret locks', () => {

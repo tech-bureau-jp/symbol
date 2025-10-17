@@ -25,8 +25,8 @@ import {
 	assertRosettaErrorRaisedBasicWithRegister,
 	assertRosettaSuccessBasicWithRegister
 } from '../../utils/rosettaTestUtils.js';
-import { PrivateKey } from 'symbol-sdk';
-import { KeyPair } from 'symbol-sdk/symbol';
+import { PrivateKey } from '@tech-bureau/symbol-sdk';
+import { KeyPair } from '@tech-bureau/symbol-sdk/symbol';
 
 // region constants
 

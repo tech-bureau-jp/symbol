@@ -24,7 +24,7 @@ import routeUtils from '../../../src/routes/routeUtils.js';
 import MockServer from '../../routes/utils/MockServer.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('receipts routes', () => {
 	describe('transaction statements', () => {

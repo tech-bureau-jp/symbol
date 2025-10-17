@@ -20,8 +20,8 @@
  */
 
 import MongoDb from 'mongodb';
-import { Hash256, PublicKey, Signature } from 'symbol-sdk';
-import { Address } from 'symbol-sdk/symbol';
+import { Hash256, PublicKey, Signature } from '@tech-bureau/symbol-sdk';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 import winston from 'winston';
 import crypto from 'crypto';
 

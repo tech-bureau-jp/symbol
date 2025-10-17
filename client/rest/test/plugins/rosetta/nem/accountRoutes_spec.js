@@ -35,7 +35,7 @@ import Coin from '../../../../src/plugins/rosetta/openApi/model/Coin.js';
 import CoinIdentifier from '../../../../src/plugins/rosetta/openApi/model/CoinIdentifier.js';
 import { RosettaErrorFactory } from '../../../../src/plugins/rosetta/rosettaUtils.js';
 import { RosettaOperationFactory } from '../utils/rosettaTestUtils.js';
-import { NemFacade } from 'symbol-sdk/nem';
+import { NemFacade } from '@tech-bureau/symbol-sdk/nem';
 
 describe('NEM rosetta account routes', () => {
 	const ACCOUNT_ADDRESS = 'TALICE5VF6J5FYMTCB7A3QG6OIRDRUXDWJGFVXNW';

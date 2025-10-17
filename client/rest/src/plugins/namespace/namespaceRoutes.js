@@ -25,8 +25,8 @@ import { convertToLong } from '../../db/dbUtils.js';
 import merkleUtils from '../../routes/merkleUtils.js';
 import routeUtils from '../../routes/routeUtils.js';
 import MongoDb from 'mongodb';
-import { utils } from 'symbol-sdk';
-import { models } from 'symbol-sdk/symbol';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 const { PacketType } = catapult.packet;
 const { Binary } = MongoDb;

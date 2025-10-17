@@ -24,7 +24,7 @@ import { longToUint64 } from '../../db/dbUtils.js';
 import { sendPlainText } from '../../routes/simpleSend.js';
 import AccountType from '../AccountType.js';
 import ini from 'ini';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const fileLoader = new catapult.utils.CachedFileLoader();
 

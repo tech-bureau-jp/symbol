@@ -26,7 +26,7 @@ import test from '../../db/utils/dbTestUtils.js';
 import { expect } from 'chai';
 import MongoDb from 'mongodb';
 import sinon from 'sinon';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 const { Binary, Long } = MongoDb;
 

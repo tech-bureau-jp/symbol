@@ -22,7 +22,7 @@
 import catapult from '../../src/catapult-sdk/index.js';
 import stateTreesCodec from '../../src/sockets/stateTreesCodec.js';
 import { expect } from 'chai';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const { BinaryParser } = catapult.parser;
 

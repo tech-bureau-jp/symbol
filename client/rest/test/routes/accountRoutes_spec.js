@@ -28,8 +28,8 @@ import routeResultTypes from '../../src/routes/routeResultTypes.js';
 import routeUtils from '../../src/routes/routeUtils.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { utils } from 'symbol-sdk';
-import { Address } from 'symbol-sdk/symbol';
+import { utils } from '@tech-bureau/symbol-sdk';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 const { PacketType } = catapult.packet;
 

@@ -21,7 +21,7 @@
 
 /** @module plugins/lockHash */
 import ModelType from '../model/ModelType.js';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 /**
  * Creates a lock hash plugin.

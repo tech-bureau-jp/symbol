@@ -20,7 +20,7 @@
  */
 
 import parseArgs from 'minimist';
-import { Network } from 'symbol-sdk/symbol';
+import { Network } from '@tech-bureau/symbol-sdk/symbol';
 
 export default {
 	url: (() => {

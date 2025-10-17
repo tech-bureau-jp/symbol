@@ -20,7 +20,7 @@
  */
 import MerkleTree from '../../src/routes/MerkelTree.js';
 import { expect } from 'chai';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 import fs from 'fs';
 import fsPath from 'path';
 

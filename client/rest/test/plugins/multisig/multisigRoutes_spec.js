@@ -23,7 +23,7 @@ import routeAddressGetTestUtils from './routeAddressGetTestUtils.js';
 import multisigRoutes from '../../../src/plugins/multisig/multisigRoutes.js';
 import test from '../../routes/utils/routeTestUtils.js';
 import { expect } from 'chai';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('multisig routes', () => {
 	describe('get by account', () => {

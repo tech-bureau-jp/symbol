@@ -1,5 +1,5 @@
 import { sha3_256 } from '@noble/hashes/sha3.js';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 import fs from 'fs';
 
 const FILE_PATH = `${import.meta.dirname}/resources/metadata.json`;

@@ -25,7 +25,7 @@ import MockServer from '../../routes/utils/MockServer.js';
 import test from '../../routes/utils/routeTestUtils.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('mosaic routes', () => {
 	describe('mosaics', () => {

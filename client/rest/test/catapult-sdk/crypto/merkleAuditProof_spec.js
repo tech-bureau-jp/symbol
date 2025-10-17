@@ -23,7 +23,7 @@ import {
 	HashNotFoundError, InvalidTree, NodePosition, buildAuditPath, evenify, indexOfLeafWithHash, siblingOf
 } from '../../../src/catapult-sdk/crypto/merkleAuditProof.js';
 import { expect } from 'chai';
-import { utils } from 'symbol-sdk';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 const hexStringToBuffer = input => Buffer.from(utils.hexToUint8(input), 'hex');
 

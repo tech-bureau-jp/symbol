@@ -26,7 +26,7 @@ import RestrictionsDb from '../../../src/plugins/restrictions/RestrictionsDb.js'
 import dbTestUtils from '../../db/utils/dbTestUtils.js';
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { Address } from 'symbol-sdk/symbol';
+import { Address } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('restrictions db', () => {
 	describe('account restrictions', () => {

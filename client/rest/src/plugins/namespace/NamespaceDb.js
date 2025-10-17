@@ -21,7 +21,7 @@
 
 import catapult from '../../catapult-sdk/index.js';
 import { buildOffsetCondition, convertToLong, longToUint64 } from '../../db/dbUtils.js';
-import { models } from 'symbol-sdk/symbol';
+import { models } from '@tech-bureau/symbol-sdk/symbol';
 
 const createLatestConditions = (catapultDb, height) => {
 	if (height) {

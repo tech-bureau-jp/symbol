@@ -35,7 +35,7 @@ import { RosettaErrorFactory } from '../../../../src/plugins/rosetta/rosettaUtil
 import { convertTransactionSdkJsonToRestJson } from '../../../../src/plugins/rosetta/symbol/OperationParser.js';
 import accountRoutes from '../../../../src/plugins/rosetta/symbol/accountRoutes.js';
 import { RosettaOperationFactory } from '../utils/rosettaTestUtils.js';
-import { SymbolFacade, generateMosaicAliasId } from 'symbol-sdk/symbol';
+import { SymbolFacade, generateMosaicAliasId } from '@tech-bureau/symbol-sdk/symbol';
 
 describe('Symbol rosetta account routes', () => {
 	const ACCOUNT_ADDRESS = 'TDI2ZPA7U72GHU2ZDP4C4J6T5YMFSLWEW4OZQKI';
