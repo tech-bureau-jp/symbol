@@ -5,7 +5,7 @@ pipeline {
 			choices: ['fedora', 'ubuntu', 'windows'],
 			description: 'operating system'
 		choice name: 'CI_IMAGE',
-			choices: ['cpp', 'java', 'javascript', 'linter', 'postgres', 'python'],
+			choices: ['cpp', 'docs', 'golang', 'java', 'javascript', 'linter', 'postgres', 'python'],
 			description: 'continuous integration image'
 		choice name: 'ARCHITECTURE',
 			choices: ['arm64', 'amd64'],
@@ -45,7 +45,7 @@ pipeline {
 								buildEnvironment = buildEnvironments[baseImageName]
 								dockerFromImage = buildEnvironment.image
 
-								multiArchImageName = "symbolplatform/build-ci:${CI_IMAGE}-${baseImageName}"
+								multiArchImageName = "techbureauhd/build-ci:${CI_IMAGE}-${baseImageName}"
 								archImageName = "${multiArchImageName}-${env.ARCHITECTURE}"
 							}
 						}
@@ -80,10 +80,14 @@ pipeline {
 						{
 							String versionArg = getVersionArg(params.CI_IMAGE, buildEnvironment)
 							String buildArg = "-f ${CI_IMAGE}.Dockerfile ${versionArg} --build-arg FROM_IMAGE=${dockerFromImage} ."
-							docker.withRegistry(DOCKER_URL, DOCKER_CREDENTIALS_ID) {
-								docker.build(archImageName, buildArg).push()
-							}
 
+							dockerHelper.dockerBuildAndPushImage(
+								params.OPERATING_SYSTEM,
+								"${env.DOCKER_URL}",
+								"${env.DOCKER_CREDENTIALS_ID}",
+								archImageName,
+								buildArg
+							)
 							dockerHelper.tagDockerImage(
 								params.OPERATING_SYSTEM,
 								"${env.DOCKER_URL}",

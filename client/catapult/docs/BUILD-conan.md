@@ -2,9 +2,14 @@
 
 Following instructions should work on Mac, Linux (Ubuntu 20.04) and Windows.
 
+## Mandatory version requirements
+
+- Python version >= 3.8
+- Conan version >= 2.x
+
 ## Prerequisites
 
-* **On Linux**:
+- **On Linux**:
 
   1. Install the compiler and build dependencies:
 
@@ -21,21 +26,37 @@ Following instructions should work on Mac, Linux (Ubuntu 20.04) and Windows.
      conan profile detect --name default
      ```
 
-* **On Windows**:
+- **On Windows**:
 
   1. Install [Visual Studio](https://visualstudio.microsoft.com/) and [Git for Windows](https://git-scm.com/download/win).
 
      Run all commands from a command prompt that has access to Visual Studio and Git. This can be accomplished by using the "Native Tools Command Prompt" shortcut installed by Visual Studio on the Start Menu.
 
-  2. Install latest version of [Conan](https://conan.io/downloads.html).
+  2. Install latest version of [Conan](https://conan.io/downloads.html). You can proceed in two ways:
+  
+        - if you have Python installed, you can use pip:
+  
+        ```sh
+        pip install --upgrade conan
+        ```
+
+        - or you can download and run the installer from the [Conan website](https://conan.io/downloads.html).
 
   3. Create a profile for Conan:
 
    ```sh
-  conan profile detect --name default
+   conan profile detect --name default
    ```
 
-* **On Mac**:
+   This should produce an output like the following:
+
+   ```sh
+   Found Visual Studio 17
+   [...]
+   Profile created with detected settings: C:\Users\<yourusername>\.conan\profiles\default
+   ```
+
+- **On Mac**:
 
   1. Install the compiler:
 
@@ -62,24 +83,29 @@ Following instructions should work on Mac, Linux (Ubuntu 20.04) and Windows.
 While Conan will be building and installing packages, you might want to go for a ☕ (or lunch),
 as this will probably take *a bit*.
 
+### Install conan sources repo and get catapult source code (any OS)
+
 ```sh
 conan remote add nemtech https://conan.symbol.dev/artifactory/api/conan/catapult
-
 git clone https://github.com/symbol/symbol.git
 cd symbol/client/catapult
 ```
 
 ### Linux and Macos
+
 ```sh
 conan install . --build=missing -s build_type=Release
 cd build/Release
 ```
 
 ### Windows
-```shell
+
+```sh
 conan install . --build=missing -s compiler.cppstd=17 -s build_type=Release
 cd build
 ```
+
+_where `build_type` argument value can be any of Release, RelWithDebInfo, Debug*
 
 ## Step 2: Build catapult
 
@@ -88,38 +114,40 @@ cd build
 > **NOTE:**
 > Make sure to use the correct ``PYTHON_EXECUTABLE`` path! Python3 is required for the build to produce some header files. If Python3 cannot be found you won't notice until more than one hour into the build process because of some missing headers. You can find your Python3 path by running ``where python3``.
 
-* Generate project files for Visual Studio 2022:
+- Generate project files for Visual Studio 2022:
 
   ```sh
   cmake --preset conan-default -G "Visual Studio 17 2022" -A x64 -DUSE_CONAN=ON -DPYTHON_EXECUTABLE:FILEPATH=X:/python3x/python.exe ..
   ```
 
-* Generate project files for Visual Studio 2019:
+- Generate project files for Visual Studio 2019:
 
   ```sh
   cmake --preset conan-default -G "Visual Studio 16 2019"  -A x64 -DUSE_CONAN=ON -DPYTHON_EXECUTABLE:FILEPATH=X:/python3x/python.exe ..
   ```
 
-* Build:
+- Build:
 
   ```sh
   cmake --build . --target publish
   msbuild /p:Configuration=Release /p:Platform=x64 /m ALL_BUILD.vcxproj
   ```
 
-  After building successfully, the tools in ``_build\bin`` are ready to use. All runtime dependencies have been copied into the same folder so Windows will find them.
+  > **NOTE:** Ensure the `Configuration` argument matches the `build_type` used in the `conan install ..` command you have executed earlier.
 
-* Verify:
+  After building successfully, the tools in ``build\bin\<configuration>`` (where <configuration> is the name of the configuration profile you have set i.e. Release | RelWithDebInfo | Debug) are ready to use. All runtime dependencies have been copied into the same folder so Windows will find them.
+
+- Verify:
 
   Check that the tools are working correctly by running:
 
   ```sh
-  bin\catapult.tools.address --help
+  bin\Release\catapult.tools.address --help
   ```
 
 ### Linux and macOS
 
-* Build:
+- Build:
 
   ```sh
   cmake --preset conan-release -G Ninja -DUSE_CONAN=ON ../../
@@ -137,7 +165,7 @@ cd build
 
   You will need to run this line every new session, unless you add it at the end of your ``~/.bashrc`` or ``~/.profile`` files.
 
-* Install (Optional):
+- Install (Optional):
 
   The catapult tools can be made available globally by running:
 
@@ -148,7 +176,7 @@ cd build
   > **NOTE:**
   > You can change the default installation location by passing ``-DCMAKE_INSTALL_PREFIX=...`` to ``cmake`` in the Build step. In this case you might not require ``sudo``.
 
-* Verify:
+- Verify:
 
   Check that the tools are working correctly by running:
 

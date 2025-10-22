@@ -85,6 +85,15 @@ export default class TransactionFactory {
 	}
 
 	/**
+	 * Deserializes a transaction from a binary payload.
+	 * @param {Uint8Array} payload Binary payload.
+	 * @returns {nc.Transaction} Deserialized transaction.
+	 */
+	static deserialize(payload) {
+		return nc.TransactionFactory.deserialize(payload);
+	}
+
+	/**
 	 * Converts a transaction to a non-verifiable transaction.
 	 * @param {nc.Transaction|nc.NonVerifiableTransaction} transaction Transaction object.
 	 * @returns {nc.NonVerifiableTransaction} Non-verifiable transaction object.
@@ -124,7 +133,7 @@ export default class TransactionFactory {
 	}
 
 	/**
-	 * Tries to coerce an sdk type to a model type.
+	 * Tries to coerce a sdk type to a model type.
 	 * @param {object} value Value to convert.
 	 * @returns {nc.Address|undefined} Converted value or undefined.
 	 * @private
@@ -132,7 +141,9 @@ export default class TransactionFactory {
 	static _nemTypeConverter(value) {
 		if (value instanceof Address) {
 			// yes, unfortunately, nem's Address is 40 bytes string, but we need to pass it as actual bytes not to confuse ByteArray
-			return new nc.Address(new TextEncoder().encode(value.toString()));
+			const addressBuffer = new Uint8Array(new ArrayBuffer(nc.Address.SIZE));
+			new TextEncoder().encodeInto(value.toString(), addressBuffer);
+			return new nc.Address(addressBuffer);
 		}
 
 		return undefined;

@@ -16,7 +16,7 @@ pipeline {
 			],
 			description: 'compiler configuration'
 		choice name: 'OPERATING_SYSTEM',
-			choices: ['ubuntu', 'fedora', 'debian', 'windows', 'ubuntu_arm'],
+			choices: ['ubuntu', 'fedora', 'debian', 'windows'],
 			description: 'operating system'
 		choice name: 'ARCHITECTURE',
 			choices: ['amd64', 'arm64'],
@@ -53,7 +53,7 @@ pipeline {
 				stage('prepare variables') {
 					steps {
 						script {
-							destImageName = "symbolplatform/symbol-server-build-base:${OPERATING_SYSTEM}-${COMPILER_CONFIGURATION}"
+							destImageName = "techbureauhd/catapult-server-build-base:${OPERATING_SYSTEM}-${COMPILER_CONFIGURATION}"
 
 							baseImageDockerfileGeneratorCommand = """
 								python3 ./jenkins/catapult/baseImageDockerfileGenerator.py \
@@ -167,9 +167,12 @@ void dockerBuildAndPushLayer(String layer, String baseImageDockerfileGeneratorCo
 				cat Dockerfile
 			"""
 
-		docker.withRegistry(DOCKER_URL, DOCKER_CREDENTIALS_ID) {
-			docker.build(destImageName).push()
-		}
+		dockerHelper.dockerBuildAndPushImage(
+			"${env.OPERATING_SYSTEM}",
+			"${env.DOCKER_URL}",
+			"${env.DOCKER_CREDENTIALS_ID}",
+			destImageName
+		)
 	}
 }
 

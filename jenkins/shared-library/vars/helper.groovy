@@ -1,3 +1,4 @@
+import java.nio.file.Paths
 import java.time.LocalDateTime
 
 Boolean isManualBuild(String manualBranch) {
@@ -59,8 +60,12 @@ void runStepAndRecordFailure(Closure body) {
 	}
 }
 
+int dayOfMonth() {
+	return LocalDateTime.now().dayOfMonth
+}
+
 String determineArchitecture() {
-	String architecture = LocalDateTime.now().dayOfMonth % 2 == 0 ? 'amd64' : 'arm64'
+	String architecture = dayOfMonth() % 2 == 0 ? 'amd64' : 'arm64'
 	println "Architecture: ${architecture}"
 	return architecture
 }
@@ -106,4 +111,32 @@ String resolveWorkspacePath(String os) {
 
 String resolveGitHubCredentialsId() {
 	return scm.userRemoteConfigs[0].credentialsId
+}
+
+void withTempDir(Closure body) {
+	// if Jenkinsfile is in the root of the repository, Jenkins will use a tmp directory
+	// which is not mounted to docker and fail the command.
+	// use the workspace tmp folder which is mounted in docker
+	String tmp = Paths.get("${WORKSPACE_TMP}").resolve("${System.currentTimeMillis()}")
+	dir(tmp) {
+		try {
+			body()
+		} finally {
+			deleteDir()
+		}
+	}
+}
+
+void runStepRelativeToPackageRoot(String rootPath, Closure body) {
+	try {
+		dir(rootPath) {
+			body()
+		}
+		// groovylint-disable-next-line CatchException
+	} catch (Exception exception) {
+		echo "Caught: ${exception}"
+		env.FAILURE_MESSAGE = exception.message ?: exception
+		env.FAILED_STAGE_NAME = env.STAGE_NAME
+		throw exception
+	}
 }

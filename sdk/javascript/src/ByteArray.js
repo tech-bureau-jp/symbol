@@ -25,7 +25,7 @@ export default class ByteArray {
 
 		/**
 		 * Underlying bytes.
-		 * @type {Uint8Array}
+		 * @type {Uint8Array<ArrayBuffer>}
 		 */
 		this.bytes = new Uint8Array(rawBytes);
 	}
@@ -36,5 +36,13 @@ export default class ByteArray {
 	 */
 	toString() {
 		return uint8ToHex(this.bytes);
+	}
+
+	/**
+	 * Returns representation of this object that can be stored in JSON.
+	 * @returns {string} JSON-safe representation of this object.
+	 */
+	toJson() {
+		return this.toString();
 	}
 }

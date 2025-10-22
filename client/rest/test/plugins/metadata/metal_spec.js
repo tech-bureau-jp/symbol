@@ -19,24 +19,30 @@
  * along with Catapult.	If not, see <http://www.gnu.org/licenses/>.
  */
 
-const {
+import {
 	combinePayloadWithText,
 	generateChecksum,
 	getMetadata,
 	testData
-} = require('./metalUtils');
-const { hexToUint8 } = require('../../../src/catapult-sdk/utils/convert');
-const { metal, MetalSeal } = require('../../../src/plugins/metadata/metal');
-const { expect } = require('chai');
+} from './metalUtils.js';
+import { MetalSeal, metal } from '../../../src/plugins/metadata/metal.js';
+import { expect } from 'chai';
+import { utils } from '@tech-bureau/symbol-sdk';
 
 describe('metal', () => {
+	// adapt values stored in json files, which use [low, high] uint64 representation
+	const jsonUint64ToBigInt = uint64 => BigInt(uint64[0]) + (BigInt(uint64[1]) * (2n ** 32n));
+
 	describe('extractCompositeHashFromMetalId', () => {
 		it('can convert MetalID to CompositeHash', () => {
 			// Arrange:
 			const metalId = 'FeDr2dAx9GnK8j4w6VDwtBLBbvnvxx7rea4eHrpQvG6hhX';
-			// Act + Assert:
-			expect(metal.extractCompositeHashFromMetalId(metalId))
-				.to.deep.equal(hexToUint8('BBFB2A837D3A9CF993195C2CA417645518A2ED2C30E8B760D3E224EC75F601E6'));
+
+			// Act:
+			const compositeHash = metal.extractCompositeHashFromMetalId(metalId);
+
+			// Assert:
+			expect(compositeHash).to.deep.equal(utils.hexToUint8('BBFB2A837D3A9CF993195C2CA417645518A2ED2C30E8B760D3E224EC75F601E6'));
 		});
 
 		it('cannot convert MetalID to CompositeHash not starting with metal id header', () => {
@@ -59,8 +65,12 @@ describe('metal', () => {
 			// Arrange:
 			const metadata = getMetadata(10);
 			const input = metadata.value;
+
+			// Act:
+			const scopedMetadataKey = metal.generateMetadataKey(new Uint8Array(input));
+
 			// Act + Assert:
-			expect(metal.generateMetadataKey(new Uint8Array(input))).to.deep.equal(metadata.scopedMetadataKey);
+			expect(scopedMetadataKey).to.deep.equal(jsonUint64ToBigInt(metadata.scopedMetadataKey));
 		});
 
 		it('cannot generate metadata key input is empty', () => {
@@ -76,10 +86,14 @@ describe('metal', () => {
 			// Arrange:
 			const metadata = getMetadata(70);
 			const nextMetadata = getMetadata(80);
-			// Act + Assert:
-			expect(metal.extractChunk(Buffer.from(metadata.value))).to.deep.equal({
+
+			// Act:
+			const chunk = metal.extractChunk(Buffer.from(metadata.value));
+
+			// Assert:
+			expect(chunk).to.deep.equal({
 				magic: 0x00,
-				scopedMetadataKey: nextMetadata.scopedMetadataKey,
+				scopedMetadataKey: jsonUint64ToBigInt(nextMetadata.scopedMetadataKey),
 				chunkPayload: Buffer.from(metadata.value.slice(12)),
 				text: false
 			});
@@ -90,8 +104,12 @@ describe('metal', () => {
 			const metadata = getMetadata(120);
 			const { combinedPayload } = combinePayloadWithText(testData.imageBytes);
 			const checkSum = generateChecksum(combinedPayload);
+
+			// Act:
+			const chunk = metal.extractChunk(Buffer.from(metadata.value));
+
 			// Act + Assert:
-			expect(metal.extractChunk(Buffer.from(metadata.value))).to.deep.equal({
+			expect(chunk).to.deep.equal({
 				magic: 0x80,
 				scopedMetadataKey: checkSum,
 				chunkPayload: Buffer.from(metadata.value.slice(12)),
@@ -103,10 +121,14 @@ describe('metal', () => {
 			// Arrange:
 			const metadata = getMetadata(10);
 			const nextMetadata = getMetadata(20);
-			// Act + Assert:
-			expect(metal.extractChunk(Buffer.from(metadata.value))).to.deep.equal({
+
+			// Act:
+			const chunk = metal.extractChunk(Buffer.from(metadata.value));
+
+			// Assert:
+			expect(chunk).to.deep.equal({
 				magic: 0x00,
-				scopedMetadataKey: nextMetadata.scopedMetadataKey,
+				scopedMetadataKey: jsonUint64ToBigInt(nextMetadata.scopedMetadataKey),
 				chunkPayload: Buffer.from(metadata.value.slice(12)),
 				text: true
 			});
@@ -119,8 +141,12 @@ describe('metal', () => {
 			const textSection = new MetalSeal(payload.length, 'text/plain', 'text.text', 'test').stringify();
 			const { combinedPayload } = combinePayloadWithText(payload, textSection);
 			const checkSum = generateChecksum(combinedPayload);
-			// Act + Assert:
-			expect(metal.extractChunk(Buffer.from(metadata.value))).to.deep.equal({
+
+			// Act:
+			const chunk = metal.extractChunk(Buffer.from(metadata.value));
+
+			// Assert:
+			expect(chunk).to.deep.equal({
 				magic: 0x80,
 				scopedMetadataKey: checkSum,
 				chunkPayload: Buffer.from(metadata.value.slice(12)),
@@ -136,8 +162,10 @@ describe('metal', () => {
 			const extractChunk = metal.extractChunk(Buffer.from(metadata.value));
 			const textSection = new MetalSeal(testData.imageBytes.length, 'image/png', 'image.png', 'test').stringify();
 			const imageBytesToSeparatorIndex = testData.imageBytes.slice(0, 966);
+
 			// Act:
 			const { chunkPayload, chunkText } = metal.splitChunkPayloadAndText(extractChunk);
+
 			// Assert:
 			expect(chunkPayload).to.deep.equal(imageBytesToSeparatorIndex);
 			expect(chunkText.toString('utf-8')).to.equal(textSection);
@@ -148,8 +176,10 @@ describe('metal', () => {
 			const metadata = getMetadata(70);
 			const extractChunk = metal.extractChunk(Buffer.from(metadata.value));
 			const imageBytesToSeparatorIndex = testData.imageBytes.slice(0, 1012);
+
 			// Act:
 			const { chunkPayload, chunkText } = metal.splitChunkPayloadAndText(extractChunk);
+
 			// Assert:
 			expect(chunkPayload).to.deep.equal(imageBytesToSeparatorIndex);
 			expect(chunkText).to.equal(undefined);
@@ -157,13 +187,20 @@ describe('metal', () => {
 	});
 
 	describe('decode', () => {
+		const metalDecode = (firstKey, chunks) => metal.decode(firstKey, chunks.map(chunk => ({
+			...chunk,
+			key: jsonUint64ToBigInt(chunk.key)
+		})));
+
 		it('can decode binary data from chunks with text', () => {
 			// Arrange:
 			const metadata = getMetadata(10);
-			const firstKey = metadata.scopedMetadataKey;
+			const firstKey = jsonUint64ToBigInt(metadata.scopedMetadataKey);
 			const textSection = new MetalSeal(testData.imageBytes.length, 'image/png', 'image.png', 'test').stringify();
+
 			// Act:
-			const { payload, text } = metal.decode(firstKey, testData.chunks);
+			const { payload, text } = metalDecode(firstKey, testData.chunks);
+
 			// Assert:
 			expect(payload).to.deep.equal(testData.imageBytes);
 			expect(text).to.equal(textSection);
@@ -172,9 +209,11 @@ describe('metal', () => {
 		it('can decode binary data from chunks without text', () => {
 			// Arrange:
 			const metadata = getMetadata(70);
-			const firstKey = metadata.scopedMetadataKey;
+			const firstKey = jsonUint64ToBigInt(metadata.scopedMetadataKey);
+
 			// Act:
-			const { payload } = metal.decode(firstKey, testData.chunks);
+			const { payload } = metalDecode(firstKey, testData.chunks);
+
 			// Assert:
 			expect(payload).to.deep.equal(testData.imageBytes);
 		});
@@ -182,25 +221,30 @@ describe('metal', () => {
 		it('cannot decode binary data chunk is broken', () => {
 			// Arrange:
 			const metadata = getMetadata(10);
-			const firstKey = metadata.scopedMetadataKey;
-			// delete chunk
+			const firstKey = jsonUint64ToBigInt(metadata.scopedMetadataKey);
+
+			// - delete chunk
 			const deleteChunk = getMetadata(20);
-			const deletedChunks = testData.chunks.filter(obj => JSON.stringify(obj.key) !== JSON.stringify(deleteChunk.scopedMetadataKey));
+			const deletedChunkKey = jsonUint64ToBigInt(deleteChunk.scopedMetadataKey);
+			const deletedChunks = testData.chunks.filter(obj => jsonUint64ToBigInt(obj.key) !== deletedChunkKey);
+
 			// Act + Assert:
-			expect(() => metal.decode(firstKey, deletedChunks)).to.throw(`the chunk ${deleteChunk.scopedMetadataKey} is missing`);
+			expect(() => metalDecode(firstKey, deletedChunks)).to.throw(`the chunk ${deletedChunkKey} is missing`);
 		});
 
 		it('cannot decode binary data value is broken', () => {
 			// Arrange:
 			const metadata = getMetadata(10);
-			const firstKey = metadata.scopedMetadataKey;
-			// delete chunk value
+			const firstKey = jsonUint64ToBigInt(metadata.scopedMetadataKey);
+
+			// - delete chunk value
 			const mutatedChunk = testData.chunks.find(obj => 20 === obj.id);
 			mutatedChunk.value = mutatedChunk.value.slice(0, mutatedChunk.value.length - 1);
 			const checksum = metal.generateMetadataKey(new Uint8Array(mutatedChunk.value));
+
 			// Act + Assert:
-			expect(() => metal.decode(firstKey, testData.chunks))
-				.to.throw(`the chunk ${mutatedChunk.key} is broken (calculated=${checksum})`);
+			expect(() => metalDecode(firstKey, testData.chunks))
+				.to.throw(`the chunk ${jsonUint64ToBigInt(mutatedChunk.key)} is broken (calculated=${checksum})`);
 		});
 	});
 

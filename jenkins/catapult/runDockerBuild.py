@@ -16,6 +16,7 @@ CONAN_ROOT = CACHE_ROOT / "conan"
 
 OUTPUT_DIR = Path.cwd() / "output"
 BINARIES_DIR = OUTPUT_DIR / "binaries"
+USER_HOME = Path(EnvironmentManager.root_directory("usr/catapult")).resolve()
 
 
 class OptionsManager(BasicBuildManager):
@@ -42,7 +43,7 @@ class OptionsManager(BasicBuildManager):
         else:
             name_parts = [self.operating_system, self.compilation_friendly_name]
 
-        return f'techbureauhd/catapult-server-build-base:{"-".join(name_parts)}'
+        return f"techbureauhd/catapult-server-build-base:{'-'.join(name_parts)}"
 
     @property
     def prepare_base_image_name(self):
@@ -53,7 +54,9 @@ class OptionsManager(BasicBuildManager):
 
     @property
     def ccache_path(self):
-        ccache_architecture_path = CCACHE_ROOT / self.architecture
+        ccache_architecture_path = (
+            CCACHE_ROOT / self.architecture / self.versioned_compiler
+        )
         if self.enable_code_coverage:
             return ccache_architecture_path / "cc"
 
@@ -64,14 +67,7 @@ class OptionsManager(BasicBuildManager):
 
     @property
     def conan_path(self):
-        conan_path = CONAN_ROOT / self.architecture
-        if self.is_clang:
-            return conan_path / "clang"
-
-        if self.is_msvc:
-            return conan_path / "msvc"
-
-        return conan_path / "gcc"
+        return CONAN_ROOT / self.architecture / self.versioned_compiler
 
     def docker_run_settings(self):
         settings = [("CCACHE_DIR", "/ccache")]
@@ -112,7 +108,7 @@ def create_docker_run_command(options, prepare_replacements):
     if EnvironmentManager.is_windows_platform():
         docker_args.extend(["--storage-opt", "size=50GB"])
     else:
-        docker_args.extend([f'--user={prepare_replacements["user"]}'])
+        docker_args.extend([f"--user={prepare_replacements['user']}"])
 
     docker_args.extend(docker_run_settings)
     docker_args.extend(volume_mappings)
@@ -127,7 +123,7 @@ def create_docker_run_command(options, prepare_replacements):
             "/scripts/runDockerBuildInnerBuild.py",
             # assume paths are relative to workdir
             f"--compiler-configuration={inner_compiler_configuration_path}",
-            f'--build-configuration={inner_configuration_path}/{get_base_from_path(prepare_replacements["build_configuration_filepath"])}',
+            f"--build-configuration={inner_configuration_path}/{get_base_from_path(prepare_replacements['build_configuration_filepath'])}",
             "--source-path=/catapult-src/client/catapult",
             "--out-dir=/binaries",
         ]
@@ -157,9 +153,8 @@ def prepare_docker_image(process_manager, container_id, prepare_replacements):
     disposition_to_repository_map = {
         "tests": "symbol-server-test",
         "private": "symbol-server-private",
-        "mijin": "catapult-server",
-        "mijintest": "catapult-server-test",
         "public": "symbol-server",
+        "mijin": "catapult-server",
     }
     destination_repository = disposition_to_repository_map[build_disposition]
 
@@ -171,13 +166,15 @@ def prepare_docker_image(process_manager, container_id, prepare_replacements):
         [
             "docker",
             "run",
+            f"--user={prepare_replacements['user']}",
             f"--cidfile={cid_filepath}",
-            f'--volume={script_path}:{EnvironmentManager.root_directory("scripts")}',
-            f'--volume={OUTPUT_DIR}:{EnvironmentManager.root_directory("data")}',
-            f'{prepare_replacements["base_image_name"]}',
+            f"--volume={script_path}:{EnvironmentManager.root_directory('scripts')}",
+            f"--volume={OUTPUT_DIR}:{EnvironmentManager.root_directory('data')}",
+            f"{prepare_replacements['base_image_name']}",
             "python3",
             "/scripts/runDockerBuildInnerPrepare.py",
             f"--disposition={build_disposition}",
+            f"--user-home={USER_HOME}",
         ]
     )
 
@@ -186,7 +183,16 @@ def prepare_docker_image(process_manager, container_id, prepare_replacements):
             container_id = cid_infile.read()
 
     process_manager.dispatch_subprocess(
-        ["docker", "commit", container_id, destination_image_name]
+        [
+            "docker",
+            "commit",
+            "--change",
+            f"WORKDIR {USER_HOME}",
+            "--change",
+            f'ENV LD_LIBRARY_PATH="{USER_HOME}/lib:{USER_HOME}/deps"',
+            container_id,
+            destination_image_name,
+        ]
     )
 
 
@@ -258,7 +264,9 @@ def main():
 
     process_manager = ProcessManager(args.dry_run)
 
-    return_code = process_manager.dispatch_subprocess(docker_run)
+    return_code = process_manager.dispatch_subprocess(
+        docker_run, handle_error=not environment_manager.is_windows_platform()
+    )
     if return_code:
         sys.exit(return_code)
 
@@ -285,6 +293,9 @@ def main():
             "build_disposition": options.build_disposition,
             "source_path": source_path,
             "script_path": script_path,
+            "user": "ContainerAdministrator"
+            if "windows" == args.operating_system
+            else "root",
         },
     )
 

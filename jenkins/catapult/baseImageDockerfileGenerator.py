@@ -2,7 +2,6 @@ import argparse
 import sys
 from pathlib import Path
 
-import platform
 from configuration import load_compiler_configuration, load_versions_map
 from dependency_flags import get_dependency_flags
 
@@ -54,7 +53,7 @@ def print_lines(lines, **kwargs):
 
 
 def format_multivalue_options(key, values):
-    return f'{key}=\'{" ".join(values)}\''
+    return f"{key}='{' '.join(values)}'"
 
 
 def print_powershell_lines(lines, separator="; `\n", **kwargs):
@@ -69,11 +68,7 @@ def print_msvc_line(lines, separator=" `\n    && ", **kwargs):
 
 def install_pip_package(user, package_name):
     print_lines(
-        [
-            f"USER {user}",
-            f"RUN python3 -m pip install -U --break-system-packages {package_name}",
-            "USER root",
-        ]
+        [f"USER {user}", f"RUN python3 -m pip install -U {package_name}", "USER root"]
     )
 
 
@@ -100,7 +95,7 @@ class OptionsManager:
         self.sanitizers = compiler_configuration.sanitizers
         self.architecture = compiler_configuration.architecture
         self.stl = compiler_configuration.stl
-        self.arch_type = compiler_configuration.arch_type
+        self.ignore_architecture = ignore_architecture
 
         self.versions = load_versions_map(versions_filepath)
 
@@ -119,7 +114,10 @@ class OptionsManager:
             self.compiler.c,
             str(self.compiler.version),
         ]
-        return f'techbureauhd/catapult-server-compiler:{"-".join(name_parts)}'
+        if not self.ignore_architecture:
+            name_parts.append(self.architecture)
+
+        return f"techbureauhd/catapult-server-compiler:{'-'.join(name_parts)}"
 
     def layer_image_name(self, layer):
         name_parts = [
@@ -134,7 +132,10 @@ class OptionsManager:
         if tag:
             name_parts.append(tag)
 
-        return f'techbureauhd/catapult-server-build-base:{"-".join(name_parts)}'
+        if not self.ignore_architecture:
+            name_parts.append(self.architecture)
+
+        return f"techbureauhd/catapult-server-build-base:{'-'.join(name_parts)}"
 
     def bootstrap(self):
         options = []
@@ -184,13 +185,16 @@ class OptionsManager:
         descriptor.options += ["-DOPENSSL_ROOT_DIR=/usr/catapult/deps"]
         descriptor.options += get_dependency_flags("mongodb_mongo-cxx-driver")
         descriptor.options += [
-            f'-DBUILD_VERSION={self.versions["mongodb_mongo-cxx-driver"][1:]}'
+            f"-DBUILD_VERSION={self.versions['mongodb_mongo-cxx-driver'][1:]}"
         ]
 
         if self.is_msvc:
             # For build without a C++17 polyfill
             # https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
             descriptor.cxxflags += ["/Zc:__cplusplus"]
+
+            # https://www.mongodb.com/docs/languages/cpp/cpp-driver/upcoming/api-abi-versioning/#shared-libraries--msvc-only-
+            descriptor.options += ["-DENABLE_ABI_TAG_IN_LIBRARY_FILENAMES=OFF"]
 
         return self._cmake(descriptor)
 
@@ -225,7 +229,10 @@ class OptionsManager:
         # Disable warning as error due to a bug in gcc which should be fix in 12.2
         # https://github.com/facebook/rocksdb/issues/9925
         if self.compiler.c.startswith("gcc") and 12 == self.compiler.version:
-            descriptor.cxxflags += ["-Wno-error=maybe-uninitialized"]
+            descriptor.cxxflags += [
+                "-Wno-error=maybe-uninitialized",
+                "-Wno-error=array-bounds",
+            ]
 
         if self.compiler.c.startswith("clang") and 15 == self.compiler.version:
             descriptor.cxxflags += ["-Wno-error=unused-but-set-variable"]
@@ -354,7 +361,14 @@ class UbuntuSystem:
             ],
             APT_PACKAGES=" ".join(apt_packages),
         )
-        install_pip_package("root", "pycodestyle pylint pyyaml")
+        install_pip_package(user, "pycodestyle pylint pyyaml")
+
+    @staticmethod
+    def add_conan_packages(packages):
+        print_line(
+            ["RUN apt-get -y update", "apt-get install -y {APT_PACKAGES}"],
+            APT_PACKAGES=" ".join(packages),
+        )
 
 
 class FedoraSystem:
@@ -405,6 +419,13 @@ class FedoraSystem:
         )
         install_pip_package(user, "pycodestyle pylint pyyaml")
 
+    @staticmethod
+    def add_conan_packages(packages):
+        print_line(
+            ["RUN dnf update --assumeyes", "dnf install --assumeyes {RPM_PACKAGES}"],
+            RPM_PACKAGES=" ".join(packages),
+        )
+
 
 class WindowsSystem:
     @staticmethod
@@ -427,7 +448,6 @@ SYSTEMS = {
     "debian": UbuntuSystem,
     "fedora": FedoraSystem,
     "windows": WindowsSystem,
-    "ubuntu_arm": UbuntuSystem,
 }
 
 
@@ -444,16 +464,17 @@ class LinuxSystemGenerator:
                 "FROM {BASE_IMAGE_NAME}",
                 "ARG DEBIAN_FRONTEND=noninteractive",
                 'LABEL maintainer="Catapult Development Team"',
+                "USER root",
             ],
             BASE_IMAGE_NAME=self.options.base_image_name,
         )
 
         self.system.add_base_os_packages()
 
-        machine = platform.machine()
-
         cmake_version = self.options.versions["cmake"]
-        cmake_script = f"cmake-{cmake_version}-Linux-{machine}.sh"
+        cmake_platform = "aarch64" if "arm64" == self.options.architecture else "x86_64"
+
+        cmake_script = f"cmake-{cmake_version}-Linux-{cmake_platform}.sh"
         cmake_uri = (
             f"https://github.com/Kitware/CMake/releases/download/v{cmake_version}"
         )
@@ -468,8 +489,24 @@ class LinuxSystemGenerator:
             CMAKE_URI=cmake_uri,
         )
 
+        # create a virtual python environment
+        print_lines(
+            [
+                f"# add user {self.system.user()} (used by jenkins) if it does not exist",
+                f'RUN id -u "{self.system.user()}" || useradd --uid 1000 -ms /bin/bash {self.system.user()}',
+                f"USER {self.system.user()}",
+                f"WORKDIR /home/{self.system.user()}",
+                f"ENV VIRTUAL_ENV=/home/{self.system.user()}/venv",
+                "RUN python3 -m venv $VIRTUAL_ENV",
+                'ENV PATH="$VIRTUAL_ENV/bin:$PATH"',
+            ]
+        )
+
+    def _print_dockerfile_image_layer_header(self, layer):
+        print_lines([f"FROM {self.options.layer_image_name(layer)}", "USER root"])
+
     def generate_phase_boost(self):
-        print(f'FROM {self.options.layer_image_name("os")}')
+        self._print_dockerfile_image_layer_header("os")
         gosu_version = self.options.versions["gosu"]
         gosu_target = "/usr/local/bin/gosu"
         gosu_uri = f"https://github.com/tianon/gosu/releases/download/{gosu_version}"
@@ -485,8 +522,8 @@ class LinuxSystemGenerator:
         boost_version = self.options.versions["boost"]
 
         print_args = {
-            "BOOST_ARCHIVE": f'boost_{boost_version.replace(".", "_")}',
-            "BOOST_URI": f"https://boostorg.jfrog.io/artifactory/main/release/{boost_version}/source",
+            "BOOST_ARCHIVE": f"boost_{boost_version.replace('.', '_')}",
+            "BOOST_URI": f"https://archives.boost.io/release/{boost_version}/source",
             "BOOTSTRAP_OPTIONS": " ".join(self.options.bootstrap()),
             "B2_OPTIONS": " ".join(self.options.b2()),
             "BOOST_DISABLED_LIBS": " ".join(BOOST_DISABLED_LIBS),
@@ -503,6 +540,7 @@ class LinuxSystemGenerator:
             ],
             **print_args,
         )
+        print(f"USER {self.system.user()}")
 
     def add_git_dependency(self, organization, project, options, revision=1):
         version = self.options.versions[f"{organization}_{project}"]
@@ -530,9 +568,11 @@ class LinuxSystemGenerator:
     def add_openssl(options, configure):
         version = options.versions["openssl_openssl"]
         compiler = (
-            "linux-{}-clang".format(options.arch_type)
+            "linux-aarch64"
+            if "arm64" == options.architecture
+            else "linux-x86_64-clang"
             if options.is_clang
-            else "linux-{}".format(options.arch_type)
+            else "linux-x86_64"
         )
         openssl_destinations = [
             f"--{key}=/usr/catapult/deps" for key in ("prefix", "openssldir", "libdir")
@@ -555,7 +595,7 @@ class LinuxSystemGenerator:
         )
 
     def generate_phase_deps(self):
-        print(f'FROM {self.options.layer_image_name("boost")}')
+        self._print_dockerfile_image_layer_header("boost")
 
         self.add_openssl(self.options, [])
 
@@ -566,9 +606,11 @@ class LinuxSystemGenerator:
         self.add_git_dependency("zeromq", "cppzmq", self.options.cppzmq())
 
         self.add_git_dependency("facebook", "rocksdb", self.options.rocks())
+        print(f"USER {self.system.user()}")
 
     def generate_phase_test(self):
-        print(f'FROM {self.options.layer_image_name("deps")}')
+        self._print_dockerfile_image_layer_header("deps")
+
         self.add_git_dependency("google", "googletest", self.options.googletest())
         self.add_git_dependency("google", "benchmark", self.options.googlebench())
 
@@ -580,19 +622,19 @@ class LinuxSystemGenerator:
         )
 
         print_lines(
-            ['RUN echo "docker image build $BUILD_NUMBER"', 'CMD ["/bin/bash"]']
+            [
+                'RUN echo "docker image build $BUILD_NUMBER"',
+                'CMD ["/bin/bash"]',
+                f"USER {self.system.user()}",
+            ]
         )
 
     def generate_phase_conan(self):
-        print(f'FROM {self.options.layer_image_name("os")}')
+        self._print_dockerfile_image_layer_header("os")
 
-        apt_packages = ["python3-pip"]
-
-        print_line(
-            ["RUN apt-get -y update", "apt-get install -y {APT_PACKAGES}"],
-            APT_PACKAGES=" ".join(apt_packages),
-        )
+        self.system.add_conan_packages(["python3-pip"])
         install_pip_package(self.system.user(), "conan")
+        print(f"USER {self.system.user()}")
 
 
 class WindowsSystemGenerator:
@@ -615,12 +657,12 @@ class WindowsSystemGenerator:
 
     def generate_phase_boost(self):
         print("# escape=`")
-        print(f'FROM {self.options.layer_image_name("os")}')
+        print(f"FROM {self.options.layer_image_name('os')}")
 
         boost_version = self.options.versions["boost"]
         print_args = {
-            "BOOST_ARCHIVE": f'boost_{boost_version.replace(".", "_")}',
-            "BOOST_URI": f"https://boostorg.jfrog.io/artifactory/main/release/{boost_version}/source",
+            "BOOST_ARCHIVE": f"boost_{boost_version.replace('.', '_')}",
+            "BOOST_URI": f"https://archives.boost.io/release/{boost_version}/source",
             "BOOTSTRAP_OPTIONS": " ".join(self.options.bootstrap()),
             "B2_OPTIONS": " ".join(self.options.b2()),
             "BOOST_DISABLED_LIBS": " ".join(BOOST_DISABLED_LIBS),
@@ -674,7 +716,7 @@ class WindowsSystemGenerator:
     def add_openssl(self, package_options, configure):
         version = self.options.versions["openssl_openssl"]
         openssl_destinations = [
-            f'--{key}={self.deps_path / "openssl"}' for key in ("prefix", "openssldir")
+            f"--{key}={self.deps_path / 'openssl'}" for key in ("prefix", "openssldir")
         ]
         print_msvc_line(
             [
@@ -694,7 +736,7 @@ class WindowsSystemGenerator:
 
     def generate_phase_deps(self):
         print("# escape=`")
-        print(f'FROM {self.options.layer_image_name("boost")}')
+        print(f"FROM {self.options.layer_image_name('boost')}")
 
         print_powershell_lines(["scoop install nasm perl"])
 
@@ -710,7 +752,7 @@ class WindowsSystemGenerator:
 
     def generate_phase_test(self):
         print("# escape=`")
-        print(f'FROM {self.options.layer_image_name("deps")}')
+        print(f"FROM {self.options.layer_image_name('deps')}")
         self.add_git_dependency("google", "googletest", self.options.googletest())
         self.add_git_dependency("google", "benchmark", self.options.googlebench())
 
@@ -720,7 +762,7 @@ class WindowsSystemGenerator:
 
     def generate_phase_conan(self):
         print("# escape=`")
-        print(f'FROM {self.options.layer_image_name("os")}')
+        print(f"FROM {self.options.layer_image_name('os')}")
 
         print_powershell_lines(
             [

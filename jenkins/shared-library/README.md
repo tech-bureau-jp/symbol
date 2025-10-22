@@ -1,20 +1,21 @@
 # jenkins-shared-library
+
 Shared libraries for the Jenkins pipeline jobs
 
 ## Shared pipeline
 
-There is a ``defaultCiPipeline`` step that is the default pipeline for all jobs.  It will run the basic build, tests and linter 
+There is a ``defaultCiPipeline`` step that is the default pipeline for all jobs.  It will run the basic build, tests and linter
 steps. Each package/repo can customize its behavior like which OS or where to publish the artifacts.
 
 ````
 defaultCiPipeline {
-	operatingSystem = ['ubuntu']
-	instanceSize = 'medium'
-	publisher = 'docker'
-	dockerImageName = 'symbolplatform/symbol-server-private'
-	environment = 'python'
-	otherEnvironments = ['python-ubuntu-base', 'python-ubuntu-latest', 'python-windows-lts']
-	gitHubId = 'Symbol-Github-app'
+ operatingSystem = ['ubuntu']
+ instanceSize = 'medium'
+ publisher = 'docker'
+ dockerImageName = 'techbureauhd/catapult-server-private'
+ environment = 'python'
+ otherEnvironments = ['python-ubuntu-base', 'python-ubuntu-latest', 'python-windows-lts']
+ gitHubId = 'Symbol-Github-app'
 }
 ````
 
@@ -33,4 +34,4 @@ defaultCiPipeline {
 ``otherEnvironments`` - The other environments to build.
 
 The environment and otherEnvironments are used to build the docker image name.
-For example, if the environment is ``python`` then the docker image name will be ``symbolplatform/build-ci:python-ubuntu-22.04``.
+For example, if the environment is ``python`` then the docker image name will be ``techbureauhd/build-ci:python-ubuntu-22.04``.

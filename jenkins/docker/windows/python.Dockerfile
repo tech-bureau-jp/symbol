@@ -1,6 +1,6 @@
 # escape=`
 
-ARG FROM_IMAGE=symbolplatform/symbol-server-compiler:windows-msvc-17
+ARG FROM_IMAGE=techbureauhd/catapult-server-compiler:windows-msvc-17
 
 FROM ${FROM_IMAGE}
 LABEL maintainer="Catapult Development Team"
@@ -16,8 +16,7 @@ RUN Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser; `
 	$command='c:\scoop.ps1 -RunAsAdmin'; `
 	iex $command; `
 	del c:\scoop.ps1; `
-	scoop install git shellcheck openssl cmake cygwin python; `
-	python3 -m pip install --upgrade pip
+	scoop install git shellcheck openssl cmake cygwin python
 
 # Set VS tools first in the path so the correct link.exe is used.
 RUN Set-Content -Path c:\Users\ContainerAdministrator\.bash_profile  -Value 'export PATH=${VCToolsInstallDir}bin/Hostx64/x64:${PATH}'

@@ -10,8 +10,12 @@ RUN apt-get update >/dev/null \
 # install python
 ARG FROM_IMAGE
 ARG PYTHON_VERSION='3.11'
+# Adding the Deadsnakes PPA
+RUN apt-get install -y software-properties-common && \
+	add-apt-repository ppa:deadsnakes/ppa && \
+	apt-get update
 RUN apt-get install -y python${PYTHON_VERSION} python3-pip python${PYTHON_VERSION}-venv python${PYTHON_VERSION}-dev  \
-	&& update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 10
+		&& update-alternatives --install /usr/bin/python3 python3 /usr/bin/python${PYTHON_VERSION} 10
 
 # install shellcheck
 RUN apt-get install -y shellcheck
@@ -21,10 +25,10 @@ RUN apt-get install -y zbar-tools libssl-dev
 
 # enable legacy providers in openssl3(ripemd160)
 RUN if echo "$(openssl version)" | grep -q "^OpenSSL 3"; then \
-	sed -i '/^default = default_sect/a legacy = legacy_sect\n' /etc/ssl/openssl.cnf \
-	&& sed -i '/^\[default_sect\]/i [legacy_sect]\nactivate = 1\n' /etc/ssl/openssl.cnf \
-	&& sed -i 's/^# activate = 1/activate = 1/g' /etc/ssl/openssl.cnf \
-	&& cat /etc/ssl/openssl.cnf; \
+		sed -i '/^default = default_sect/a legacy = legacy_sect\n' /etc/ssl/openssl.cnf \
+		&& sed -i '/^\[default_sect\]/i [legacy_sect]\nactivate = 1\n' /etc/ssl/openssl.cnf \
+		&& sed -i 's/^# activate = 1/activate = 1/g' /etc/ssl/openssl.cnf \
+		&& cat /etc/ssl/openssl.cnf; \
 	fi
 
 # codecov uploader
@@ -54,4 +58,4 @@ RUN python3 -m pip install poetry gitlint wheel setuptools
 
 # install common python packages
 RUN python3 -m pip install --upgrade aiohttp colorama coverage cryptography Jinja2 lark ply Pillow pynacl pytest PyYAML pyzbar requests \
-	ripemd-hash safe-pysha3 websockets zenlog
+	ripemd-hash safe-pysha3 twine websockets zenlog

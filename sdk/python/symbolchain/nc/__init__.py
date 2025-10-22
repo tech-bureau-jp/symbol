@@ -159,6 +159,9 @@ class NetworkType(Enum):
 		buffer += self.value.to_bytes(1, byteorder='little', signed=False)
 		return buffer
 
+	def to_json(self):
+		return self.value
+
 
 class TransactionType(Enum):
 	TRANSFER = 257
@@ -183,6 +186,9 @@ class TransactionType(Enum):
 		buffer = bytearray()
 		buffer += self.value.to_bytes(4, byteorder='little', signed=False)
 		return buffer
+
+	def to_json(self):
+		return self.value
 
 
 class Transaction:
@@ -352,7 +358,7 @@ class Transaction:
 
 	def __str__(self) -> str:
 		result = '('
-		result += f'type_: {self._type_.__str__()}, '
+		result += f'type: {self._type_.__str__()}, '
 		result += f'version: 0x{self._version:X}, '
 		result += f'network: {self._network.__str__()}, '
 		result += f'timestamp: {self._timestamp.__str__()}, '
@@ -361,6 +367,18 @@ class Transaction:
 		result += f'fee: {self._fee.__str__()}, '
 		result += f'deadline: {self._deadline.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['type'] = self._type_.to_json()
+		result['version'] = self._version
+		result['network'] = self._network.to_json()
+		result['timestamp'] = self._timestamp.to_json()
+		result['signer_public_key'] = self._signer_public_key.to_json()
+		result['signature'] = self._signature.to_json()
+		result['fee'] = self._fee.to_json()
+		result['deadline'] = self._deadline.to_json()
 		return result
 
 
@@ -510,7 +528,7 @@ class NonVerifiableTransaction:
 
 	def __str__(self) -> str:
 		result = '('
-		result += f'type_: {self._type_.__str__()}, '
+		result += f'type: {self._type_.__str__()}, '
 		result += f'version: 0x{self._version:X}, '
 		result += f'network: {self._network.__str__()}, '
 		result += f'timestamp: {self._timestamp.__str__()}, '
@@ -518,6 +536,17 @@ class NonVerifiableTransaction:
 		result += f'fee: {self._fee.__str__()}, '
 		result += f'deadline: {self._deadline.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['type'] = self._type_.to_json()
+		result['version'] = self._version
+		result['network'] = self._network.to_json()
+		result['timestamp'] = self._timestamp.to_json()
+		result['signer_public_key'] = self._signer_public_key.to_json()
+		result['fee'] = self._fee.to_json()
+		result['deadline'] = self._deadline.to_json()
 		return result
 
 
@@ -538,6 +567,9 @@ class LinkAction(Enum):
 		buffer = bytearray()
 		buffer += self.value.to_bytes(4, byteorder='little', signed=False)
 		return buffer
+
+	def to_json(self):
+		return self.value
 
 
 class AccountKeyLinkTransactionV1(Transaction):
@@ -618,6 +650,12 @@ class AccountKeyLinkTransactionV1(Transaction):
 		result += f'link_action: {self._link_action.__str__()}, '
 		result += f'remote_public_key: {self._remote_public_key.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {**super().to_json()}
+		result['link_action'] = self._link_action.to_json()
+		result['remote_public_key'] = self._remote_public_key.to_json()
 		return result
 
 
@@ -701,6 +739,12 @@ class NonVerifiableAccountKeyLinkTransactionV1(NonVerifiableTransaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['link_action'] = self._link_action.to_json()
+		result['remote_public_key'] = self._remote_public_key.to_json()
+		return result
+
 
 class NamespaceId:
 	TYPE_HINTS = {
@@ -751,6 +795,11 @@ class NamespaceId:
 		result = '('
 		result += f'name: {hexlify(self._name).decode("utf8")}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['name'] = hexlify(self._name).decode('utf8')
 		return result
 
 
@@ -819,6 +868,12 @@ class MosaicId:
 		result += f'namespace_id: {self._namespace_id.__str__()}, '
 		result += f'name: {hexlify(self._name).decode("utf8")}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['namespace_id'] = self._namespace_id.to_json()
+		result['name'] = hexlify(self._name).decode('utf8')
 		return result
 
 
@@ -890,6 +945,12 @@ class Mosaic:
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {}
+		result['mosaic_id'] = self._mosaic_id.to_json()
+		result['amount'] = self._amount.to_json()
+		return result
+
 
 class SizePrefixedMosaic:
 	TYPE_HINTS = {
@@ -943,6 +1004,11 @@ class SizePrefixedMosaic:
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {}
+		result['mosaic'] = self._mosaic.to_json()
+		return result
+
 
 class MosaicTransferFeeType(Enum):
 	ABSOLUTE = 1
@@ -961,6 +1027,9 @@ class MosaicTransferFeeType(Enum):
 		buffer = bytearray()
 		buffer += self.value.to_bytes(4, byteorder='little', signed=False)
 		return buffer
+
+	def to_json(self):
+		return self.value
 
 
 class MosaicLevy:
@@ -1069,6 +1138,14 @@ class MosaicLevy:
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {}
+		result['transfer_fee_type'] = self._transfer_fee_type.to_json()
+		result['recipient_address'] = self._recipient_address.to_json()
+		result['mosaic_id'] = self._mosaic_id.to_json()
+		result['fee'] = self._fee.to_json()
+		return result
+
 
 class MosaicProperty:
 	TYPE_HINTS = {
@@ -1141,6 +1218,12 @@ class MosaicProperty:
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {}
+		result['name'] = hexlify(self._name).decode('utf8')
+		result['value'] = hexlify(self._value).decode('utf8')
+		return result
+
 
 class SizePrefixedMosaicProperty:
 	TYPE_HINTS = {
@@ -1190,8 +1273,13 @@ class SizePrefixedMosaicProperty:
 
 	def __str__(self) -> str:
 		result = '('
-		result += f'property_: {self._property_.__str__()}, '
+		result += f'property: {self._property_.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['property'] = self._property_.to_json()
 		return result
 
 
@@ -1340,6 +1428,16 @@ class MosaicDefinition:
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {}
+		result['owner_public_key'] = self._owner_public_key.to_json()
+		result['id'] = self._id.to_json()
+		result['description'] = hexlify(self._description).decode('utf8')
+		result['properties'] = [e.to_json() for e in self._properties]
+		if 0 != self.levy_size_computed:
+			result['levy'] = self._levy.to_json()
+		return result
+
 
 class MosaicDefinitionTransactionV1(Transaction):
 	TRANSACTION_VERSION: int = 1
@@ -1440,6 +1538,13 @@ class MosaicDefinitionTransactionV1(Transaction):
 		result += f'rental_fee_sink: {self._rental_fee_sink.__str__()}, '
 		result += f'rental_fee: {self._rental_fee.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {**super().to_json()}
+		result['mosaic_definition'] = self._mosaic_definition.to_json()
+		result['rental_fee_sink'] = self._rental_fee_sink.to_json()
+		result['rental_fee'] = self._rental_fee.to_json()
 		return result
 
 
@@ -1544,6 +1649,13 @@ class NonVerifiableMosaicDefinitionTransactionV1(NonVerifiableTransaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['mosaic_definition'] = self._mosaic_definition.to_json()
+		result['rental_fee_sink'] = self._rental_fee_sink.to_json()
+		result['rental_fee'] = self._rental_fee.to_json()
+		return result
+
 
 class MosaicSupplyChangeAction(Enum):
 	INCREASE = 1
@@ -1562,6 +1674,9 @@ class MosaicSupplyChangeAction(Enum):
 		buffer = bytearray()
 		buffer += self.value.to_bytes(4, byteorder='little', signed=False)
 		return buffer
+
+	def to_json(self):
+		return self.value
 
 
 class MosaicSupplyChangeTransactionV1(Transaction):
@@ -1657,6 +1772,13 @@ class MosaicSupplyChangeTransactionV1(Transaction):
 		result += f'action: {self._action.__str__()}, '
 		result += f'delta: {self._delta.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {**super().to_json()}
+		result['mosaic_id'] = self._mosaic_id.to_json()
+		result['action'] = self._action.to_json()
+		result['delta'] = self._delta.to_json()
 		return result
 
 
@@ -1755,6 +1877,13 @@ class NonVerifiableMosaicSupplyChangeTransactionV1(NonVerifiableTransaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['mosaic_id'] = self._mosaic_id.to_json()
+		result['action'] = self._action.to_json()
+		result['delta'] = self._delta.to_json()
+		return result
+
 
 class MultisigAccountModificationType(Enum):
 	ADD_COSIGNATORY = 1
@@ -1773,6 +1902,9 @@ class MultisigAccountModificationType(Enum):
 		buffer = bytearray()
 		buffer += self.value.to_bytes(4, byteorder='little', signed=False)
 		return buffer
+
+	def to_json(self):
+		return self.value
 
 
 class MultisigAccountModification:
@@ -1852,6 +1984,12 @@ class MultisigAccountModification:
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {}
+		result['modification_type'] = self._modification_type.to_json()
+		result['cosignatory_public_key'] = self._cosignatory_public_key.to_json()
+		return result
+
 
 class SizePrefixedMultisigAccountModification:
 	TYPE_HINTS = {
@@ -1903,6 +2041,11 @@ class SizePrefixedMultisigAccountModification:
 		result = '('
 		result += f'modification: {self._modification.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['modification'] = self._modification.to_json()
 		return result
 
 
@@ -1968,6 +2111,11 @@ class MultisigAccountModificationTransactionV1(Transaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['modifications'] = [e.to_json() for e in self._modifications]
+		return result
+
 
 class NonVerifiableMultisigAccountModificationTransactionV1(NonVerifiableTransaction):
 	TRANSACTION_VERSION: int = 1
@@ -2029,6 +2177,11 @@ class NonVerifiableMultisigAccountModificationTransactionV1(NonVerifiableTransac
 		result += super().__str__()
 		result += f'modifications: {list(map(str, self._modifications))}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {**super().to_json()}
+		result['modifications'] = [e.to_json() for e in self._modifications]
 		return result
 
 
@@ -2115,6 +2268,12 @@ class MultisigAccountModificationTransactionV2(Transaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['modifications'] = [e.to_json() for e in self._modifications]
+		result['min_approval_delta'] = self._min_approval_delta
+		return result
+
 
 class NonVerifiableMultisigAccountModificationTransactionV2(NonVerifiableTransaction):
 	TRANSACTION_VERSION: int = 2
@@ -2199,13 +2358,109 @@ class NonVerifiableMultisigAccountModificationTransactionV2(NonVerifiableTransac
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['modifications'] = [e.to_json() for e in self._modifications]
+		result['min_approval_delta'] = self._min_approval_delta
+		return result
+
+
+class CosignatureV1Body:
+	TRANSACTION_VERSION: int = 1
+	TRANSACTION_TYPE: TransactionType = TransactionType.MULTISIG_COSIGNATURE
+	TYPE_HINTS = {
+		'other_transaction_hash': 'pod:Hash256',
+		'multisig_account_address': 'pod:Address'
+	}
+
+	def __init__(self):
+		self._other_transaction_hash = Hash256()
+		self._multisig_account_address = Address()
+		self._other_transaction_hash_outer_size = 36  # reserved field
+		self._other_transaction_hash_size = 32  # reserved field
+		self._multisig_account_address_size = 40  # reserved field
+
+	def sort(self) -> None:
+		pass
+
+	@property
+	def other_transaction_hash(self) -> Hash256:
+		return self._other_transaction_hash
+
+	@property
+	def multisig_account_address(self) -> Address:
+		return self._multisig_account_address
+
+	@other_transaction_hash.setter
+	def other_transaction_hash(self, value: Hash256):
+		self._other_transaction_hash = value
+
+	@multisig_account_address.setter
+	def multisig_account_address(self, value: Address):
+		self._multisig_account_address = value
+
+	@property
+	def size(self) -> int:
+		size = 0
+		size += 4
+		size += 4
+		size += self.other_transaction_hash.size
+		size += 4
+		size += self.multisig_account_address.size
+		return size
+
+	@classmethod
+	def deserialize(cls, payload: bytes | bytearray | memoryview) -> CosignatureV1Body:
+		buffer = memoryview(payload)
+		instance = CosignatureV1Body()
+		other_transaction_hash_outer_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
+		buffer = buffer[4:]
+		assert other_transaction_hash_outer_size == 36, f'Invalid value of reserved field ({other_transaction_hash_outer_size})'
+		other_transaction_hash_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
+		buffer = buffer[4:]
+		assert other_transaction_hash_size == 32, f'Invalid value of reserved field ({other_transaction_hash_size})'
+		other_transaction_hash = Hash256.deserialize(buffer)
+		buffer = buffer[other_transaction_hash.size:]
+		multisig_account_address_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
+		buffer = buffer[4:]
+		assert multisig_account_address_size == 40, f'Invalid value of reserved field ({multisig_account_address_size})'
+		multisig_account_address = Address.deserialize(buffer)
+		buffer = buffer[multisig_account_address.size:]
+
+		# pylint: disable=protected-access
+		instance._other_transaction_hash = other_transaction_hash
+		instance._multisig_account_address = multisig_account_address
+		return instance
+
+	def serialize(self) -> bytes:
+		buffer = bytearray()
+		buffer += self._other_transaction_hash_outer_size.to_bytes(4, byteorder='little', signed=False)
+		buffer += self._other_transaction_hash_size.to_bytes(4, byteorder='little', signed=False)
+		buffer += self._other_transaction_hash.serialize()
+		buffer += self._multisig_account_address_size.to_bytes(4, byteorder='little', signed=False)
+		buffer += self._multisig_account_address.serialize()
+		return buffer
+
+	def __str__(self) -> str:
+		result = '('
+		result += f'other_transaction_hash: {self._other_transaction_hash.__str__()}, '
+		result += f'multisig_account_address: {self._multisig_account_address.__str__()}, '
+		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['other_transaction_hash'] = self._other_transaction_hash.to_json()
+		result['multisig_account_address'] = self._multisig_account_address.to_json()
+		return result
+
 
 class CosignatureV1(Transaction):
 	TRANSACTION_VERSION: int = 1
 	TRANSACTION_TYPE: TransactionType = TransactionType.MULTISIG_COSIGNATURE
 	TYPE_HINTS = {
 		**Transaction.TYPE_HINTS,
-		'multisig_transaction_hash': 'pod:Hash256',
+		'other_transaction_hash': 'pod:Hash256',
 		'multisig_account_address': 'pod:Address'
 	}
 
@@ -2213,26 +2468,26 @@ class CosignatureV1(Transaction):
 		super().__init__()
 		self._type_ = CosignatureV1.TRANSACTION_TYPE
 		self._version = CosignatureV1.TRANSACTION_VERSION
-		self._multisig_transaction_hash = Hash256()
+		self._other_transaction_hash = Hash256()
 		self._multisig_account_address = Address()
-		self._multisig_transaction_hash_outer_size = 36  # reserved field
-		self._multisig_transaction_hash_size = 32  # reserved field
+		self._other_transaction_hash_outer_size = 36  # reserved field
+		self._other_transaction_hash_size = 32  # reserved field
 		self._multisig_account_address_size = 40  # reserved field
 
 	def sort(self) -> None:
 		pass
 
 	@property
-	def multisig_transaction_hash(self) -> Hash256:
-		return self._multisig_transaction_hash
+	def other_transaction_hash(self) -> Hash256:
+		return self._other_transaction_hash
 
 	@property
 	def multisig_account_address(self) -> Address:
 		return self._multisig_account_address
 
-	@multisig_transaction_hash.setter
-	def multisig_transaction_hash(self, value: Hash256):
-		self._multisig_transaction_hash = value
+	@other_transaction_hash.setter
+	def other_transaction_hash(self, value: Hash256):
+		self._other_transaction_hash = value
 
 	@multisig_account_address.setter
 	def multisig_account_address(self, value: Address):
@@ -2244,7 +2499,7 @@ class CosignatureV1(Transaction):
 		size += super().size
 		size += 4
 		size += 4
-		size += self.multisig_transaction_hash.size
+		size += self.other_transaction_hash.size
 		size += 4
 		size += self.multisig_account_address.size
 		return size
@@ -2255,14 +2510,14 @@ class CosignatureV1(Transaction):
 		instance = CosignatureV1()
 		(window_start, window_end) = Transaction._deserialize(buffer, instance)
 		buffer = buffer[window_start:window_end]
-		multisig_transaction_hash_outer_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
+		other_transaction_hash_outer_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
 		buffer = buffer[4:]
-		assert multisig_transaction_hash_outer_size == 36, f'Invalid value of reserved field ({multisig_transaction_hash_outer_size})'
-		multisig_transaction_hash_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
+		assert other_transaction_hash_outer_size == 36, f'Invalid value of reserved field ({other_transaction_hash_outer_size})'
+		other_transaction_hash_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
 		buffer = buffer[4:]
-		assert multisig_transaction_hash_size == 32, f'Invalid value of reserved field ({multisig_transaction_hash_size})'
-		multisig_transaction_hash = Hash256.deserialize(buffer)
-		buffer = buffer[multisig_transaction_hash.size:]
+		assert other_transaction_hash_size == 32, f'Invalid value of reserved field ({other_transaction_hash_size})'
+		other_transaction_hash = Hash256.deserialize(buffer)
+		buffer = buffer[other_transaction_hash.size:]
 		multisig_account_address_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
 		buffer = buffer[4:]
 		assert multisig_account_address_size == 40, f'Invalid value of reserved field ({multisig_account_address_size})'
@@ -2270,16 +2525,16 @@ class CosignatureV1(Transaction):
 		buffer = buffer[multisig_account_address.size:]
 
 		# pylint: disable=protected-access
-		instance._multisig_transaction_hash = multisig_transaction_hash
+		instance._other_transaction_hash = other_transaction_hash
 		instance._multisig_account_address = multisig_account_address
 		return instance
 
 	def serialize(self) -> bytes:
 		buffer = bytearray()
 		super()._serialize(buffer)
-		buffer += self._multisig_transaction_hash_outer_size.to_bytes(4, byteorder='little', signed=False)
-		buffer += self._multisig_transaction_hash_size.to_bytes(4, byteorder='little', signed=False)
-		buffer += self._multisig_transaction_hash.serialize()
+		buffer += self._other_transaction_hash_outer_size.to_bytes(4, byteorder='little', signed=False)
+		buffer += self._other_transaction_hash_size.to_bytes(4, byteorder='little', signed=False)
+		buffer += self._other_transaction_hash.serialize()
 		buffer += self._multisig_account_address_size.to_bytes(4, byteorder='little', signed=False)
 		buffer += self._multisig_account_address.serialize()
 		return buffer
@@ -2287,9 +2542,114 @@ class CosignatureV1(Transaction):
 	def __str__(self) -> str:
 		result = '('
 		result += super().__str__()
-		result += f'multisig_transaction_hash: {self._multisig_transaction_hash.__str__()}, '
+		result += f'other_transaction_hash: {self._other_transaction_hash.__str__()}, '
 		result += f'multisig_account_address: {self._multisig_account_address.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {**super().to_json()}
+		result['other_transaction_hash'] = self._other_transaction_hash.to_json()
+		result['multisig_account_address'] = self._multisig_account_address.to_json()
+		return result
+
+
+class NonVerifiableCosignatureV1(NonVerifiableTransaction):
+	TRANSACTION_VERSION: int = 1
+	TRANSACTION_TYPE: TransactionType = TransactionType.MULTISIG_COSIGNATURE
+	TYPE_HINTS = {
+		**NonVerifiableTransaction.TYPE_HINTS,
+		'other_transaction_hash': 'pod:Hash256',
+		'multisig_account_address': 'pod:Address'
+	}
+
+	def __init__(self):
+		super().__init__()
+		self._type_ = NonVerifiableCosignatureV1.TRANSACTION_TYPE
+		self._version = NonVerifiableCosignatureV1.TRANSACTION_VERSION
+		self._other_transaction_hash = Hash256()
+		self._multisig_account_address = Address()
+		self._other_transaction_hash_outer_size = 36  # reserved field
+		self._other_transaction_hash_size = 32  # reserved field
+		self._multisig_account_address_size = 40  # reserved field
+
+	def sort(self) -> None:
+		pass
+
+	@property
+	def other_transaction_hash(self) -> Hash256:
+		return self._other_transaction_hash
+
+	@property
+	def multisig_account_address(self) -> Address:
+		return self._multisig_account_address
+
+	@other_transaction_hash.setter
+	def other_transaction_hash(self, value: Hash256):
+		self._other_transaction_hash = value
+
+	@multisig_account_address.setter
+	def multisig_account_address(self, value: Address):
+		self._multisig_account_address = value
+
+	@property
+	def size(self) -> int:
+		size = 0
+		size += super().size
+		size += 4
+		size += 4
+		size += self.other_transaction_hash.size
+		size += 4
+		size += self.multisig_account_address.size
+		return size
+
+	@classmethod
+	def deserialize(cls, payload: bytes | bytearray | memoryview) -> NonVerifiableCosignatureV1:
+		buffer = memoryview(payload)
+		instance = NonVerifiableCosignatureV1()
+		(window_start, window_end) = NonVerifiableTransaction._deserialize(buffer, instance)
+		buffer = buffer[window_start:window_end]
+		other_transaction_hash_outer_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
+		buffer = buffer[4:]
+		assert other_transaction_hash_outer_size == 36, f'Invalid value of reserved field ({other_transaction_hash_outer_size})'
+		other_transaction_hash_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
+		buffer = buffer[4:]
+		assert other_transaction_hash_size == 32, f'Invalid value of reserved field ({other_transaction_hash_size})'
+		other_transaction_hash = Hash256.deserialize(buffer)
+		buffer = buffer[other_transaction_hash.size:]
+		multisig_account_address_size = int.from_bytes(buffer[:4], byteorder='little', signed=False)
+		buffer = buffer[4:]
+		assert multisig_account_address_size == 40, f'Invalid value of reserved field ({multisig_account_address_size})'
+		multisig_account_address = Address.deserialize(buffer)
+		buffer = buffer[multisig_account_address.size:]
+
+		# pylint: disable=protected-access
+		instance._other_transaction_hash = other_transaction_hash
+		instance._multisig_account_address = multisig_account_address
+		return instance
+
+	def serialize(self) -> bytes:
+		buffer = bytearray()
+		super()._serialize(buffer)
+		buffer += self._other_transaction_hash_outer_size.to_bytes(4, byteorder='little', signed=False)
+		buffer += self._other_transaction_hash_size.to_bytes(4, byteorder='little', signed=False)
+		buffer += self._other_transaction_hash.serialize()
+		buffer += self._multisig_account_address_size.to_bytes(4, byteorder='little', signed=False)
+		buffer += self._multisig_account_address.serialize()
+		return buffer
+
+	def __str__(self) -> str:
+		result = '('
+		result += super().__str__()
+		result += f'other_transaction_hash: {self._other_transaction_hash.__str__()}, '
+		result += f'multisig_account_address: {self._multisig_account_address.__str__()}, '
+		result += ')'
+		return result
+
+	def to_json(self):
+		result = {**super().to_json()}
+		result['other_transaction_hash'] = self._other_transaction_hash.to_json()
+		result['multisig_account_address'] = self._multisig_account_address.to_json()
 		return result
 
 
@@ -2343,6 +2703,11 @@ class SizePrefixedCosignatureV1:
 		result = '('
 		result += f'cosignature: {self._cosignature.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['cosignature'] = self._cosignature.to_json()
 		return result
 
 
@@ -2429,6 +2794,12 @@ class MultisigTransactionV1(Transaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['inner_transaction'] = self._inner_transaction.to_json()
+		result['cosignatures'] = [e.to_json() for e in self._cosignatures]
+		return result
+
 
 class NonVerifiableMultisigTransactionV1(NonVerifiableTransaction):
 	TRANSACTION_VERSION: int = 1
@@ -2491,6 +2862,11 @@ class NonVerifiableMultisigTransactionV1(NonVerifiableTransaction):
 		result += super().__str__()
 		result += f'inner_transaction: {self._inner_transaction.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {**super().to_json()}
+		result['inner_transaction'] = self._inner_transaction.to_json()
 		return result
 
 
@@ -2619,6 +2995,15 @@ class NamespaceRegistrationTransactionV1(Transaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['rental_fee_sink'] = self._rental_fee_sink.to_json()
+		result['rental_fee'] = self._rental_fee.to_json()
+		result['name'] = hexlify(self._name).decode('utf8')
+		if self.parent_name:
+			result['parent_name'] = hexlify(self._parent_name).decode('utf8')
+		return result
+
 
 class NonVerifiableNamespaceRegistrationTransactionV1(NonVerifiableTransaction):
 	TRANSACTION_VERSION: int = 1
@@ -2745,6 +3130,15 @@ class NonVerifiableNamespaceRegistrationTransactionV1(NonVerifiableTransaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['rental_fee_sink'] = self._rental_fee_sink.to_json()
+		result['rental_fee'] = self._rental_fee.to_json()
+		result['name'] = hexlify(self._name).decode('utf8')
+		if self.parent_name:
+			result['parent_name'] = hexlify(self._parent_name).decode('utf8')
+		return result
+
 
 class MessageType(Enum):
 	PLAIN = 1
@@ -2763,6 +3157,9 @@ class MessageType(Enum):
 		buffer = bytearray()
 		buffer += self.value.to_bytes(4, byteorder='little', signed=False)
 		return buffer
+
+	def to_json(self):
+		return self.value
 
 
 class Message:
@@ -2830,6 +3227,12 @@ class Message:
 		result += f'message_type: {self._message_type.__str__()}, '
 		result += f'message: {hexlify(self._message).decode("utf8")}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {}
+		result['message_type'] = self._message_type.to_json()
+		result['message'] = hexlify(self._message).decode('utf8')
 		return result
 
 
@@ -2943,6 +3346,14 @@ class TransferTransactionV1(Transaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['recipient_address'] = self._recipient_address.to_json()
+		result['amount'] = self._amount.to_json()
+		if 0 != self.message_envelope_size_computed:
+			result['message'] = self._message.to_json()
+		return result
+
 
 class NonVerifiableTransferTransactionV1(NonVerifiableTransaction):
 	TRANSACTION_VERSION: int = 1
@@ -3052,6 +3463,14 @@ class NonVerifiableTransferTransactionV1(NonVerifiableTransaction):
 		if 0 != self.message_envelope_size_computed:
 			result += f'message: {self._message.__str__()}, '
 		result += ')'
+		return result
+
+	def to_json(self):
+		result = {**super().to_json()}
+		result['recipient_address'] = self._recipient_address.to_json()
+		result['amount'] = self._amount.to_json()
+		if 0 != self.message_envelope_size_computed:
+			result['message'] = self._message.to_json()
 		return result
 
 
@@ -3185,6 +3604,15 @@ class TransferTransactionV2(Transaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['recipient_address'] = self._recipient_address.to_json()
+		result['amount'] = self._amount.to_json()
+		if 0 != self.message_envelope_size_computed:
+			result['message'] = self._message.to_json()
+		result['mosaics'] = [e.to_json() for e in self._mosaics]
+		return result
+
 
 class NonVerifiableTransferTransactionV2(NonVerifiableTransaction):
 	TRANSACTION_VERSION: int = 2
@@ -3316,6 +3744,15 @@ class NonVerifiableTransferTransactionV2(NonVerifiableTransaction):
 		result += ')'
 		return result
 
+	def to_json(self):
+		result = {**super().to_json()}
+		result['recipient_address'] = self._recipient_address.to_json()
+		result['amount'] = self._amount.to_json()
+		if 0 != self.message_envelope_size_computed:
+			result['message'] = self._message.to_json()
+		result['mosaics'] = [e.to_json() for e in self._mosaics]
+		return result
+
 
 class TransactionFactory:
 	@classmethod
@@ -3374,6 +3811,7 @@ class NonVerifiableTransactionFactory:
 			(NonVerifiableMosaicSupplyChangeTransactionV1.TRANSACTION_TYPE, NonVerifiableMosaicSupplyChangeTransactionV1.TRANSACTION_VERSION): NonVerifiableMosaicSupplyChangeTransactionV1,
 			(NonVerifiableMultisigAccountModificationTransactionV1.TRANSACTION_TYPE, NonVerifiableMultisigAccountModificationTransactionV1.TRANSACTION_VERSION): NonVerifiableMultisigAccountModificationTransactionV1,
 			(NonVerifiableMultisigAccountModificationTransactionV2.TRANSACTION_TYPE, NonVerifiableMultisigAccountModificationTransactionV2.TRANSACTION_VERSION): NonVerifiableMultisigAccountModificationTransactionV2,
+			(NonVerifiableCosignatureV1.TRANSACTION_TYPE, NonVerifiableCosignatureV1.TRANSACTION_VERSION): NonVerifiableCosignatureV1,
 			(NonVerifiableMultisigTransactionV1.TRANSACTION_TYPE, NonVerifiableMultisigTransactionV1.TRANSACTION_VERSION): NonVerifiableMultisigTransactionV1,
 			(NonVerifiableNamespaceRegistrationTransactionV1.TRANSACTION_TYPE, NonVerifiableNamespaceRegistrationTransactionV1.TRANSACTION_VERSION): NonVerifiableNamespaceRegistrationTransactionV1,
 			(NonVerifiableTransferTransactionV1.TRANSACTION_TYPE, NonVerifiableTransferTransactionV1.TRANSACTION_VERSION): NonVerifiableTransferTransactionV1,
@@ -3391,6 +3829,7 @@ class NonVerifiableTransactionFactory:
 			'non_verifiable_mosaic_supply_change_transaction_v1': NonVerifiableMosaicSupplyChangeTransactionV1,
 			'non_verifiable_multisig_account_modification_transaction_v1': NonVerifiableMultisigAccountModificationTransactionV1,
 			'non_verifiable_multisig_account_modification_transaction_v2': NonVerifiableMultisigAccountModificationTransactionV2,
+			'non_verifiable_cosignature_v1': NonVerifiableCosignatureV1,
 			'non_verifiable_multisig_transaction_v1': NonVerifiableMultisigTransactionV1,
 			'non_verifiable_namespace_registration_transaction_v1': NonVerifiableNamespaceRegistrationTransactionV1,
 			'non_verifiable_transfer_transaction_v1': NonVerifiableTransferTransactionV1,

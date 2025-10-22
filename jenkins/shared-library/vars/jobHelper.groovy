@@ -94,7 +94,7 @@ Object loadBuildBaseImages() {
 }
 
 String resolveBuildImageName(String environment) {
-	return environment.contains(':') ? environment : "symbolplatform/build-ci:${environment}"
+	return environment.contains(':') ? environment : "techbureauhd/build-ci:${environment}"
 }
 
 String resolveCiEnvironmentName(Map params) {

@@ -497,6 +497,16 @@ export class Mosaic {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.mosaicId = this._mosaicId.toJson();
+		result.amount = this._amount.toJson();
+		return result;
+	}
 }
 
 export class UnresolvedMosaic {
@@ -564,6 +574,16 @@ export class UnresolvedMosaic {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.mosaicId = this._mosaicId.toJson();
+		result.amount = this._amount.toJson();
+		return result;
+	}
 }
 
 export class LinkAction {
@@ -615,6 +635,10 @@ export class LinkAction {
 	toString() {
 		return `LinkAction.${LinkAction.valueToKey(this.value)}`;
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
 export class NetworkType {
@@ -665,6 +689,10 @@ export class NetworkType {
 
 	toString() {
 		return `NetworkType.${NetworkType.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -767,6 +795,10 @@ export class TransactionType {
 
 	toString() {
 		return `TransactionType.${TransactionType.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -933,6 +965,21 @@ export class Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.signature = this._signature.toJson();
+		result.signerPublicKey = this._signerPublicKey.toJson();
+		result.version = this._version;
+		result.network = this._network.toJson();
+		result.type = this._type.toJson();
+		result.fee = this._fee.toJson();
+		result.deadline = this._deadline.toJson();
+		return result;
+	}
 }
 
 export class EmbeddedTransaction {
@@ -1048,6 +1095,18 @@ export class EmbeddedTransaction {
 		result += `network: ${this._network.toString()}, `;
 		result += `type: ${this._type.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.signerPublicKey = this._signerPublicKey.toJson();
+		result.version = this._version;
+		result.network = this._network.toJson();
+		result.type = this._type.toJson();
 		return result;
 	}
 }
@@ -1166,6 +1225,10 @@ export class BlockType {
 	toString() {
 		return `BlockType.${BlockType.valueToKey(this.value)}`;
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
 export class VrfProof {
@@ -1247,6 +1310,17 @@ export class VrfProof {
 		result += `verificationHash: ${this._verificationHash.toString()}, `;
 		result += `scalar: ${this._scalar.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.gamma = this._gamma.toJson();
+		result.verificationHash = this._verificationHash.toJson();
+		result.scalar = this._scalar.toJson();
 		return result;
 	}
 }
@@ -1543,6 +1617,29 @@ export class Block {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.signature = this._signature.toJson();
+		result.signerPublicKey = this._signerPublicKey.toJson();
+		result.version = this._version;
+		result.network = this._network.toJson();
+		result.type = this._type.toJson();
+		result.height = this._height.toJson();
+		result.timestamp = this._timestamp.toJson();
+		result.difficulty = this._difficulty.toJson();
+		result.generationHashProof = this._generationHashProof.toJson();
+		result.previousBlockHash = this._previousBlockHash.toJson();
+		result.transactionsHash = this._transactionsHash.toJson();
+		result.receiptsHash = this._receiptsHash.toJson();
+		result.stateHash = this._stateHash.toJson();
+		result.beneficiaryAddress = this._beneficiaryAddress.toJson();
+		result.feeMultiplier = this._feeMultiplier.toJson();
+		return result;
+	}
 }
 
 export class NemesisBlockV1 extends Block {
@@ -1669,6 +1766,20 @@ export class NemesisBlockV1 extends Block {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.votingEligibleAccountsCount = this._votingEligibleAccountsCount;
+		result.harvestingEligibleAccountsCount = this._harvestingEligibleAccountsCount.toString();
+		result.totalVotingBalance = this._totalVotingBalance.toJson();
+		result.previousImportanceBlockHash = this._previousImportanceBlockHash.toJson();
+		result.transactions = this._transactions.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class NormalBlockV1 extends Block {
@@ -1738,6 +1849,16 @@ export class NormalBlockV1 extends Block {
 		result += super.toString();
 		result += `transactions: [${this._transactions.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.transactions = this._transactions.map(e => e.toJson());
 		return result;
 	}
 }
@@ -1866,6 +1987,20 @@ export class ImportanceBlockV1 extends Block {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.votingEligibleAccountsCount = this._votingEligibleAccountsCount;
+		result.harvestingEligibleAccountsCount = this._harvestingEligibleAccountsCount.toString();
+		result.totalVotingBalance = this._totalVotingBalance.toJson();
+		result.previousImportanceBlockHash = this._previousImportanceBlockHash.toJson();
+		result.transactions = this._transactions.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class FinalizationRound {
@@ -1931,6 +2066,16 @@ export class FinalizationRound {
 		result += `epoch: ${this._epoch.toString()}, `;
 		result += `point: ${this._point.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.epoch = this._epoch.toJson();
+		result.point = this._point.toJson();
 		return result;
 	}
 }
@@ -2017,6 +2162,17 @@ export class FinalizedBlockHeader {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.round = this._round.toJson();
+		result.height = this._height.toJson();
+		result.hash = this._hash.toJson();
+		return result;
+	}
 }
 
 export class ReceiptType {
@@ -2097,6 +2253,10 @@ export class ReceiptType {
 
 	toString() {
 		return `ReceiptType.${ReceiptType.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -2180,6 +2340,16 @@ export class Receipt {
 		result += `version: ${'0x'.concat(this._version.toString(16))}, `;
 		result += `type: ${this._type.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.version = this._version;
+		result.type = this._type.toJson();
 		return result;
 	}
 }
@@ -2274,6 +2444,17 @@ export class HarvestFeeReceipt extends Receipt {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.targetAddress = this._targetAddress.toJson();
+		return result;
+	}
 }
 
 export class InflationReceipt extends Receipt {
@@ -2345,6 +2526,16 @@ export class InflationReceipt extends Receipt {
 		result += super.toString();
 		result += `mosaic: ${this._mosaic.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
 		return result;
 	}
 }
@@ -2439,6 +2630,17 @@ export class LockHashCreatedFeeReceipt extends Receipt {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.targetAddress = this._targetAddress.toJson();
+		return result;
+	}
 }
 
 export class LockHashCompletedFeeReceipt extends Receipt {
@@ -2529,6 +2731,17 @@ export class LockHashCompletedFeeReceipt extends Receipt {
 		result += `mosaic: ${this._mosaic.toString()}, `;
 		result += `targetAddress: ${this._targetAddress.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.targetAddress = this._targetAddress.toJson();
 		return result;
 	}
 }
@@ -2623,6 +2836,17 @@ export class LockHashExpiredFeeReceipt extends Receipt {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.targetAddress = this._targetAddress.toJson();
+		return result;
+	}
 }
 
 export class LockSecretCreatedFeeReceipt extends Receipt {
@@ -2713,6 +2937,17 @@ export class LockSecretCreatedFeeReceipt extends Receipt {
 		result += `mosaic: ${this._mosaic.toString()}, `;
 		result += `targetAddress: ${this._targetAddress.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.targetAddress = this._targetAddress.toJson();
 		return result;
 	}
 }
@@ -2807,6 +3042,17 @@ export class LockSecretCompletedFeeReceipt extends Receipt {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.targetAddress = this._targetAddress.toJson();
+		return result;
+	}
 }
 
 export class LockSecretExpiredFeeReceipt extends Receipt {
@@ -2899,6 +3145,17 @@ export class LockSecretExpiredFeeReceipt extends Receipt {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.targetAddress = this._targetAddress.toJson();
+		return result;
+	}
 }
 
 export class MosaicExpiredReceipt extends Receipt {
@@ -2969,6 +3226,16 @@ export class MosaicExpiredReceipt extends Receipt {
 		result += super.toString();
 		result += `artifactId: ${this._artifactId.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.artifactId = this._artifactId.toJson();
 		return result;
 	}
 }
@@ -3082,6 +3349,18 @@ export class MosaicRentalFeeReceipt extends Receipt {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.senderAddress = this._senderAddress.toJson();
+		result.recipientAddress = this._recipientAddress.toJson();
+		return result;
+	}
 }
 
 export class NamespaceId extends BaseValue {
@@ -3155,6 +3434,10 @@ export class NamespaceRegistrationType {
 	toString() {
 		return `NamespaceRegistrationType.${NamespaceRegistrationType.valueToKey(this.value)}`;
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
 export class AliasAction {
@@ -3205,6 +3488,10 @@ export class AliasAction {
 
 	toString() {
 		return `AliasAction.${AliasAction.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -3278,6 +3565,16 @@ export class NamespaceExpiredReceipt extends Receipt {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.artifactId = this._artifactId.toJson();
+		return result;
+	}
 }
 
 export class NamespaceDeletedReceipt extends Receipt {
@@ -3348,6 +3645,16 @@ export class NamespaceDeletedReceipt extends Receipt {
 		result += super.toString();
 		result += `artifactId: ${this._artifactId.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.artifactId = this._artifactId.toJson();
 		return result;
 	}
 }
@@ -3461,6 +3768,18 @@ export class NamespaceRentalFeeReceipt extends Receipt {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.senderAddress = this._senderAddress.toJson();
+		result.recipientAddress = this._recipientAddress.toJson();
+		return result;
+	}
 }
 
 export class ReceiptSource {
@@ -3524,6 +3843,16 @@ export class ReceiptSource {
 		result += `primaryId: ${'0x'.concat(this._primaryId.toString(16))}, `;
 		result += `secondaryId: ${'0x'.concat(this._secondaryId.toString(16))}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.primaryId = this._primaryId;
+		result.secondaryId = this._secondaryId;
 		return result;
 	}
 }
@@ -3592,6 +3921,16 @@ export class AddressResolutionEntry {
 		result += `source: ${this._source.toString()}, `;
 		result += `resolvedValue: ${this._resolvedValue.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.source = this._source.toJson();
+		result.resolvedValue = this._resolvedValue.toJson();
 		return result;
 	}
 }
@@ -3665,6 +4004,16 @@ export class AddressResolutionStatement {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.unresolved = this._unresolved.toJson();
+		result.resolutionEntries = this._resolutionEntries.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class MosaicResolutionEntry {
@@ -3731,6 +4080,16 @@ export class MosaicResolutionEntry {
 		result += `source: ${this._source.toString()}, `;
 		result += `resolvedValue: ${this._resolvedValue.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.source = this._source.toJson();
+		result.resolvedValue = this._resolvedValue.toJson();
 		return result;
 	}
 }
@@ -3802,6 +4161,16 @@ export class MosaicResolutionStatement {
 		result += `unresolved: ${this._unresolved.toString()}, `;
 		result += `resolutionEntries: [${this._resolutionEntries.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.unresolved = this._unresolved.toJson();
+		result.resolutionEntries = this._resolutionEntries.map(e => e.toJson());
 		return result;
 	}
 }
@@ -3887,6 +4256,17 @@ export class TransactionStatement {
 		result += `secondaryId: ${'0x'.concat(this._secondaryId.toString(16))}, `;
 		result += `receipts: [${this._receipts.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.primaryId = this._primaryId;
+		result.secondaryId = this._secondaryId;
+		result.receipts = this._receipts.map(e => e.toJson());
 		return result;
 	}
 }
@@ -3984,6 +4364,17 @@ export class BlockStatement {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.transactionStatements = this._transactionStatements.map(e => e.toJson());
+		result.addressResolutionStatements = this._addressResolutionStatements.map(e => e.toJson());
+		result.mosaicResolutionStatements = this._mosaicResolutionStatements.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class AccountKeyLinkTransactionV1 extends Transaction {
@@ -4061,6 +4452,17 @@ export class AccountKeyLinkTransactionV1 extends Transaction {
 		result += `linkedPublicKey: ${this._linkedPublicKey.toString()}, `;
 		result += `linkAction: ${this._linkAction.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkedPublicKey = this._linkedPublicKey.toJson();
+		result.linkAction = this._linkAction.toJson();
 		return result;
 	}
 }
@@ -4142,6 +4544,17 @@ export class EmbeddedAccountKeyLinkTransactionV1 extends EmbeddedTransaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkedPublicKey = this._linkedPublicKey.toJson();
+		result.linkAction = this._linkAction.toJson();
+		return result;
+	}
 }
 
 export class NodeKeyLinkTransactionV1 extends Transaction {
@@ -4221,6 +4634,17 @@ export class NodeKeyLinkTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkedPublicKey = this._linkedPublicKey.toJson();
+		result.linkAction = this._linkAction.toJson();
+		return result;
+	}
 }
 
 export class EmbeddedNodeKeyLinkTransactionV1 extends EmbeddedTransaction {
@@ -4298,6 +4722,17 @@ export class EmbeddedNodeKeyLinkTransactionV1 extends EmbeddedTransaction {
 		result += `linkedPublicKey: ${this._linkedPublicKey.toString()}, `;
 		result += `linkAction: ${this._linkAction.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkedPublicKey = this._linkedPublicKey.toJson();
+		result.linkAction = this._linkAction.toJson();
 		return result;
 	}
 }
@@ -4380,6 +4815,17 @@ export class Cosignature {
 		result += `signerPublicKey: ${this._signerPublicKey.toString()}, `;
 		result += `signature: ${this._signature.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.version = this._version.toString();
+		result.signerPublicKey = this._signerPublicKey.toJson();
+		result.signature = this._signature.toJson();
 		return result;
 	}
 }
@@ -4478,6 +4924,18 @@ export class DetachedCosignature {
 		result += `signature: ${this._signature.toString()}, `;
 		result += `parentHash: ${this._parentHash.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		result.version = this._version.toString();
+		result.signerPublicKey = this._signerPublicKey.toJson();
+		result.signature = this._signature.toJson();
+		result.parentHash = this._parentHash.toJson();
 		return result;
 	}
 }
@@ -4586,6 +5044,18 @@ export class AggregateCompleteTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.transactionsHash = this._transactionsHash.toJson();
+		result.transactions = this._transactions.map(e => e.toJson());
+		result.cosignatures = this._cosignatures.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class AggregateCompleteTransactionV2 extends Transaction {
@@ -4690,6 +5160,136 @@ export class AggregateCompleteTransactionV2 extends Transaction {
 		result += `transactions: [${this._transactions.map(e => e.toString()).join(',')}], `;
 		result += `cosignatures: [${this._cosignatures.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.transactionsHash = this._transactionsHash.toJson();
+		result.transactions = this._transactions.map(e => e.toJson());
+		result.cosignatures = this._cosignatures.map(e => e.toJson());
+		return result;
+	}
+}
+
+export class AggregateCompleteTransactionV3 extends Transaction {
+	static TRANSACTION_VERSION = 3;
+
+	static TRANSACTION_TYPE = TransactionType.AGGREGATE_COMPLETE;
+
+	static TYPE_HINTS = {
+		...Transaction.TYPE_HINTS,
+		transactionsHash: 'pod:Hash256',
+		transactions: 'array[EmbeddedTransaction]',
+		cosignatures: 'array[Cosignature]'
+	};
+
+	constructor() {
+		super();
+		this._version = AggregateCompleteTransactionV3.TRANSACTION_VERSION;
+		this._type = AggregateCompleteTransactionV3.TRANSACTION_TYPE;
+		this._transactionsHash = new Hash256();
+		this._transactions = [];
+		this._cosignatures = [];
+		this._aggregateTransactionHeaderReserved_1 = 0; // reserved field
+	}
+
+	sort() { // eslint-disable-line class-methods-use-this
+	}
+
+	get transactionsHash() {
+		return this._transactionsHash;
+	}
+
+	set transactionsHash(value) {
+		this._transactionsHash = value;
+	}
+
+	get transactions() {
+		return this._transactions;
+	}
+
+	set transactions(value) {
+		this._transactions = value;
+	}
+
+	get cosignatures() {
+		return this._cosignatures;
+	}
+
+	set cosignatures(value) {
+		this._cosignatures = value;
+	}
+
+	get size() { // eslint-disable-line class-methods-use-this
+		let size = 0;
+		size += super.size;
+		size += this.transactionsHash.size;
+		size += 4;
+		size += 4;
+		size += arrayHelpers.size(this.transactions, 8, false);
+		size += arrayHelpers.size(this.cosignatures);
+		return size;
+	}
+
+	static deserialize(payload) {
+		const view = new BufferView(payload);
+		const instance = new AggregateCompleteTransactionV3();
+
+		Transaction._deserialize(view, instance);
+		const transactionsHash = Hash256.deserialize(view.buffer);
+		view.shiftRight(transactionsHash.size);
+		const payloadSize = converter.bytesToInt(view.buffer, 4, false);
+		view.shiftRight(4);
+		const aggregateTransactionHeaderReserved_1 = converter.bytesToInt(view.buffer, 4, false);
+		view.shiftRight(4);
+		if (0 !== aggregateTransactionHeaderReserved_1)
+			throw RangeError(`Invalid value of reserved field (${aggregateTransactionHeaderReserved_1})`);
+		const transactions = arrayHelpers.readVariableSizeElements(view.window(payloadSize), EmbeddedTransactionFactory, 8, false);
+		view.shiftRight(payloadSize);
+		const cosignatures = arrayHelpers.readArray(view.buffer, Cosignature);
+		view.shiftRight(arrayHelpers.size(cosignatures));
+
+		instance._transactionsHash = transactionsHash;
+		instance._transactions = transactions;
+		instance._cosignatures = cosignatures;
+		return instance;
+	}
+
+	serialize() {
+		const buffer = new Writer(this.size);
+		super._serialize(buffer);
+		buffer.write(this._transactionsHash.serialize());
+		buffer.write(converter.intToBytes(arrayHelpers.size(this.transactions, 8, false), 4, false)); // bound: payload_size
+		buffer.write(converter.intToBytes(this._aggregateTransactionHeaderReserved_1, 4, false));
+		arrayHelpers.writeVariableSizeElements(buffer, this._transactions, 8, false);
+		arrayHelpers.writeArray(buffer, this._cosignatures);
+		return buffer.storage;
+	}
+
+	toString() {
+		let result = '(';
+		result += super.toString();
+		result += `transactionsHash: ${this._transactionsHash.toString()}, `;
+		result += `transactions: [${this._transactions.map(e => e.toString()).join(',')}], `;
+		result += `cosignatures: [${this._cosignatures.map(e => e.toString()).join(',')}], `;
+		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.transactionsHash = this._transactionsHash.toJson();
+		result.transactions = this._transactions.map(e => e.toJson());
+		result.cosignatures = this._cosignatures.map(e => e.toJson());
 		return result;
 	}
 }
@@ -4798,6 +5398,18 @@ export class AggregateBondedTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.transactionsHash = this._transactionsHash.toJson();
+		result.transactions = this._transactions.map(e => e.toJson());
+		result.cosignatures = this._cosignatures.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class AggregateBondedTransactionV2 extends Transaction {
@@ -4902,6 +5514,136 @@ export class AggregateBondedTransactionV2 extends Transaction {
 		result += `transactions: [${this._transactions.map(e => e.toString()).join(',')}], `;
 		result += `cosignatures: [${this._cosignatures.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.transactionsHash = this._transactionsHash.toJson();
+		result.transactions = this._transactions.map(e => e.toJson());
+		result.cosignatures = this._cosignatures.map(e => e.toJson());
+		return result;
+	}
+}
+
+export class AggregateBondedTransactionV3 extends Transaction {
+	static TRANSACTION_VERSION = 3;
+
+	static TRANSACTION_TYPE = TransactionType.AGGREGATE_BONDED;
+
+	static TYPE_HINTS = {
+		...Transaction.TYPE_HINTS,
+		transactionsHash: 'pod:Hash256',
+		transactions: 'array[EmbeddedTransaction]',
+		cosignatures: 'array[Cosignature]'
+	};
+
+	constructor() {
+		super();
+		this._version = AggregateBondedTransactionV3.TRANSACTION_VERSION;
+		this._type = AggregateBondedTransactionV3.TRANSACTION_TYPE;
+		this._transactionsHash = new Hash256();
+		this._transactions = [];
+		this._cosignatures = [];
+		this._aggregateTransactionHeaderReserved_1 = 0; // reserved field
+	}
+
+	sort() { // eslint-disable-line class-methods-use-this
+	}
+
+	get transactionsHash() {
+		return this._transactionsHash;
+	}
+
+	set transactionsHash(value) {
+		this._transactionsHash = value;
+	}
+
+	get transactions() {
+		return this._transactions;
+	}
+
+	set transactions(value) {
+		this._transactions = value;
+	}
+
+	get cosignatures() {
+		return this._cosignatures;
+	}
+
+	set cosignatures(value) {
+		this._cosignatures = value;
+	}
+
+	get size() { // eslint-disable-line class-methods-use-this
+		let size = 0;
+		size += super.size;
+		size += this.transactionsHash.size;
+		size += 4;
+		size += 4;
+		size += arrayHelpers.size(this.transactions, 8, false);
+		size += arrayHelpers.size(this.cosignatures);
+		return size;
+	}
+
+	static deserialize(payload) {
+		const view = new BufferView(payload);
+		const instance = new AggregateBondedTransactionV3();
+
+		Transaction._deserialize(view, instance);
+		const transactionsHash = Hash256.deserialize(view.buffer);
+		view.shiftRight(transactionsHash.size);
+		const payloadSize = converter.bytesToInt(view.buffer, 4, false);
+		view.shiftRight(4);
+		const aggregateTransactionHeaderReserved_1 = converter.bytesToInt(view.buffer, 4, false);
+		view.shiftRight(4);
+		if (0 !== aggregateTransactionHeaderReserved_1)
+			throw RangeError(`Invalid value of reserved field (${aggregateTransactionHeaderReserved_1})`);
+		const transactions = arrayHelpers.readVariableSizeElements(view.window(payloadSize), EmbeddedTransactionFactory, 8, false);
+		view.shiftRight(payloadSize);
+		const cosignatures = arrayHelpers.readArray(view.buffer, Cosignature);
+		view.shiftRight(arrayHelpers.size(cosignatures));
+
+		instance._transactionsHash = transactionsHash;
+		instance._transactions = transactions;
+		instance._cosignatures = cosignatures;
+		return instance;
+	}
+
+	serialize() {
+		const buffer = new Writer(this.size);
+		super._serialize(buffer);
+		buffer.write(this._transactionsHash.serialize());
+		buffer.write(converter.intToBytes(arrayHelpers.size(this.transactions, 8, false), 4, false)); // bound: payload_size
+		buffer.write(converter.intToBytes(this._aggregateTransactionHeaderReserved_1, 4, false));
+		arrayHelpers.writeVariableSizeElements(buffer, this._transactions, 8, false);
+		arrayHelpers.writeArray(buffer, this._cosignatures);
+		return buffer.storage;
+	}
+
+	toString() {
+		let result = '(';
+		result += super.toString();
+		result += `transactionsHash: ${this._transactionsHash.toString()}, `;
+		result += `transactions: [${this._transactions.map(e => e.toString()).join(',')}], `;
+		result += `cosignatures: [${this._cosignatures.map(e => e.toString()).join(',')}], `;
+		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.transactionsHash = this._transactionsHash.toJson();
+		result.transactions = this._transactions.map(e => e.toJson());
+		result.cosignatures = this._cosignatures.map(e => e.toJson());
 		return result;
 	}
 }
@@ -5015,6 +5757,19 @@ export class VotingKeyLinkTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkedPublicKey = this._linkedPublicKey.toJson();
+		result.startEpoch = this._startEpoch.toJson();
+		result.endEpoch = this._endEpoch.toJson();
+		result.linkAction = this._linkAction.toJson();
+		return result;
+	}
 }
 
 export class EmbeddedVotingKeyLinkTransactionV1 extends EmbeddedTransaction {
@@ -5126,6 +5881,19 @@ export class EmbeddedVotingKeyLinkTransactionV1 extends EmbeddedTransaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkedPublicKey = this._linkedPublicKey.toJson();
+		result.startEpoch = this._startEpoch.toJson();
+		result.endEpoch = this._endEpoch.toJson();
+		result.linkAction = this._linkAction.toJson();
+		return result;
+	}
 }
 
 export class VrfKeyLinkTransactionV1 extends Transaction {
@@ -5205,6 +5973,17 @@ export class VrfKeyLinkTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkedPublicKey = this._linkedPublicKey.toJson();
+		result.linkAction = this._linkAction.toJson();
+		return result;
+	}
 }
 
 export class EmbeddedVrfKeyLinkTransactionV1 extends EmbeddedTransaction {
@@ -5282,6 +6061,17 @@ export class EmbeddedVrfKeyLinkTransactionV1 extends EmbeddedTransaction {
 		result += `linkedPublicKey: ${this._linkedPublicKey.toString()}, `;
 		result += `linkAction: ${this._linkAction.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.linkedPublicKey = this._linkedPublicKey.toJson();
+		result.linkAction = this._linkAction.toJson();
 		return result;
 	}
 }
@@ -5380,6 +6170,18 @@ export class HashLockTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.duration = this._duration.toJson();
+		result.hash = this._hash.toJson();
+		return result;
+	}
 }
 
 export class EmbeddedHashLockTransactionV1 extends EmbeddedTransaction {
@@ -5476,6 +6278,18 @@ export class EmbeddedHashLockTransactionV1 extends EmbeddedTransaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaic = this._mosaic.toJson();
+		result.duration = this._duration.toJson();
+		result.hash = this._hash.toJson();
+		return result;
+	}
 }
 
 export class LockHashAlgorithm {
@@ -5528,6 +6342,10 @@ export class LockHashAlgorithm {
 
 	toString() {
 		return `LockHashAlgorithm.${LockHashAlgorithm.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -5655,6 +6473,20 @@ export class SecretLockTransactionV1 extends Transaction {
 		result += `duration: ${this._duration.toString()}, `;
 		result += `hashAlgorithm: ${this._hashAlgorithm.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.secret = this._secret.toJson();
+		result.mosaic = this._mosaic.toJson();
+		result.duration = this._duration.toJson();
+		result.hashAlgorithm = this._hashAlgorithm.toJson();
 		return result;
 	}
 }
@@ -5785,6 +6617,20 @@ export class EmbeddedSecretLockTransactionV1 extends EmbeddedTransaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.secret = this._secret.toJson();
+		result.mosaic = this._mosaic.toJson();
+		result.duration = this._duration.toJson();
+		result.hashAlgorithm = this._hashAlgorithm.toJson();
+		return result;
+	}
 }
 
 export class SecretProofTransactionV1 extends Transaction {
@@ -5898,6 +6744,19 @@ export class SecretProofTransactionV1 extends Transaction {
 		result += `hashAlgorithm: ${this._hashAlgorithm.toString()}, `;
 		result += `proof: hex(${converter.uint8ToHex(this._proof)}), `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.secret = this._secret.toJson();
+		result.hashAlgorithm = this._hashAlgorithm.toJson();
+		result.proof = converter.uint8ToHex(this._proof);
 		return result;
 	}
 }
@@ -6015,6 +6874,19 @@ export class EmbeddedSecretProofTransactionV1 extends EmbeddedTransaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.secret = this._secret.toJson();
+		result.hashAlgorithm = this._hashAlgorithm.toJson();
+		result.proof = converter.uint8ToHex(this._proof);
+		return result;
+	}
 }
 
 export class AccountMetadataTransactionV1 extends Transaction {
@@ -6128,6 +7000,19 @@ export class AccountMetadataTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.targetAddress = this._targetAddress.toJson();
+		result.scopedMetadataKey = this._scopedMetadataKey.toString();
+		result.valueSizeDelta = this._valueSizeDelta;
+		result.value = converter.uint8ToHex(this._value);
+		return result;
+	}
 }
 
 export class EmbeddedAccountMetadataTransactionV1 extends EmbeddedTransaction {
@@ -6239,6 +7124,19 @@ export class EmbeddedAccountMetadataTransactionV1 extends EmbeddedTransaction {
 		result += `valueSizeDelta: ${'0x'.concat(this._valueSizeDelta.toString(16))}, `;
 		result += `value: hex(${converter.uint8ToHex(this._value)}), `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.targetAddress = this._targetAddress.toJson();
+		result.scopedMetadataKey = this._scopedMetadataKey.toString();
+		result.valueSizeDelta = this._valueSizeDelta;
+		result.value = converter.uint8ToHex(this._value);
 		return result;
 	}
 }
@@ -6370,6 +7268,20 @@ export class MosaicMetadataTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.targetAddress = this._targetAddress.toJson();
+		result.scopedMetadataKey = this._scopedMetadataKey.toString();
+		result.targetMosaicId = this._targetMosaicId.toJson();
+		result.valueSizeDelta = this._valueSizeDelta;
+		result.value = converter.uint8ToHex(this._value);
+		return result;
+	}
 }
 
 export class EmbeddedMosaicMetadataTransactionV1 extends EmbeddedTransaction {
@@ -6497,6 +7409,20 @@ export class EmbeddedMosaicMetadataTransactionV1 extends EmbeddedTransaction {
 		result += `valueSizeDelta: ${'0x'.concat(this._valueSizeDelta.toString(16))}, `;
 		result += `value: hex(${converter.uint8ToHex(this._value)}), `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.targetAddress = this._targetAddress.toJson();
+		result.scopedMetadataKey = this._scopedMetadataKey.toString();
+		result.targetMosaicId = this._targetMosaicId.toJson();
+		result.valueSizeDelta = this._valueSizeDelta;
+		result.value = converter.uint8ToHex(this._value);
 		return result;
 	}
 }
@@ -6628,6 +7554,20 @@ export class NamespaceMetadataTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.targetAddress = this._targetAddress.toJson();
+		result.scopedMetadataKey = this._scopedMetadataKey.toString();
+		result.targetNamespaceId = this._targetNamespaceId.toJson();
+		result.valueSizeDelta = this._valueSizeDelta;
+		result.value = converter.uint8ToHex(this._value);
+		return result;
+	}
 }
 
 export class EmbeddedNamespaceMetadataTransactionV1 extends EmbeddedTransaction {
@@ -6757,6 +7697,20 @@ export class EmbeddedNamespaceMetadataTransactionV1 extends EmbeddedTransaction 
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.targetAddress = this._targetAddress.toJson();
+		result.scopedMetadataKey = this._scopedMetadataKey.toString();
+		result.targetNamespaceId = this._targetNamespaceId.toJson();
+		result.valueSizeDelta = this._valueSizeDelta;
+		result.value = converter.uint8ToHex(this._value);
+		return result;
+	}
 }
 
 export class MosaicNonce extends BaseValue {
@@ -6834,6 +7788,10 @@ export class MosaicFlags {
 		const positions = values.map(flag => (this.value & flag)).filter(n => n).map(n => values.indexOf(n));
 		return positions.map(n => `MosaicFlags.${keys[n]}`).join('|');
 	}
+
+	toJson() {
+		return this.value;
+	}
 }
 
 export class MosaicSupplyChangeAction {
@@ -6884,6 +7842,10 @@ export class MosaicSupplyChangeAction {
 
 	toString() {
 		return `MosaicSupplyChangeAction.${MosaicSupplyChangeAction.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -7009,6 +7971,20 @@ export class MosaicDefinitionTransactionV1 extends Transaction {
 		result += `flags: ${this._flags.toString()}, `;
 		result += `divisibility: ${'0x'.concat(this._divisibility.toString(16))}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.id = this._id.toJson();
+		result.duration = this._duration.toJson();
+		result.nonce = this._nonce.toJson();
+		result.flags = this._flags.toJson();
+		result.divisibility = this._divisibility;
 		return result;
 	}
 }
@@ -7137,6 +8113,20 @@ export class EmbeddedMosaicDefinitionTransactionV1 extends EmbeddedTransaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.id = this._id.toJson();
+		result.duration = this._duration.toJson();
+		result.nonce = this._nonce.toJson();
+		result.flags = this._flags.toJson();
+		result.divisibility = this._divisibility;
+		return result;
+	}
 }
 
 export class MosaicSupplyChangeTransactionV1 extends Transaction {
@@ -7230,6 +8220,18 @@ export class MosaicSupplyChangeTransactionV1 extends Transaction {
 		result += `delta: ${this._delta.toString()}, `;
 		result += `action: ${this._action.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicId = this._mosaicId.toJson();
+		result.delta = this._delta.toJson();
+		result.action = this._action.toJson();
 		return result;
 	}
 }
@@ -7327,6 +8329,18 @@ export class EmbeddedMosaicSupplyChangeTransactionV1 extends EmbeddedTransaction
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicId = this._mosaicId.toJson();
+		result.delta = this._delta.toJson();
+		result.action = this._action.toJson();
+		return result;
+	}
 }
 
 export class MosaicSupplyRevocationTransactionV1 extends Transaction {
@@ -7407,6 +8421,17 @@ export class MosaicSupplyRevocationTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.sourceAddress = this._sourceAddress.toJson();
+		result.mosaic = this._mosaic.toJson();
+		return result;
+	}
 }
 
 export class EmbeddedMosaicSupplyRevocationTransactionV1 extends EmbeddedTransaction {
@@ -7485,6 +8510,17 @@ export class EmbeddedMosaicSupplyRevocationTransactionV1 extends EmbeddedTransac
 		result += `sourceAddress: ${this._sourceAddress.toString()}, `;
 		result += `mosaic: ${this._mosaic.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.sourceAddress = this._sourceAddress.toJson();
+		result.mosaic = this._mosaic.toJson();
 		return result;
 	}
 }
@@ -7611,6 +8647,19 @@ export class MultisigAccountModificationTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.minRemovalDelta = this._minRemovalDelta;
+		result.minApprovalDelta = this._minApprovalDelta;
+		result.addressAdditions = this._addressAdditions.map(e => e.toJson());
+		result.addressDeletions = this._addressDeletions.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class EmbeddedMultisigAccountModificationTransactionV1 extends EmbeddedTransaction {
@@ -7735,6 +8784,19 @@ export class EmbeddedMultisigAccountModificationTransactionV1 extends EmbeddedTr
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.minRemovalDelta = this._minRemovalDelta;
+		result.minApprovalDelta = this._minApprovalDelta;
+		result.addressAdditions = this._addressAdditions.map(e => e.toJson());
+		result.addressDeletions = this._addressDeletions.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class AddressAliasTransactionV1 extends Transaction {
@@ -7828,6 +8890,18 @@ export class AddressAliasTransactionV1 extends Transaction {
 		result += `address: ${this._address.toString()}, `;
 		result += `aliasAction: ${this._aliasAction.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.namespaceId = this._namespaceId.toJson();
+		result.address = this._address.toJson();
+		result.aliasAction = this._aliasAction.toJson();
 		return result;
 	}
 }
@@ -7925,6 +8999,18 @@ export class EmbeddedAddressAliasTransactionV1 extends EmbeddedTransaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.namespaceId = this._namespaceId.toJson();
+		result.address = this._address.toJson();
+		result.aliasAction = this._aliasAction.toJson();
+		return result;
+	}
 }
 
 export class MosaicAliasTransactionV1 extends Transaction {
@@ -8020,6 +9106,18 @@ export class MosaicAliasTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.namespaceId = this._namespaceId.toJson();
+		result.mosaicId = this._mosaicId.toJson();
+		result.aliasAction = this._aliasAction.toJson();
+		return result;
+	}
 }
 
 export class EmbeddedMosaicAliasTransactionV1 extends EmbeddedTransaction {
@@ -8113,6 +9211,18 @@ export class EmbeddedMosaicAliasTransactionV1 extends EmbeddedTransaction {
 		result += `mosaicId: ${this._mosaicId.toString()}, `;
 		result += `aliasAction: ${this._aliasAction.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.namespaceId = this._namespaceId.toJson();
+		result.mosaicId = this._mosaicId.toJson();
+		result.aliasAction = this._aliasAction.toJson();
 		return result;
 	}
 }
@@ -8267,6 +9377,24 @@ export class NamespaceRegistrationTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		if (NamespaceRegistrationType.ROOT === this.registrationType)
+			result.duration = this._duration.toJson();
+
+		if (NamespaceRegistrationType.CHILD === this.registrationType)
+			result.parentId = this._parentId.toJson();
+
+		result.id = this._id.toJson();
+		result.registrationType = this._registrationType.toJson();
+		result.name = converter.uint8ToHex(this._name);
+		return result;
+	}
 }
 
 export class EmbeddedNamespaceRegistrationTransactionV1 extends EmbeddedTransaction {
@@ -8419,6 +9547,24 @@ export class EmbeddedNamespaceRegistrationTransactionV1 extends EmbeddedTransact
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		if (NamespaceRegistrationType.ROOT === this.registrationType)
+			result.duration = this._duration.toJson();
+
+		if (NamespaceRegistrationType.CHILD === this.registrationType)
+			result.parentId = this._parentId.toJson();
+
+		result.id = this._id.toJson();
+		result.registrationType = this._registrationType.toJson();
+		result.name = converter.uint8ToHex(this._name);
+		return result;
+	}
 }
 
 export class AccountRestrictionFlags {
@@ -8473,6 +9619,10 @@ export class AccountRestrictionFlags {
 
 		const positions = values.map(flag => (this.value & flag)).filter(n => n).map(n => values.indexOf(n));
 		return positions.map(n => `AccountRestrictionFlags.${keys[n]}`).join('|');
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -8582,6 +9732,18 @@ export class AccountAddressRestrictionTransactionV1 extends Transaction {
 		result += `restrictionAdditions: [${this._restrictionAdditions.map(e => e.toString()).join(',')}], `;
 		result += `restrictionDeletions: [${this._restrictionDeletions.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.restrictionFlags = this._restrictionFlags.toJson();
+		result.restrictionAdditions = this._restrictionAdditions.map(e => e.toJson());
+		result.restrictionDeletions = this._restrictionDeletions.map(e => e.toJson());
 		return result;
 	}
 }
@@ -8694,6 +9856,18 @@ export class EmbeddedAccountAddressRestrictionTransactionV1 extends EmbeddedTran
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.restrictionFlags = this._restrictionFlags.toJson();
+		result.restrictionAdditions = this._restrictionAdditions.map(e => e.toJson());
+		result.restrictionDeletions = this._restrictionDeletions.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class AccountMosaicRestrictionTransactionV1 extends Transaction {
@@ -8802,6 +9976,18 @@ export class AccountMosaicRestrictionTransactionV1 extends Transaction {
 		result += `restrictionAdditions: [${this._restrictionAdditions.map(e => e.toString()).join(',')}], `;
 		result += `restrictionDeletions: [${this._restrictionDeletions.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.restrictionFlags = this._restrictionFlags.toJson();
+		result.restrictionAdditions = this._restrictionAdditions.map(e => e.toJson());
+		result.restrictionDeletions = this._restrictionDeletions.map(e => e.toJson());
 		return result;
 	}
 }
@@ -8914,6 +10100,18 @@ export class EmbeddedAccountMosaicRestrictionTransactionV1 extends EmbeddedTrans
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.restrictionFlags = this._restrictionFlags.toJson();
+		result.restrictionAdditions = this._restrictionAdditions.map(e => e.toJson());
+		result.restrictionDeletions = this._restrictionDeletions.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class AccountOperationRestrictionTransactionV1 extends Transaction {
@@ -9024,6 +10222,18 @@ export class AccountOperationRestrictionTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.restrictionFlags = this._restrictionFlags.toJson();
+		result.restrictionAdditions = this._restrictionAdditions.map(e => e.toJson());
+		result.restrictionDeletions = this._restrictionDeletions.map(e => e.toJson());
+		return result;
+	}
 }
 
 export class EmbeddedAccountOperationRestrictionTransactionV1 extends EmbeddedTransaction {
@@ -9132,6 +10342,18 @@ export class EmbeddedAccountOperationRestrictionTransactionV1 extends EmbeddedTr
 		result += `restrictionAdditions: [${this._restrictionAdditions.map(e => e.toString()).join(',')}], `;
 		result += `restrictionDeletions: [${this._restrictionDeletions.map(e => e.toString()).join(',')}], `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.restrictionFlags = this._restrictionFlags.toJson();
+		result.restrictionAdditions = this._restrictionAdditions.map(e => e.toJson());
+		result.restrictionDeletions = this._restrictionDeletions.map(e => e.toJson());
 		return result;
 	}
 }
@@ -9258,6 +10480,20 @@ export class MosaicAddressRestrictionTransactionV1 extends Transaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicId = this._mosaicId.toJson();
+		result.restrictionKey = this._restrictionKey.toString();
+		result.previousRestrictionValue = this._previousRestrictionValue.toString();
+		result.newRestrictionValue = this._newRestrictionValue.toString();
+		result.targetAddress = this._targetAddress.toJson();
+		return result;
+	}
 }
 
 export class EmbeddedMosaicAddressRestrictionTransactionV1 extends EmbeddedTransaction {
@@ -9382,6 +10618,20 @@ export class EmbeddedMosaicAddressRestrictionTransactionV1 extends EmbeddedTrans
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicId = this._mosaicId.toJson();
+		result.restrictionKey = this._restrictionKey.toString();
+		result.previousRestrictionValue = this._previousRestrictionValue.toString();
+		result.newRestrictionValue = this._newRestrictionValue.toString();
+		result.targetAddress = this._targetAddress.toJson();
+		return result;
+	}
 }
 
 export class MosaicRestrictionKey extends BaseValue {
@@ -9464,6 +10714,10 @@ export class MosaicRestrictionType {
 
 	toString() {
 		return `MosaicRestrictionType.${MosaicRestrictionType.valueToKey(this.value)}`;
+	}
+
+	toJson() {
+		return this.value;
 	}
 }
 
@@ -9619,6 +10873,22 @@ export class MosaicGlobalRestrictionTransactionV1 extends Transaction {
 		result += `previousRestrictionType: ${this._previousRestrictionType.toString()}, `;
 		result += `newRestrictionType: ${this._newRestrictionType.toString()}, `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicId = this._mosaicId.toJson();
+		result.referenceMosaicId = this._referenceMosaicId.toJson();
+		result.restrictionKey = this._restrictionKey.toString();
+		result.previousRestrictionValue = this._previousRestrictionValue.toString();
+		result.newRestrictionValue = this._newRestrictionValue.toString();
+		result.previousRestrictionType = this._previousRestrictionType.toJson();
+		result.newRestrictionType = this._newRestrictionType.toJson();
 		return result;
 	}
 }
@@ -9777,6 +11047,22 @@ export class EmbeddedMosaicGlobalRestrictionTransactionV1 extends EmbeddedTransa
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.mosaicId = this._mosaicId.toJson();
+		result.referenceMosaicId = this._referenceMosaicId.toJson();
+		result.restrictionKey = this._restrictionKey.toString();
+		result.previousRestrictionValue = this._previousRestrictionValue.toString();
+		result.newRestrictionValue = this._newRestrictionValue.toString();
+		result.previousRestrictionType = this._previousRestrictionType.toJson();
+		result.newRestrictionType = this._newRestrictionType.toJson();
+		return result;
+	}
 }
 
 export class TransferTransactionV1 extends Transaction {
@@ -9896,6 +11182,18 @@ export class TransferTransactionV1 extends Transaction {
 		result += `mosaics: [${this._mosaics.map(e => e.toString()).join(',')}], `;
 		result += `message: hex(${converter.uint8ToHex(this._message)}), `;
 		result += ')';
+		return result;
+	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.mosaics = this._mosaics.map(e => e.toJson());
+		result.message = converter.uint8ToHex(this._message);
 		return result;
 	}
 }
@@ -10019,6 +11317,18 @@ export class EmbeddedTransferTransactionV1 extends EmbeddedTransaction {
 		result += ')';
 		return result;
 	}
+
+	/**
+	 * @returns {object} JSON-safe representation of this object.
+	 */
+	toJson() {
+		const result = {};
+		Object.assign(result, super.toJson());
+		result.recipientAddress = this._recipientAddress.toJson();
+		result.mosaics = this._mosaics.map(e => e.toJson());
+		result.message = converter.uint8ToHex(this._message);
+		return result;
+	}
 }
 
 export class TransactionFactory {
@@ -10040,8 +11350,10 @@ export class TransactionFactory {
 		mapping.set(TransactionFactory.toKey([NodeKeyLinkTransactionV1.TRANSACTION_TYPE.value, NodeKeyLinkTransactionV1.TRANSACTION_VERSION]), NodeKeyLinkTransactionV1);
 		mapping.set(TransactionFactory.toKey([AggregateCompleteTransactionV1.TRANSACTION_TYPE.value, AggregateCompleteTransactionV1.TRANSACTION_VERSION]), AggregateCompleteTransactionV1);
 		mapping.set(TransactionFactory.toKey([AggregateCompleteTransactionV2.TRANSACTION_TYPE.value, AggregateCompleteTransactionV2.TRANSACTION_VERSION]), AggregateCompleteTransactionV2);
+		mapping.set(TransactionFactory.toKey([AggregateCompleteTransactionV3.TRANSACTION_TYPE.value, AggregateCompleteTransactionV3.TRANSACTION_VERSION]), AggregateCompleteTransactionV3);
 		mapping.set(TransactionFactory.toKey([AggregateBondedTransactionV1.TRANSACTION_TYPE.value, AggregateBondedTransactionV1.TRANSACTION_VERSION]), AggregateBondedTransactionV1);
 		mapping.set(TransactionFactory.toKey([AggregateBondedTransactionV2.TRANSACTION_TYPE.value, AggregateBondedTransactionV2.TRANSACTION_VERSION]), AggregateBondedTransactionV2);
+		mapping.set(TransactionFactory.toKey([AggregateBondedTransactionV3.TRANSACTION_TYPE.value, AggregateBondedTransactionV3.TRANSACTION_VERSION]), AggregateBondedTransactionV3);
 		mapping.set(TransactionFactory.toKey([VotingKeyLinkTransactionV1.TRANSACTION_TYPE.value, VotingKeyLinkTransactionV1.TRANSACTION_VERSION]), VotingKeyLinkTransactionV1);
 		mapping.set(TransactionFactory.toKey([VrfKeyLinkTransactionV1.TRANSACTION_TYPE.value, VrfKeyLinkTransactionV1.TRANSACTION_VERSION]), VrfKeyLinkTransactionV1);
 		mapping.set(TransactionFactory.toKey([HashLockTransactionV1.TRANSACTION_TYPE.value, HashLockTransactionV1.TRANSACTION_VERSION]), HashLockTransactionV1);
@@ -10074,8 +11386,10 @@ export class TransactionFactory {
 			node_key_link_transaction_v1: NodeKeyLinkTransactionV1,
 			aggregate_complete_transaction_v1: AggregateCompleteTransactionV1,
 			aggregate_complete_transaction_v2: AggregateCompleteTransactionV2,
+			aggregate_complete_transaction_v3: AggregateCompleteTransactionV3,
 			aggregate_bonded_transaction_v1: AggregateBondedTransactionV1,
 			aggregate_bonded_transaction_v2: AggregateBondedTransactionV2,
+			aggregate_bonded_transaction_v3: AggregateBondedTransactionV3,
 			voting_key_link_transaction_v1: VotingKeyLinkTransactionV1,
 			vrf_key_link_transaction_v1: VrfKeyLinkTransactionV1,
 			hash_lock_transaction_v1: HashLockTransactionV1,

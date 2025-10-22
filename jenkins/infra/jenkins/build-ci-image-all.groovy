@@ -53,6 +53,23 @@ pipeline {
 						}
 					}
 				}
+
+				stage('docs') {
+					steps {
+						script {
+							dispatchBuildCiImageJob('docs')
+						}
+					}
+				}
+
+				stage('golang') {
+					steps {
+						script {
+							dispatchBuildCiImageJob('golang')
+						}
+					}
+				}
+
 				stage('java') {
 					steps {
 						script {

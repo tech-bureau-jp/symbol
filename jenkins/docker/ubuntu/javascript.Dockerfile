@@ -1,17 +1,17 @@
-ARG FROM_IMAGE='ubuntu:22.04'
+ARG FROM_IMAGE='ubuntu:24.04'
 
 FROM ${FROM_IMAGE}
 
 # install tzdata first to prevent 'geographic area' prompt
 RUN apt-get update >/dev/null \
 	&& apt-get install -y tzdata \
-	&& apt-get install -y git curl
+	&& apt-get install -y git curl zip unzip
 
-# mongodb 6.0
+# mongodb 8.0
 RUN apt-get install -y wget gnupg \
-	&& wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc |  gpg --dearmor | tee /usr/share/keyrings/mongodb.gpg > /dev/null \
-	&& echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse"  \
-	| tee /etc/apt/sources.list.d/mongodb-org-6.0.list \
+	&& wget -qO - https://www.mongodb.org/static/pgp/server-8.0.asc |  gpg --dearmor | tee /usr/share/keyrings/mongodb.gpg > /dev/null \
+	&& echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/8.0 multiverse"  \
+	| tee /etc/apt/sources.list.d/mongodb-org-8.0.list \
 	&& apt-get update \
 	&& apt-get install -y mongodb-org
 
@@ -40,11 +40,20 @@ RUN apt-get install -y libssl-dev pkg-config \
 # there is no aarch64 build of binaryen -  https://github.com/WebAssembly/binaryen/issues/5337
 	&& if [ "$(uname -m)" = "aarch64" ]; then apt-get install -y binaryen; fi
 
+# install node-canvas dependencies - https://github.com/Automattic/node-canvas/wiki/Installation:-Ubuntu-and-other-Debian-based-systems
+RUN apt-get install -y build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
 # codecov uploader
 RUN ARCH=$([ "$(uname -m)" = "x86_64" ] && echo "linux" || echo "aarch64") \
 	&& curl -Os "https://uploader.codecov.io/latest/${ARCH}/codecov" \
 	&& chmod +x codecov \
 	&& mv codecov /usr/local/bin
+
+# install aws cli
+RUN ARCH=$([ "$(uname -m)" = "x86_64" ] && echo "x86_64" || echo "aarch64") \
+	&& curl "https://awscli.amazonaws.com/awscli-exe-linux-${ARCH}.zip" -o "awscliv2.zip" \
+	&& unzip awscliv2.zip \
+	&& ./aws/install
 
 # add ubuntu user (used by jenkins)
 RUN id -u "ubuntu" || useradd --uid 1000 -ms /bin/bash ubuntu
@@ -70,4 +79,4 @@ RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # install common python packages
-RUN python3 -m pip install --upgrade gitlint isort lark pycodestyle pylint PyYAML
+RUN python3 -m pip install --upgrade gitlint isort lark pycodestyle pylint PyYAML coverage
