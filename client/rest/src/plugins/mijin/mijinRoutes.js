@@ -107,11 +107,40 @@ export default {
         });
         const pingResults = await Promise.all(pingPromises);
 
-        res.send({
-          payload: pingResults.map((p) => p.payload),
-          type: pingResults[0].type,
-          formatter: pingResults[0].formatter,
+        // Get chain info from database
+        const [chainInfo, finalizedBlockInfo] = await Promise.all([
+          db.chainStatisticCurrent(),
+          db.latestFinalizedBlock()
+        ]);
+
+        // Manually format and add chain info
+        const formattedPayload = pingResults.map(result => {
+          const nodeInfo = result.payload;
+          const formatted = {};
+          Object.keys(nodeInfo).forEach(key => {
+            const value = nodeInfo[key];
+            if (Buffer.isBuffer(value)) {
+              if (key === 'host' || key === 'friendlyName') {
+                formatted[key] = value.toString('utf8');
+              } else {
+                formatted[key] = value.toString('hex').toUpperCase();
+              }
+            } else {
+              formatted[key] = value;
+            }
+          });
+          formatted.height = chainInfo?.height?.toString();
+          if (finalizedBlockInfo?.block) {
+            formatted.latestFinalizedBlock = {
+              height: finalizedBlockInfo.block.height?.toString(),
+              finalizationEpoch: finalizedBlockInfo.block.finalizationEpoch,
+              finalizationPoint: finalizedBlockInfo.block.finalizationPoint
+            };
+          }
+          return formatted;
         });
+
+        res.send(formattedPayload);
         next();
       } catch (err) {
         next(err);
