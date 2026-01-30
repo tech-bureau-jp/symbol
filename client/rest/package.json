@@ -1,6 +1,6 @@
 {
   "name": "catapult-api-rest",
-  "version": "2.5.1-mijin",
+  "version": "2.5.2-mijin",
   "type": "module",
   "description": "Symbol API REST",
   "main": "src/index.js",
