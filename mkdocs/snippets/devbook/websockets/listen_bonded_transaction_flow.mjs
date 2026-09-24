@@ -1,0 +1,269 @@
+import { Hash256, PrivateKey } from 'symbol-sdk';
+import {
+	SymbolFacade,
+	descriptors,
+	generateMosaicAliasId,
+	models
+} from 'symbol-sdk/symbol';
+
+const NODE_URL = process.env.NODE_URL ||
+	'https://reference.symboltest.net:3001';
+const WS_URL = `${NODE_URL.replace('http', 'ws')}/ws`;
+console.log(`Using node ${NODE_URL}`);
+
+async function announceTransaction(payload, endpoint, label) {
+	await fetch(`${NODE_URL}${endpoint}`, {
+		method: 'PUT',
+		headers: { 'Content-Type': 'application/json' },
+		body: payload
+	});
+	console.log(label);
+}
+
+// [>step-1]
+const ACCOUNT_A_PRIVATE_KEY = process.env.ACCOUNT_A_PRIVATE_KEY ||
+	'0000000000000000000000000000000000000000000000000000000000000000';
+const ACCOUNT_B_PRIVATE_KEY = process.env.ACCOUNT_B_PRIVATE_KEY ||
+	'1111111111111111111111111111111111111111111111111111111111111111';
+
+const facade = new SymbolFacade('testnet');
+const accountAKeyPair = new SymbolFacade.KeyPair(
+	new PrivateKey(ACCOUNT_A_PRIVATE_KEY));
+const accountBKeyPair = new SymbolFacade.KeyPair(
+	new PrivateKey(ACCOUNT_B_PRIVATE_KEY));
+const accountAAddress = facade.network
+	.publicKeyToAddress(accountAKeyPair.publicKey);
+const accountBAddress = facade.network
+	.publicKeyToAddress(accountBKeyPair.publicKey);
+console.log('Account A:', accountAAddress.toString());
+console.log('Account B:', accountBAddress.toString());
+// [<step-1]
+try {
+	// Fetch recommended fees
+	const feeResponse = await fetch(
+		`${NODE_URL}/network/fees/transaction`);
+	const feeJSON = await feeResponse.json();
+	const feeMultiplier = Math.max(
+		feeJSON.medianFeeMultiplier, feeJSON.minFeeMultiplier);
+
+	// [Account A] Build embedded transactions for the swap [>step-2]
+	const embeddedTx1 =
+		facade.createEmbeddedTransactionFromTypedDescriptor(
+			new descriptors.TransferTransactionV1Descriptor(
+				accountBAddress,
+				[
+					new descriptors.UnresolvedMosaicDescriptor(
+						generateMosaicAliasId('symbol.xym'),
+						new models.Amount(10_000_000n))
+				],
+				undefined),
+			accountAKeyPair.publicKey);
+
+	const customMosaicId = 0x6D1314BE751B62C2n;
+	const embeddedTx2 =
+		facade.createEmbeddedTransactionFromTypedDescriptor(
+			new descriptors.TransferTransactionV1Descriptor(
+				accountAAddress,
+				[
+					new descriptors.UnresolvedMosaicDescriptor(
+						customMosaicId,
+						new models.Amount(1n))
+				],
+				undefined),
+			accountBKeyPair.publicKey);
+
+	// Build the bonded aggregate transaction
+	const embeddedTxs = [embeddedTx1, embeddedTx2];
+	const bondedTx = facade.createTransactionFromTypedDescriptor(
+		new descriptors.AggregateBondedTransactionV3Descriptor(
+			facade.static.hashEmbeddedTransactions(embeddedTxs),
+			embeddedTxs,
+			undefined),
+		accountAKeyPair.publicKey,
+		feeMultiplier,
+		2 * 60 * 60,
+		1);
+
+	// Sign the bonded aggregate
+	const bondedSignature = facade.signTransaction(
+		accountAKeyPair, bondedTx);
+	const bondedPayload = facade.transactionFactory
+		.static.attachSignature(bondedTx, bondedSignature);
+	const bondedHash = facade
+		.hashTransaction(bondedTx).toString();
+	console.log('[Account A] Bonded aggregate hash: ' +
+		`${bondedHash.substring(0, 16)}...`);
+
+	// Create the hash lock transaction
+	const hashLock = facade.createTransactionFromTypedDescriptor(
+		new descriptors.HashLockTransactionV1Descriptor(
+			new descriptors.UnresolvedMosaicDescriptor(
+				generateMosaicAliasId('symbol.xym'),
+				new models.Amount(10_000_000n)),
+			new models.BlockDuration(100n),
+			new Hash256(bondedHash)),
+		accountAKeyPair.publicKey,
+		feeMultiplier,
+		2 * 60 * 60);
+	const hashLockSignature = facade.signTransaction(
+		accountAKeyPair, hashLock);
+	const hashLockPayload = facade.transactionFactory
+		.static.attachSignature(hashLock, hashLockSignature);
+	const hashLockHash = facade
+		.hashTransaction(hashLock).toString();
+
+	// Confirm hash lock via WebSocket
+	const lockWebSocket = new WebSocket(WS_URL);
+	const lockUid = await new Promise(resolve => {
+		lockWebSocket.addEventListener('message', event => {
+			const message = JSON.parse(event.data);
+			resolve(message.uid);
+		}, { once: true });
+	});
+
+	const addressA = accountAAddress.toString();
+	const lockChannels = [
+		`confirmedAdded/${addressA}`,
+		`status/${addressA}`
+	];
+	for (const channel of lockChannels) {
+		lockWebSocket.send(JSON.stringify({
+			uid: lockUid, subscribe: channel
+		}));
+	}
+
+	// Announce hash lock
+	await announceTransaction(
+		hashLockPayload, '/transactions',
+		'[Account A] Announced hash lock ' +
+		`${hashLockHash.substring(0, 16)}...`);
+
+	// Wait for hash lock confirmation
+	await new Promise((resolve, reject) => {
+		lockWebSocket.addEventListener('message', event => {
+			const message = JSON.parse(event.data);
+			const name = message.topic.split('/')[0];
+
+			if ('confirmedAdded' === name &&
+				message.data.meta.hash === hashLockHash) {
+				console.log('Hash lock confirmed');
+				resolve();
+			}
+
+			if ('status' === name &&
+				message.data.hash === hashLockHash) {
+				reject(new Error(
+					`Hash lock failed: ${message.data.code}`));
+			}
+		});
+	});
+
+	for (const channel of lockChannels) {
+		lockWebSocket.send(JSON.stringify({
+			uid: lockUid, unsubscribe: channel
+		}));
+	}
+	lockWebSocket.close();
+	// [<step-2]
+	// [Account B] Connect to WebSocket for bonded flow [>step-3]
+	const websocket = new WebSocket(WS_URL);
+	const uid = await new Promise(resolve => {
+		websocket.addEventListener('message', event => {
+			const message = JSON.parse(event.data);
+			resolve(message.uid);
+		}, { once: true });
+	});
+	console.log(`[Account B] Connected to ${WS_URL} with uid ${uid}`);
+
+	// Subscribe to bonded transaction channels
+	const addressB = accountBAddress.toString();
+	const channels = [
+		`partialAdded/${addressB}`,
+		`partialRemoved/${addressB}`,
+		`cosignature/${addressB}`,
+		`unconfirmedAdded/${addressB}`,
+		`unconfirmedRemoved/${addressB}`,
+		`confirmedAdded/${addressB}`,
+		`status/${addressB}`
+	];
+	for (const channel of channels) {
+		websocket.send(JSON.stringify({ uid, subscribe: channel }));
+		const name = channel.split('/')[0];
+		console.log(`[Account B] Subscribed to ${name} channel`);
+	}
+	// [<step-3]
+	// [Account B] Listen for bonded transaction flow [>step-5]
+	const confirmed = new Promise((resolve, reject) => {
+		websocket.addEventListener('message', event => {
+			const message = JSON.parse(event.data);
+			const topic = message.topic;
+			const name = topic.split('/')[0];
+
+			if ('cosignature' === name) {
+				const signer = message.data.signerPublicKey;
+				console.log(
+					`cosignature: signer=${signer.substring(0, 16)}...`);
+			} else if ('status' === name) {
+				const statusHash = message.data.hash;
+				console.log(
+					`status: hash=${statusHash.substring(0, 16)}...`);
+				if (statusHash === bondedHash) {
+					reject(new Error(
+						`Transaction failed: ${message.data.code}`));
+				}
+			} else if ('partialAdded' === name) {
+				const messageHash = message.data.meta.hash;
+				console.log('partialAdded: hash=' +
+					`${messageHash.substring(0, 16)}...`);
+				if (messageHash === bondedHash) {
+					const cosignature =
+						SymbolFacade.cosignTransactionHash(
+							accountBKeyPair,
+							new Hash256(bondedHash), true);
+					const cosignaturePayload = JSON.stringify({
+						version: cosignature.version.toString(),
+						signerPublicKey:
+							cosignature.signerPublicKey.toString(),
+						signature: cosignature.signature.toString(),
+						parentHash: cosignature.parentHash.toString()
+					});
+					announceTransaction(
+						cosignaturePayload,
+						'/transactions/cosignature',
+						'[Account B] Submitted cosignature')
+						.catch(err => console.error(
+							'Cosignature failed:', err));
+				}
+			} else if ('confirmedAdded' === name) {
+				const messageHash = message.data.meta.hash;
+				console.log('confirmedAdded: hash=' +
+					`${messageHash.substring(0, 16)}...`);
+				if (messageHash === bondedHash) {
+					console.log(`Transaction ${
+						bondedHash.substring(0, 16)}... confirmed`);
+					resolve();
+				}
+			} else {
+				const messageHash = message.data.meta.hash;
+				console.log(
+					`${name}: hash=${messageHash.substring(0, 16)}...`);
+			}
+		});
+	});
+	// [<step-5]
+	// [Account A] Announce bonded aggregate [>step-4]
+	await announceTransaction(
+		bondedPayload, '/transactions/partial',
+		'[Account A] Announced bonded ' +
+		`${bondedHash.substring(0, 16)}...`); // [<step-4]
+
+	// Wait for confirmation via WebSocket
+	await confirmed;
+	// Unsubscribe before closing [>step-6]
+	for (const channel of channels)
+		websocket.send(JSON.stringify({ uid, unsubscribe: channel }));
+	console.log('[Account B] Unsubscribed from all channels');
+	websocket.close(); // [<step-6]
+} catch (error) {
+	console.error(error);
+}

@@ -16,7 +16,7 @@ void call(Closure body) {
 				choices: jenkinsfileParams.operatingSystem ?: ['ubuntu'],
 				description: 'Operating System'
 			choice name: 'BUILD_CONFIGURATION',
-				choices: ['release-private', 'release-public'],
+				choices: ['release-public', 'release-private'],
 				description: 'build configuration'
 			choice name: 'ARCHITECTURE',
 				choices: ['arm64', 'amd64'],
@@ -86,7 +86,8 @@ void call(Closure body) {
 				agent {
 					docker {
 						image jobHelper.resolveBuildImageName(params.CI_ENVIRONMENT ?: resolveCiEnvironment(jenkinsfileParams)[0])
-						args jenkinsfileParams.dockerArgs ?: ''
+
+						args "--ulimit nofile=65536:65536${jenkinsfileParams.dockerArgs ? ' ' + jenkinsfileParams.dockerArgs : ''}"
 
 						// using the same node and the same workspace mounted to the container
 						reuseNode true
@@ -122,7 +123,10 @@ void call(Closure body) {
 										jenkinsfileParams.isPublicGitHubRepo = githubHelper.isGitHubRepositoryPublic(ownerName, gitHubRepositoryName)
 									}
 
-									configureArtifactRepository(jobHelper.resolveCiEnvironmentName(jenkinsfileParams), jenkinsfileParams.isPublicGitHubRepo)
+									// Only configure private artifact repository for private release
+									if (!helper.isPublicBuild(env.BUILD_CONFIGURATION)) {
+										configureArtifactRepository(jobHelper.resolveCiEnvironmentName(jenkinsfileParams), jenkinsfileParams.isPublicGitHubRepo)
+									}
 								}
 							}
 						}
@@ -382,6 +386,10 @@ List<String> resolveCiEnvironment(Map params) {
 	List<String> environmentTags = params.otherEnvironments?.clone() ?: []
 
 	// default environment is LTS
-	environmentTags.add(0, "${environmentName}-${params.operatingSystem[0]}-lts")
+	// check environment name is not a base, lts, or latest environment.  This is to avoid environment name like "postgres-python".
+	String defaultEnvironment = environmentName.endsWithAny('-base', '-lts', '-latest')
+			? environmentName
+			: "${environmentName}-${params.operatingSystem[0]}-lts"
+	environmentTags.add(0, defaultEnvironment)
 	return environmentTags
 }

@@ -49,12 +49,16 @@ class BuildEnvironment:
 		self.dispatch_subprocess(['conan', 'profile', 'show', '--profile', 'default'])
 		self.dispatch_subprocess(['conan', 'remote', 'add', '--force', 'nemtech', CONAN_NEMTECH_REMOTE])
 
-	def run_conan_install(self, source_path, settings, build_path, build_type):
+	def run_conan_install(self, source_path, settings, build_path, build_type, cxxflags=None):
 		# assuming working directory == build directory
 		setting_overrides = []
 		for key, value in settings.items():
 			setting_overrides += ['-s', f'compiler.{key}={value}']
 		self.dispatch_subprocess(['conan', 'profile', 'show', '--profile', 'default'])
+
+		if cxxflags:
+			setting_overrides += ['-c', f'tools.build:cxxflags={cxxflags}']
+
 		conan_install_rc = self.dispatch_subprocess([
 			'conan', 'install', source_path,
 			'--build', 'missing',
@@ -83,9 +87,7 @@ class BuildManager(BasicBuildManager):
 			('ENABLE_CODE_COVERAGE', 'ON' if self.enable_code_coverage else 'OFF')
 		]
 
-		if self.environment_manager.is_windows_platform():
-			settings.append(('USE_CCACHE_ON_WINDOWS', 'ON'))
-		else:
+		if not self.environment_manager.is_windows_platform():
 			if 'arm64' != self.architecture:
 				# ARCHITECTURE_NAME is used to set `-march`, disable on windows and arm
 				settings.append(('ARCHITECTURE_NAME', self.architecture))
@@ -131,7 +133,6 @@ class BuildManager(BasicBuildManager):
 		if self.environment_manager.is_windows_platform():
 			# copy the real ccache.exe since shim version is in the path
 			shutil.copy2('C:/Users/ContainerAdministrator/scoop/apps/ccache/current/ccache.exe', 'c:/tmp/_build/cl.exe')
-			self.dispatch_subprocess(['cmake', '--build', '.', '--target', 'publish'])
 			self.dispatch_subprocess([
 				'msbuild',
 				f'/p:Configuration={self.build_type}',
@@ -147,7 +148,6 @@ class BuildManager(BasicBuildManager):
 		else:
 			cpu_count = os.cpu_count()
 			cpu_count_str = str(cpu_count if cpu_count > 0 else 1)
-			self.dispatch_subprocess(['ninja', 'publish'])
 			self.dispatch_subprocess(['ninja', '-j', cpu_count_str])
 			self.dispatch_subprocess(['ninja', 'install'])
 
@@ -168,10 +168,21 @@ class BuildManager(BasicBuildManager):
 
 			return
 
-		for name in ['atomic', 'chrono', 'date_time', 'filesystem', 'log', 'log_setup', 'program_options', 'regex', 'thread']:
+		for name in [
+			'atomic',
+			'chrono',
+			'container',
+			'date_time',
+			'filesystem',
+			'log',
+			'log_setup',
+			'program_options',
+			'regex',
+			'serialization',
+			'thread']:
 			self.environment_manager.copy_glob_with_symlinks('/mybuild/lib', f'libboost_{name}.so*', destination)
 
-		for name in ['bson-1.0', 'mongoc-1.0', 'bsoncxx', 'mongocxx', 'zmq', 'rocksdb', 'snappy', 'gflags']:
+		for name in ['bson2', 'mongoc2', 'bsoncxx', 'mongocxx', 'zmq', 'rocksdb', 'snappy', 'gflags']:
 			system_bin_path = self.environment_manager.system_bin_path
 			self.environment_manager.copy_glob_with_symlinks(system_bin_path, f'lib{name}.so*', destination)
 
@@ -190,7 +201,7 @@ class BuildManager(BasicBuildManager):
 		for dependency_pattern in self.compiler.deps:
 			directory_path = os.path.dirname(dependency_pattern)
 			pattern = os.path.basename(dependency_pattern)
-			self.environment_manager.copy_glob_with_symlinks(directory_path, pattern, destination)
+			self.environment_manager.copy_glob_with_symlinks(directory_path, pattern, destination, self.is_clang)
 
 	def copy_files(self, output_path):
 		deps_output_path = Path(f'{output_path}/deps').resolve()
@@ -230,9 +241,10 @@ def main():
 	environment_manager = EnvironmentManager(args.dry_run)
 
 	builder = BuildManager(args, process_manager, environment_manager, args.build_type)
-	conan_options = {'version': builder.compiler.version, 'libcxx': builder.stl.lib}
-	if builder.is_msvc:
-		conan_options = {'cppstd': 17}
+	conan_compiler_version = builder.conan.compiler_version if builder.conan else builder.compiler.version
+	conan_options = {'cppstd': 20}
+	if not builder.is_msvc:
+		conan_options.update({'version': conan_compiler_version, 'libcxx': builder.stl.lib})
 
 	env = BuildEnvironment(builder.use_conan, process_manager, environment_manager)
 	build_path = f'{args.source_path}/_build' if builder.enable_code_coverage else '/tmp/_build'
@@ -241,7 +253,8 @@ def main():
 	cmake_preset = []
 	if builder.use_conan:
 		env.prepare_conan()
-		env.run_conan_install(args.source_path, conan_options, build_path, args.build_type)
+		cxxflags = '["-include", "iterator", "-include", "new"]' if builder.is_clang and builder.compiler.version >= 23 else None
+		env.run_conan_install(args.source_path, conan_options, build_path, args.build_type, cxxflags)
 		environment_manager.chdir(f'{build_path}/build' if environment_manager.is_windows_platform() else f'{build_path}/build/{args.build_type}')
 		conan_preset_name = 'conan-default' if environment_manager.is_windows_platform() else f'conan-{args.build_type.lower()}'
 		cmake_preset = [f'--preset={conan_preset_name}']

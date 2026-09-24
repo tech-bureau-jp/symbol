@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 
 from configuration import load_versions_map
-from dependency_flags import get_dependency_flags
+from dependency_flags import get_boost_disabled_libraries, get_dependency_flags
 from environment import EnvironmentManager
 from process import ProcessManager
 
@@ -64,6 +64,7 @@ class Builder:
 
 		boost_prefix_option = f'--prefix={self.target_directory / "boost"}'
 		bootstrap_options = [r'.\bootstrap.bat' if EnvironmentManager.is_windows_platform() else './bootstrap.sh']
+		bootstrap_options += [f'--without-libraries={",".join(get_boost_disabled_libraries())}']
 		if self.is_clang:
 			bootstrap_options += ['with-toolset=clang']
 
@@ -71,7 +72,7 @@ class Builder:
 
 		b2_options = [boost_prefix_option]
 		if self.is_clang:
-			b2_options += ['toolset=clang', 'cxxflags=--std=c++17', 'linkflags=\'-stdlib=libc++\'']
+			b2_options += ['toolset=clang', 'cxxflags=-Wno-deprecated-declarations', 'linkflags=\'-stdlib=libc++\'']
 
 		b2_options += get_dependency_flags('boost')
 
@@ -103,6 +104,9 @@ class Builder:
 		if 'mongodb' == organization:
 			cmake_options += [f'-DOPENSSL_ROOT_DIR={self.target_directory / "openssl"}']
 
+		if 'zeromq' == organization:
+			cmake_options += ['-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
+
 		additional_cmake_options = get_dependency_flags(f'{organization}_{project}')
 		if additional_cmake_options:
 			cmake_options += additional_cmake_options
@@ -129,9 +133,8 @@ class Builder:
 		self.process_manager.dispatch_subprocess(['nmake', 'install_sw', 'install_ssldirs'])
 
 	def build_openssl_unix(self):
-		compiler = 'linux-x86_64-clang' if self.is_clang else ''
 		openssl_destinations = [f'--{key}={self.target_directory / "openssl"}' for key in ('prefix', 'openssldir', 'libdir')]
-		self.process_manager.dispatch_subprocess(['perl', './Configure', compiler] + openssl_destinations)
+		self.process_manager.dispatch_subprocess(['perl', './Configure'] + openssl_destinations)
 		self.process_manager.dispatch_subprocess(['make'])
 		self.process_manager.dispatch_subprocess(['make', 'install_sw', 'install_ssldirs'])
 

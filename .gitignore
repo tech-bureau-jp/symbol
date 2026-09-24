@@ -29,3 +29,7 @@ build/
 dist/
 .python-version
 .venv
+
+# Docs output
+docs
+docs-staging
