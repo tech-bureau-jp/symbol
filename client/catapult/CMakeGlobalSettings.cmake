@@ -1,24 +1,16 @@
 ### enable testing
 enable_testing()
 
-### enable ccache if available
-find_program(CCACHE_EXE ccache)
-if(CCACHE_EXE)
-# ccache on windows requires real binary instead of the shims used by scoop to be in the PATH
-	if (MSVC AND USE_CCACHE_ON_WINDOWS)
-		file(COPY_FILE ${CCACHE_EXE} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
-		set(CMAKE_VS_GLOBALS
-			"CLToolExe=cl.exe"
-			"CLToolPath=${CMAKE_BINARY_DIR}"
-			"TrackFileAccess=false"
-			"UseMultiToolTask=true"
-			"DebugInformationFormat=OldStyle"
-		)
-	else()
-		set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-		set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+### enable ccache by default if available
+if(NOT NO_CCACHE)
+	find_program(CCACHE_BIN ccache)
+	if(CCACHE_BIN)
+		set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_BIN}")
+		set(CMAKE_C_LINKER_LAUNCHER "${CCACHE_BIN}")
+		set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_BIN}")
+		set(CMAKE_CXX_LINKER_LAUNCHER "${CCACHE_BIN}")
 	endif()
-endif(CCACHE_EXE)
+endif()
 
 ### set general cmake settings
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -33,11 +25,7 @@ endif()
 ### set boost settings
 add_definitions(-DBOOST_ALL_DYN_LINK)
 add_definitions(-DBOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT)
-
-if(Boost_VERSION VERSION_LESS 1.84)
-	# workaround for https://github.com/boostorg/phoenix/issues/111
-	add_definitions(-DBOOST_PHOENIX_STL_TUPLE_H_)
-endif()
+add_definitions(-DBOOST_ASIO_NO_DEPRECATED)
 
 set(Boost_USE_STATIC_LIBS OFF)
 set(Boost_USE_MULTITHREADED ON)
@@ -97,8 +85,11 @@ if(USE_SANITIZER)
 		endif()
 
 		if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin" AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
-			# disable vptr on M1
+			# -fno-sanitize=vptr: disable vptr on Apple MX processors to avoid false positives
 			set(SANITIZATION_FLAGS "${SANITIZATION_FLAGS} -fno-sanitize=vptr")
+
+			# revert to clang 15 behavior due to false positives around unterminated constant strings
+			add_compile_options(-mllvm -asan-globals=0)
 		endif()
 	endif()
 
@@ -110,23 +101,36 @@ endif()
 if(MSVC)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4 /WX /EHsc /Zc:__cplusplus")
 	# in debug disable "potentially uninitialized local variable" (FP)
-	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd /D_SCL_SECURE_NO_WARNINGS /wd4701")
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_SCL_SECURE_NO_WARNINGS /wd4701")
+	# also enable name return value optimization to allow proper tests validation
+	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Zc:nrvo")
+	if(CCACHE_BIN)
+		# ccache cannot cache MSVC compilations when debug info is written to a shared .pdb (/Zi, the default).
+		# /Z7 embeds debug info into each .obj — self-contained and cacheable.
+		if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.25)
+			cmake_policy(GET CMP0141 _cmp0141_state)
+		endif()
 
-	if (CCACHE_EXE AND USE_CCACHE_ON_WINDOWS)
-		set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MD /Z7")
-	else()
-		set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} /MD /Zi")
+		if(_cmp0141_state STREQUAL "NEW")
+			set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT $<$<CONFIG:Debug,RelWithDebInfo>:Embedded> CACHE STRING "" FORCE)
+		else()
+			foreach(_config DEBUG RELWITHDEBINFO)
+				foreach(_lang CXX C)
+					string(REPLACE "/Zi" "/Z7" _patched_flags "${CMAKE_${_lang}_FLAGS_${_config}}")
+					set("CMAKE_${_lang}_FLAGS_${_config}" "${_patched_flags}" CACHE STRING "" FORCE)
+				endforeach()
+			endforeach()
+		endif()
 	endif()
 
 	set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD")
-
 	set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /DEBUG:FASTLINK")
 	set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /DEBUG")
 
 	add_compile_options(/MP)            # Enable parallel compilation
 	add_compile_options(/GA)            # Optimizes for Windows applications
 
-	add_definitions(-D_WIN32_WINNT=0x0601)
+	add_definitions(-D_WIN32_WINNT=0x0A00)
 
 	add_compile_options(/w44287)		# 'operator' : unsigned/negative constant mismatch
 	add_compile_options(/w44388)		# 'token' : signed/unsigned mismatch
@@ -160,7 +164,8 @@ elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 	# - Wno-switch-enum: do not require enum switch statements to list every value (this setting is also incompatible with GCC warnings)
 	# - Wno-weak-vtables: vtables are emitted in all translation units for virtual classes with no out-of-line virtual method definitions
 	# - Wno-unsafe-buffer-usage: allow unsafe buffer usage https://reviews.llvm.org/D137379
-	# = Wno-shadow-uncaptured-local: allow shadowing of local variables in lambdas https://github.com/llvm/llvm-project/issues/81307
+	# - Wno-shadow-uncaptured-local: allow shadowing of local variables in lambdas https://github.com/llvm/llvm-project/issues/81307
+	# - Wno-thread-safety-negative: error: acquiring mutex 'm_mutex' requires negative capability '!m_mutex'
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
 		-stdlib=libc++ \
 		-Weverything \
@@ -173,9 +178,36 @@ elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 		-Wno-weak-vtables \
 		-Wno-unsafe-buffer-usage \
 		-Wno-shadow-uncaptured-local \
-		-Wno-switch-default")
+		-Wno-switch-default \
+		-Wno-thread-safety-negative")
+
+	if("${CMAKE_CXX_COMPILER_VERSION}" VERSION_GREATER_EQUAL "21")
+		# - Wno-nrvo: error: not eliding copy on return
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
+			-Wno-nrvo")
+	endif()
+
+	if("${CMAKE_CXX_COMPILER_VERSION}" VERSION_GREATER_EQUAL "23")
+		# - Wno-lifetime-safety-suggestions: asks for [[clang::lifetimebound]] on nearly every pointer/reference returning function and constructor
+		# - Wno-lifetime-safety-strict: the strict analysis reports false positives on valid code
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
+			-Wno-lifetime-safety-suggestions \
+			-Wno-lifetime-safety-strict \
+			-Wlifetime-safety-permissive")
+	endif()
 
 	set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -g1")
+
+	# fix -Wpoison-system-directories: error: include location '/usr/local/include' is "unsafe for cross-compilation"
+	if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+		find_program(XCRUN_EXE xcrun)
+		if (XCRUN_EXE)
+			execute_process(COMMAND xcrun --show-sdk-path OUTPUT_VARIABLE OSX_SYSROOT OUTPUT_STRIP_TRAILING_WHITESPACE)
+			set(CMAKE_OSX_SYSROOT "${OSX_SYSROOT}")
+		else()
+			message(WARNING "xcrun not found, cannot automatically set CMAKE_OSX_SYSROOT.")
+		endif()
+	endif()
 endif()
 
 if(NOT MSVC)
@@ -253,23 +285,28 @@ endfunction()
 function(catapult_set_test_compiler_options)
 	# some gtest workarounds for gcc + clang
 	if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU")
+		set(CMAKE_CXX_FLAGS_LOCAL "-Wno-dangling-else")
+
 		# - Wno-dangling-else: workaround for GTEST ambiguous else blocker not working https://github.com/google/googletest/issues/1119
 		# disable dangling reference for tests - https://gcc.gnu.org/bugzilla/show_bug.cgi?id=108165#c9
-		if("${CMAKE_CXX_COMPILER_VERSION}" MATCHES "^13.")
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
-				-Wno-dangling-else -Wno-dangling-reference"
-				PARENT_SCOPE)
-		else()
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
-				-Wno-dangling-else"
-				PARENT_SCOPE)
+		if(${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER "13")
+			set(CMAKE_CXX_FLAGS_LOCAL "${CMAKE_CXX_FLAGS_LOCAL} -Wno-dangling-reference")
 		endif()
+
+		# - Wno-free-nonheap-object: bug should be fix in gcc 16 - https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115016
+		if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14" AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "16")
+			set(CMAKE_CXX_FLAGS_LOCAL "${CMAKE_CXX_FLAGS_LOCAL} -Wno-free-nonheap-object")
+		endif()
+
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_LOCAL}" PARENT_SCOPE)
 	elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
 		# - Wno-global-constructors: required for GTEST test definition macros
 		# - Wno-zero-as-null-pointer-constant: workaround for GTEST NULL/nullptr mismatch https://github.com/google/googletest/issues/1323
+		# - Wno-missing-noreturn: some test functions do not return a value
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
 			-Wno-global-constructors \
-			-Wno-zero-as-null-pointer-constant"
+			-Wno-zero-as-null-pointer-constant \
+			-Wno-missing-noreturn"
 			PARENT_SCOPE)
 	endif()
 endfunction()
@@ -318,7 +355,10 @@ endif()
 
 # sets cxx std version
 function(catapult_set_cxx_std_version TARGET_NAME)
-	set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 17)
+	set_target_properties(${TARGET_NAME} PROPERTIES
+		CXX_STANDARD 20
+		CXX_STANDARD_REQUIRED ON
+	)
 	if("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU" AND "${CMAKE_CXX_COMPILER_VERSION}" MATCHES "^8.")
 		target_link_libraries(${TARGET_NAME} "stdc++fs")
 	endif()
@@ -492,6 +532,9 @@ function(catapult_define_tool TOOL_NAME)
 	target_link_libraries(${TARGET_NAME} catapult.tools)
 	catapult_target(${TARGET_NAME})
 
+	# tools build against the published sdk headers (never src)
+	target_include_directories(${TARGET_NAME} PRIVATE ${PROJECT_SOURCE_DIR}/tools ${CMAKE_BINARY_DIR}/inc)
+	add_dependencies(${TARGET_NAME} catapult_sdk_publish)
 	add_dependencies(tools ${TARGET_NAME})
 
 	install(TARGETS ${TARGET_NAME})

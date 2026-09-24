@@ -188,7 +188,7 @@ describe('transaction factory (NEM)', () => {
 
 	// endregion
 
-	// region message encoding
+	// region string handling
 
 	it('can create transfer with string message', () => {
 		// Arrange:
@@ -206,6 +206,52 @@ describe('transaction factory (NEM)', () => {
 
 		// Assert:
 		expect(transaction.message.message).to.deep.equal(new TextEncoder().encode('You miss 100%% of the shots you don\'t take'));
+	});
+
+	it('can create transfer with string mosaic id', () => {
+		// Arrange:
+		const factory = testDescriptor.createFactory();
+
+		// Act:
+		const transaction = testDescriptor.createTransaction(factory)({
+			type: 'transfer_transaction_v2',
+			signerPublicKey: TEST_SIGNER_PUBLIC_KEY,
+			mosaics: [
+				{
+					mosaic: {
+						mosaicId: { namespaceId: { name: 'foo' }, name: 'bar' },
+						amount: 1
+					}
+				}
+			]
+		});
+
+		// Assert:
+		expect(transaction.mosaics.length).to.equal(1);
+		expect(transaction.mosaics[0].mosaic.mosaicId.namespaceId.name).to.deep.equal(new TextEncoder().encode('foo'));
+		expect(transaction.mosaics[0].mosaic.mosaicId.name).to.deep.equal(new TextEncoder().encode('bar'));
+	});
+
+	it('can create mosaic definition with string properties', () => {
+		// Arrange:
+		const factory = testDescriptor.createFactory();
+
+		// Act:
+		const transaction = testDescriptor.createTransaction(factory)({
+			type: 'mosaic_definition_transaction_v1',
+			signerPublicKey: TEST_SIGNER_PUBLIC_KEY,
+			mosaicDefinition: {
+				properties: [
+					{property: { name: 'divisibility', value: '2'}}
+				]
+			}
+		});
+
+		// Assert:
+		const { properties } = transaction.mosaicDefinition;
+		expect(properties.length).to.equal(1);
+		expect(properties[0].property.name).to.deep.equal(new TextEncoder().encode('divisibility'));
+		expect(properties[0].property.value).to.deep.equal(new TextEncoder().encode('2'));
 	});
 
 	// endregion

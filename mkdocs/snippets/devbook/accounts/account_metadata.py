@@ -1,0 +1,185 @@
+import json
+import os
+import time
+import urllib.request
+
+from symbolchain.CryptoTypes import PrivateKey
+from symbolchain.facade.SymbolFacade import SymbolFacade
+from symbolchain.symbol.Metadata import (
+	metadata_generate_key,
+	metadata_update_value
+)
+
+NODE_URL = os.getenv('NODE_URL', 'https://reference.symboltest.net:3001')
+print(f'Using node {NODE_URL}')
+
+
+# Helper function to announce a transaction
+def announce_transaction(payload, label):
+	print(f'Announcing {label} to /transactions')
+	request = urllib.request.Request(
+		f'{NODE_URL}/transactions',
+		data=payload.encode(),
+		headers={'Content-Type': 'application/json'},
+		method='PUT'
+	)
+	with urllib.request.urlopen(request) as announce_response:
+		print(f'  Response: {announce_response.read().decode()}')
+
+
+# Helper function to wait for transaction confirmation
+def wait_for_confirmation(tx_hash, label):
+	print(f'Waiting for {label} confirmation...')
+	for attempt in range(60):
+		time.sleep(1)
+		try:
+			url = f'{NODE_URL}/transactionStatus/{tx_hash}'
+			with urllib.request.urlopen(url) as confirm_response:
+				status = json.loads(confirm_response.read().decode())
+				print(f'  Transaction status: {status["group"]}')
+				if status['group'] == 'confirmed':
+					print(f'{label} confirmed in {attempt} seconds')
+					return
+				if status['group'] == 'failed':
+					raise RuntimeError(
+						f'{label} failed: {status["code"]}')
+		except urllib.error.HTTPError:
+			print('  Transaction status: unknown')
+	raise TimeoutError(f'{label} not confirmed after 60 seconds')
+
+
+SIGNER_PRIVATE_KEY = os.getenv('SIGNER_PRIVATE_KEY',  # [>step-1]
+	'0000000000000000000000000000000000000000000000000000000000000000')
+signer_key_pair = SymbolFacade.KeyPair(PrivateKey(SIGNER_PRIVATE_KEY))
+
+facade = SymbolFacade('testnet')
+signer_address = facade.network.public_key_to_address(
+	signer_key_pair.public_key)
+print(f'Signer address: {signer_address}')
+# [<step-1]
+try:
+	# Fetch recommended fees [>step-2]
+	fee_path = '/network/fees/transaction'
+	print(f'Fetching recommended fees from {fee_path}')
+	with urllib.request.urlopen(f'{NODE_URL}{fee_path}') as response:
+		response_json = json.loads(response.read().decode())
+		median_multiplier = response_json['medianFeeMultiplier']
+		minimum_multiplier = response_json['minFeeMultiplier']
+		fee_multiplier = max(median_multiplier, minimum_multiplier)
+		print(f'  Fee multiplier: {fee_multiplier}')
+	# [<step-2]
+	# --- ADDING NEW METADATA ---
+	print('\n--- Adding new metadata ---')
+
+	# Define metadata key and value [>step-3]
+	key_string = f'username_{int(time.time())}'
+	scoped_metadata_key = metadata_generate_key(key_string)
+	metadata_value = 'alice'.encode('utf8')
+	# [<step-3]
+	# Create the embedded metadata transaction [>step-4]
+	creation_embedded_tx = (
+		facade.create_embedded_transaction_from_descriptor(
+			{
+				'type': 'account_metadata_transaction_v1',
+				'target_address': signer_address,
+				'scoped_metadata_key': scoped_metadata_key,
+				# When creating new metadata, value_size_delta
+				# equals the value length
+				'value_size_delta': len(metadata_value),
+				'value': metadata_value
+			},
+			signer_key_pair.public_key))
+	print('Created embedded metadata transaction:')
+	print(json.dumps(creation_embedded_tx.to_json(), indent=2))
+	# [<step-4]
+	# Build the aggregate transaction [>step-5]
+	creation_embedded_txs = [creation_embedded_tx]
+	creation_tx = facade.create_transaction_from_descriptor(
+		{
+			'type': 'aggregate_complete_transaction_v3',
+			'transactions_hash': facade.hash_embedded_transactions(
+				creation_embedded_txs),
+			'transactions': creation_embedded_txs
+		},
+		signer_key_pair.public_key,
+		fee_multiplier,
+		2 * 60 * 60)
+	# [<step-5]
+	# Sign and generate final payload [>step-6]
+	signature = facade.sign_transaction(signer_key_pair, creation_tx)
+	creation_payload = facade.transaction_factory.attach_signature(
+		creation_tx, signature)
+
+	# Announce and wait for confirmation
+	creation_tx_hash = facade.hash_transaction(creation_tx)
+	print(f'Built aggregate transaction with hash: {creation_tx_hash}')
+	announce_transaction(creation_payload, 'creation transaction')
+	wait_for_confirmation(creation_tx_hash, 'creation transaction')
+	# [<step-6]
+	# --- MODIFYING EXISTING METADATA ---
+	print('\n--- Modifying existing metadata ---')
+
+	# Fetch current metadata value from network [>step-7]
+	metadata_path = (
+		f'/metadata?sourceAddress={signer_address}'
+		f'&targetAddress={signer_address}'
+		f'&scopedMetadataKey={scoped_metadata_key:016X}'
+		'&metadataType=0'
+	)
+	print(f'Fetching current metadata from {metadata_path}')
+	with urllib.request.urlopen(
+		f'{NODE_URL}{metadata_path}') as response:
+		response_json = json.loads(response.read().decode())
+
+	# Get the metadata entry
+	if not response_json['data']:
+		raise RuntimeError('Metadata entry not found')
+	metadata_entry = response_json['data'][0]['metadataEntry']
+	current_value = bytes.fromhex(metadata_entry['value'])
+	print(f'  Current value: {current_value.decode("utf8")}')
+	# [<step-7]
+	# XOR the current and new values [>step-8]
+	new_value = 'bob'.encode('utf8')
+	update_value = metadata_update_value(current_value, new_value)
+
+	# Create the update transaction with XOR'd value
+	update_embedded_tx = (
+		facade.create_embedded_transaction_from_descriptor(
+			{
+				'type': 'account_metadata_transaction_v1',
+				'target_address': signer_address,
+				'scoped_metadata_key': scoped_metadata_key,
+				# value_size_delta is the difference in length
+				# (can be negative)
+				'value_size_delta': len(new_value) - len(current_value),
+				'value': update_value
+			},
+			signer_key_pair.public_key))
+	# [<step-8]
+	# Build the aggregate for the update [>step-9]
+	update_embedded_txs = [update_embedded_tx]
+	update_tx = facade.create_transaction_from_descriptor(
+		{
+			'type': 'aggregate_complete_transaction_v3',
+			'transactions_hash': facade.hash_embedded_transactions(
+				update_embedded_txs),
+			'transactions': update_embedded_txs
+		},
+		signer_key_pair.public_key,
+		fee_multiplier,
+		2 * 60 * 60)
+
+	# Sign and announce the update
+	signature = facade.sign_transaction(
+		signer_key_pair, update_tx)
+	update_payload = facade.transaction_factory.attach_signature(
+		update_tx, signature)
+
+	# Announce and wait for confirmation
+	update_tx_hash = facade.hash_transaction(update_tx)
+	print(f'Built aggregate transaction with hash: {update_tx_hash}')
+	announce_transaction(update_payload, 'update transaction')
+	wait_for_confirmation(update_tx_hash, 'update transaction')
+	# [<step-9]
+except Exception as e:
+	print(e)

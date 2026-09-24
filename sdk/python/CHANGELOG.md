@@ -5,6 +5,39 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 
 ## next
 
+## [3.3.3] - 31-Aug-2026
+
+### Added
+- add a create_transaction_from_descriptor function that creates a transaction from a raw descriptor.  This matches similar functionality in the TS/Java SDK.
+- add a create_embedded_transaction_from_descriptor function that creates an embedded transaction from a raw descriptor for Symbol.  This matches similar functionality in the TS/Java SDK.
+
+### Fixed
+- property is a reserved keyword in Python, so property maps to the _property_ field, which is misidentified as a system property and skipped.  For NEM, add special handling for this field.
+- fixed the fee calculator for Symbol where the cosignature size was not being multiplied by the fee multiplier.
+
+## [3.3.2] - 15-Jun-2026
+
+### Added
+- add calculate_mosaic_rental_fee function for calculating NEM Mosaic rental fee.
+- add calculate_namespace_rental_fee function for calculating NEM Namespace rental fee.
+- add calculate_transaction_fee function for calculating NEM transaction fee.
+- add calculate_transaction_fee function for calculating Symbol transaction fee.
+
+### Fixed
+- automatically convert string types in nested NEM transaction entities by walking the object tree.
+
+## [3.3.1] - 14-Apr-2026
+
+### Added
+- add support for Python 3.14
+- add to_json function which constructs a JSON transaction representation of a transaction. This is useful for Multisig transactions.
+- add generate_mosaic_restriction_key function which generates mosaic restriction key from a string.
+- add Address.is_alias method to check if an address is an alias.
+- add is_mosaic_alias function to check if a mosaic id is an alias.
+
+### Fixed
+- validate name passed to generate_namespace_id does not contain namespace separator
+
 ## [3.3.0] - 23-Sept-2025
 
 ### Added
@@ -152,6 +185,9 @@ The changelog format is based on [Keep a Changelog](https://keepachangelog.com/e
 ### Added
  - initial code release
 
+[3.3.3]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.3.2...sdk%2Fpython%2Fv3.3.3
+[3.3.2]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.3.1...sdk%2Fpython%2Fv3.3.2
+[3.3.1]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.3.0...sdk%2Fpython%2Fv3.3.1
 [3.3.0]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.2.3...sdk%2Fpython%2Fv3.3.0
 [3.2.3]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.2.2...sdk%2Fpython%2Fv3.2.3
 [3.2.2]: https://github.com/symbol/symbol/compare/sdk%2Fpython%2Fv3.2.0...sdk%2Fpython%2Fv3.2.2

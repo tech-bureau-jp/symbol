@@ -14,13 +14,11 @@ DEPENDENCY_FLAGS = {
 	'google_benchmark': ['-DBENCHMARK_ENABLE_GTEST_TESTS=OFF'],
 
 	'mongodb_mongo-c-driver': [
-		'-DENABLE_AUTOMATIC_INIT_AND_CLEANUP=OFF',
 		'-DENABLE_MONGODB_AWS_AUTH=OFF',
 		'-DENABLE_TESTS=OFF',
 		'-DENABLE_EXAMPLES=OFF',
 		'-DENABLE_SASL=OFF'
 	],
-	'mongodb_mongo-cxx-driver': ['-DCMAKE_CXX_STANDARD=17'],
 
 	'zeromq_libzmq': ['-DWITH_TLS=OFF'],
 	'zeromq_cppzmq': ['-DCPPZMQ_BUILD_TESTS=OFF'],
@@ -51,4 +49,28 @@ def get_dependency_flags(dependency_name):
 	if EnvironmentManager.is_windows_platform():
 		flags += WINDOWS_DEPENDENCY_FLAGS.get(dependency_name, [])
 
+	flags.extend(['cxxflags=--std=c++20'] if 'boost' == dependency_name else ['-DCMAKE_CXX_STANDARD=20', '-DCMAKE_CXX_STANDARD_REQUIRED=ON'])
 	return flags
+
+
+def get_boost_disabled_libraries():
+	return [
+		'context',
+		'contract',
+		'coroutine',
+		'fiber',
+		'graph',
+		'graph_parallel',
+		'headers',
+		'iostreams',
+		'json',
+		'mpi',
+		'nowide',
+		'process',
+		'python',
+		'stacktrace',
+		'test',
+		'timer',
+		'type_erasure',
+		'wave'
+	]

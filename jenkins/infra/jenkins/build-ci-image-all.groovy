@@ -77,6 +77,13 @@ pipeline {
 						}
 					}
 				}
+				stage('java - ubuntu latest') {
+					steps {
+						script {
+							dispatchBuildCiImageJob('java', 'latest', 'ubuntu')
+						}
+					}
+				}
 
 				stage('javascript') {
 					steps {
@@ -116,6 +123,13 @@ pipeline {
 					steps {
 						script {
 							dispatchBuildCiImageJob('postgres')
+						}
+					}
+				}
+				stage('postgres-python') {
+					steps {
+						script {
+							dispatchBuildCiImageJob('postgres-python')
 						}
 					}
 				}
