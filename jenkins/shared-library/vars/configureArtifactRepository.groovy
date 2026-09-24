@@ -1,15 +1,19 @@
-void call(String environment, Boolean isPublicGitHubRepo) {
+void call(String environments, Boolean isPublicGitHubRepo) {
 	final String ownerName = helper.resolveOrganizationName()
-	logger.logInfo("Configuring respository pull for ${environment}")
 
-	final String url = resolveRepositoryUrl(ownerName, resolveRepositoryName(environment, isPublicGitHubRepo))
+	environments.split('-').each { environment ->
+		logger.logInfo("Configuring respository pull for ${environment}")
 
-	if (null != url) {
-		configure(environment, ownerName, url)
+		final String url = resolveRepositoryUrl(ownerName, resolveRepositoryName(environment, isPublicGitHubRepo))
+		if (null != url) {
+			configure(environment, ownerName, url)
+			if ('javascript' == environment && fileExists('package-lock.json')) {
+				// remove package-lock.json file since the hashes will not match private repository
+				sh('rm -f package-lock.json')
 
-		if ('javascript' == environment && fileExists('package-lock.json')) {
-			// remove package-lock.json file since the hashes will not match private repository
-			sh('rm -f package-lock.json')
+				// remove ^ and ~ from package.json to prevent npm from installing latest versions which can cause issues
+				sh('sed -i \'s/"[\\^~]/"/g\' package.json')
+			}
 		}
 	}
 }

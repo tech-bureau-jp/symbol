@@ -17,9 +17,7 @@ endif ()
 project(catapult_server)
 option(ENABLE_CODE_COVERAGE "Enable code coverage" OFF)
 option(ENABLE_TESTS "Enable tests" ON)
-
-# ccache on windows requires real binary instead of the shims used by scoop to be in the path
-option(USE_CCACHE_ON_WINDOWS "Enable use ccache on Windows" OFF)
+option(NO_CCACHE "Disable ccache even if available" OFF)
 
 include(CMakeGlobalSettings.cmake)
 
@@ -47,7 +45,7 @@ endfunction()
 
 ### setup boost
 message("--- locating boost dependencies ---")
-find_package(Boost 1.83.0 EXACT COMPONENTS ${CATAPULT_BOOST_COMPONENTS} REQUIRED)
+find_package(Boost 1.91.0 EXACT COMPONENTS ${CATAPULT_BOOST_COMPONENTS} REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
 
 message("boost     ver: ${Boost_VERSION}")
@@ -58,7 +56,7 @@ message("boost    libs: ${Boost_LIBRARIES}")
 if(ENABLE_TESTS)
 	message("--- locating gtest dependencies ---")
 
-	find_package(GTest 1.16.0 EXACT REQUIRED)
+	find_package(GTest 1.17.0 EXACT REQUIRED)
 	message("GTest   found: ${GTest_FOUND}")
 	message("GTest     inc: ${GTest_INCLUDE_DIRS}")
 	message("GTest     ver: ${GTest_VERSION}")
@@ -74,7 +72,7 @@ endif()
 ### setup openssl
 message("--- locating openssl dependencies ---")
 
-find_package(OpenSSL 3.5.2 EXACT REQUIRED)
+find_package(OpenSSL 3.6.2 EXACT REQUIRED)
 message("OpenSSL   ver: ${OPENSSL_VERSION}")
 message("OpenSSL  root: ${OPENSSL_ROOT_DIR}")
 message("OpenSSL   inc: ${OPENSSL_INCLUDE_DIR}")
@@ -88,7 +86,7 @@ endfunction()
 
 ### setup rocksdb
 message("--- locating rocksdb dependencies ---")
-find_package(RocksDB 10.5.1 EXACT REQUIRED)
+find_package(RocksDB 10.6.2 EXACT REQUIRED)
 
 if(WIN32)
 	set(RocksDB_LIBRARY RocksDB::rocksdb)
