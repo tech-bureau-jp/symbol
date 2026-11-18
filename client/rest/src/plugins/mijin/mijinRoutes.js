@@ -22,24 +22,16 @@
 import createConnectionService from "./connection/connectionService.js";
 import routeResultTypes from "../../routes/routeResultTypes.js";
 import catapult from "../../catapult-sdk/index.js";
-import routeUtils from "../../routes/routeUtils.js";
-import { utils } from "@tech-bureau/symbol-sdk";
 import winston from "winston";
 import nodeInfoCodec from "../../sockets/nodeInfoCodec.js";
 import nodePeersCodec from "../../sockets/nodePeersCodec.js";
+import chainInfoCodec from "../../sockets/chainInfoCodec.js";
 import fs from "fs";
 import path from "path";
 
 const packetHeader = catapult.packet.header;
 const { PacketType } = catapult.packet;
 const { BinaryParser } = catapult.parser;
-
-const restVersion = JSON.parse(
-  fs.readFileSync(
-    path.resolve(import.meta.dirname, "../../../package.json"),
-    "UTF-8"
-  )
-).version;
 
 const buildResponse = (packet, codec, resultType) => {
   const binaryParser = new BinaryParser();
@@ -73,45 +65,76 @@ export default {
         const hosts = peersInfo.map((p) => p.host.toString());
         hosts.push(services.config.apiNode.host);
 
-        const pingPromises = hosts.map((host) => {
-          const peerConfig = {
-            apiNode: {
-              host: host,
-              port: services.config.apiNode.port,
-              key: fs.readFileSync(services.config.apiNode.tlsClientKeyPath),
-              certificate: fs.readFileSync(
-                services.config.apiNode.tlsClientCertificatePath
-              ),
-              caCertificate: fs.readFileSync(
-                services.config.apiNode.tlsCaCertificatePath
-              ),
-            },
-          };
-
-          const peerConnections = createConnectionService(
-            peerConfig,
-            winston.verbose
-          );
-
-          const buf = packetHeader.createBuffer(
-            PacketType.nodeDiscoveryPullPing,
-            packetHeader.size
-          );
-
-          return peerConnections
-            .singleUse()
-            .then((conn) => conn.pushPull(buf, timeout))
-            .then((pingPkt) =>
-              buildResponse(pingPkt, nodeInfoCodec, routeResultTypes.nodeInfo)
+        const pingPromises = hosts.map(async (host) => {
+          try {
+            const pingBuf = packetHeader.createBuffer(
+              PacketType.nodeDiscoveryPullPing,
+              packetHeader.size
             );
-        });
-        const pingResults = await Promise.all(pingPromises);
+            const chainBuf = packetHeader.createBuffer(
+              PacketType.chainStatistics,
+              packetHeader.size
+            );
 
-        res.send({
-          payload: pingResults.map((p) => p.payload),
-          type: pingResults[0].type,
-          formatter: pingResults[0].formatter,
+            const peerConfig = {
+              apiNode: {
+                host: host,
+                port: services.config.apiNode.port,
+                key: fs.readFileSync(services.config.apiNode.tlsClientKeyPath),
+                certificate: fs.readFileSync(
+                  services.config.apiNode.tlsClientCertificatePath
+                ),
+                caCertificate: fs.readFileSync(
+                  services.config.apiNode.tlsCaCertificatePath
+                ),
+              },
+            };
+            const peerConnections = createConnectionService(peerConfig, winston.verbose);
+
+            const conn1 = await peerConnections.singleUse();
+            const pingPkt = await conn1.pushPull(pingBuf, timeout);
+            const nodeInfo = buildResponse(pingPkt, nodeInfoCodec, routeResultTypes.nodeInfo).payload;
+
+            const conn2 = await peerConnections.singleUse();
+            const chainPkt = await conn2.pushPull(chainBuf, timeout);
+            const chainInfo = buildResponse(chainPkt, chainInfoCodec, routeResultTypes.chainInfo).payload;
+
+            return { ...nodeInfo, ...chainInfo };
+          } catch (error) {
+            return null;
+          }
         });
+        const nodeInfos = (await Promise.all(pingPromises)).filter(info => info !== null);
+
+        const finalizedBlockInfo = await db.latestFinalizedBlock();
+
+        const formattedPayload = nodeInfos.map(info => {
+          const formatted = {};
+          Object.keys(info).forEach(key => {
+            const value = info[key];
+            if (typeof value === 'bigint') {
+              formatted[key] = value.toString();
+            } else if (Buffer.isBuffer(value)) {
+              if (key === 'host' || key === 'friendlyName') {
+                formatted[key] = value.toString('utf8');
+              } else {
+                formatted[key] = value.toString('hex').toUpperCase();
+              }
+            } else {
+              formatted[key] = value;
+            }
+          });
+          if (finalizedBlockInfo?.block) {
+            formatted.latestFinalizedBlock = {
+              height: finalizedBlockInfo.block.height?.toString(),
+              finalizationEpoch: finalizedBlockInfo.block.finalizationEpoch,
+              finalizationPoint: finalizedBlockInfo.block.finalizationPoint
+            };
+          }
+          return formatted;
+        });
+
+        res.send(formattedPayload);
         next();
       } catch (err) {
         next(err);
