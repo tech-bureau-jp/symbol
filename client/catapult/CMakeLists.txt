@@ -44,6 +44,10 @@ function(get_library_path OUTPUT_LIBRARY_PATH TARGET_NAME)
 endfunction()
 
 ### setup boost
+if(POLICY CMP0167)
+	cmake_policy(SET CMP0167 NEW)
+endif()
+
 message("--- locating boost dependencies ---")
 find_package(Boost 1.91.0 EXACT COMPONENTS ${CATAPULT_BOOST_COMPONENTS} REQUIRED)
 include_directories(SYSTEM ${Boost_INCLUDE_DIR})
@@ -56,7 +60,7 @@ message("boost    libs: ${Boost_LIBRARIES}")
 if(ENABLE_TESTS)
 	message("--- locating gtest dependencies ---")
 
-	find_package(GTest 1.17.0 EXACT REQUIRED)
+	find_package(GTest 1.18.0 EXACT REQUIRED)
 	message("GTest   found: ${GTest_FOUND}")
 	message("GTest     inc: ${GTest_INCLUDE_DIRS}")
 	message("GTest     ver: ${GTest_VERSION}")
@@ -72,7 +76,7 @@ endif()
 ### setup openssl
 message("--- locating openssl dependencies ---")
 
-find_package(OpenSSL 3.6.2 EXACT REQUIRED)
+find_package(OpenSSL 4.1.0 EXACT REQUIRED)
 message("OpenSSL   ver: ${OPENSSL_VERSION}")
 message("OpenSSL  root: ${OPENSSL_ROOT_DIR}")
 message("OpenSSL   inc: ${OPENSSL_INCLUDE_DIR}")
@@ -86,7 +90,7 @@ endfunction()
 
 ### setup rocksdb
 message("--- locating rocksdb dependencies ---")
-find_package(RocksDB 10.6.2 EXACT REQUIRED)
+find_package(RocksDB 11.8.1 EXACT REQUIRED)
 
 if(WIN32)
 	set(RocksDB_LIBRARY RocksDB::rocksdb)
