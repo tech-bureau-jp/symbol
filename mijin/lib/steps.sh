@@ -45,6 +45,34 @@ ensure_image() {
 	ok "$local_ref (built)"
 }
 
+# Install the build tools on Ubuntu (safe to run again). Rootful docker with the docker group; no subuid/subgid setup.
+step_setup() {
+	local keyring=/etc/apt/keyrings/docker.asc list=/etc/apt/sources.list.d/docker.list codename relogin=0
+	log_run sudo apt-get update || fail "apt-get update failed"
+	log_run sudo apt-get install -y ca-certificates curl git python3 python3-yaml || fail "package install failed"
+
+	if [ ! -f "$list" ]; then
+		log_run sudo install -m 0755 -d /etc/apt/keyrings
+		log_run sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o "$keyring" || fail "cannot download the docker apt key"
+		log_run sudo chmod a+r "$keyring"
+		codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
+		echo "deb [arch=$(dpkg --print-architecture) signed-by=$keyring] https://download.docker.com/linux/ubuntu $codename stable" \
+			| log_run sudo tee "$list" > /dev/null
+		log_run sudo apt-get update || fail "apt-get update failed (is '$codename' published on download.docker.com?)"
+	fi
+	log_run sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin || fail "docker install failed"
+
+	if ! id -nG "$USER" | grep -qw docker; then
+		log_run sudo usermod -aG docker "$USER"
+		relogin=1
+	fi
+
+	python3 -c 'import yaml' || fail "python3-yaml is not importable"
+	docker buildx version > /dev/null 2>&1 || [ "$relogin" = 1 ] || fail "docker buildx is not available"
+	ok "setup: docker, git, python3, python3-yaml"
+	[ "$relogin" = 0 ] || echo "→ $USER was added to the docker group: log out and back in, then run 'docker login'."
+}
+
 require_arch() {
 	local actual
 	actual=$(docker image inspect -f '{{.Architecture}}' "$1") || fail "$1: image not found"
