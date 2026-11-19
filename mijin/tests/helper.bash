@@ -65,5 +65,24 @@ stub_local_image() { echo "$1 ${2:--}" >> "$STUB_DIR/local"; }
 stub_hub_image() { echo "$1 ${2:--}" >> "$STUB_DIR/hub"; }
 stub_run_output() { printf '%s\t%s\n' "$1" "$2" >> "$STUB_DIR/run"; }
 
+# Replace gen() with the names the upstream generator prints (checked against the real generator for gcc 16).
+stub_gen() {
+	gen() {
+		local suffix
+		[ "$ARCH" = amd64 ] && suffix=skylake || suffix=arm64
+		local layer=$2
+		local -A tags=([os]=preimage1 [boost]=preimage2 [deps]=preimage3 [test]=)
+		case "$*" in
+			*--base-name-only*--ignore-architecture*) echo "techbureauhd/catapult-server-compiler:ubuntu-gcc-16" ;;
+			*--base-name-only*) echo "techbureauhd/catapult-server-compiler:ubuntu-gcc-16-$suffix" ;;
+			*--name-only*)
+				local tag=${tags[$layer]}
+				echo "techbureauhd/catapult-server-build-base:ubuntu-gcc-16${tag:+-$tag}-$suffix"
+				;;
+			*) printf 'FROM previous\nRUN build %s for %s\n' "$layer" "$ARCH" ;;
+		esac
+	}
+}
+
 # True when the docker log has a line containing the given text.
 docker_called() { grep -qF -- "$1" "$DOCKER_LOG"; }
