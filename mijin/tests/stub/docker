@@ -54,7 +54,7 @@ case "$1 ${2:-}" in
 			ref=${*: -1}
 			lookup hub "$ref" > /dev/null || { echo "not found: $ref" >&2; exit 1; }
 			case "$*" in
-				*Manifest.Digest*) echo "sha256:stub" ;;
+				*Manifest.Digest*) echo "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ;;
 				*) printf 'Name: %s\nPlatform: linux/amd64\nPlatform: linux/arm64\n' "$ref" ;;
 			esac
 		else
@@ -76,7 +76,7 @@ case "$1 ${2:-}" in
 		[ -z "${STUB_FAIL_PUSH:-}" ] || { echo "denied: requested access to the resource is denied" >&2; exit 1; }
 		hash=$(lookup local "$2") || exit 1
 		add hub "$2" "$hash"
-		echo "latest: digest: sha256:stub size: 1234"
+		echo "latest: digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef size: 1234"
 		;;
 	"run "*)
 		while IFS=$'\t' read -r pattern output; do

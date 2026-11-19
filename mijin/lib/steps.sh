@@ -170,3 +170,63 @@ step_rest() {
 	require_arch "$ref"
 	ok "rest: $ref (node $node, $ARCH)"
 }
+
+# Images this machine publishes for the given arch, in push order (all tags carry the architecture).
+arch_refs() {
+	local ARCH=$1 layer
+	gen --layer os --base-name-only
+	testbase_hub_ref "$ARCH"
+	for layer in "${BASE_LAYERS[@]}"; do
+		gen --layer "$layer" --name-only
+	done
+	server_ref "$ARCH"
+	rest_ref "$ARCH"
+}
+
+# Push this machine's images and check that Docker Hub serves the pushed digest.
+step_push() {
+	local ref output digest remote pushed=()
+	for ref in $(arch_refs "$ARCH"); do
+		output=$(log_run docker push "$ref") \
+			|| fail "push failed: $ref (run 'docker login' and retry). Already pushed: ${pushed[*]:-none}"
+		digest=$(grep -o 'digest: sha256:[0-9a-f]*' <<< "$output" | tail -n 1 | cut -d' ' -f2)
+		remote=$(docker buildx imagetools inspect --format '{{.Manifest.Digest}}' "$ref") \
+			|| fail "$ref: not found on Docker Hub after push"
+		[ -n "$digest" ] && [ "$digest" = "$remote" ] \
+			|| fail "$ref: Docker Hub serves '$remote', but push reported '${digest:-nothing}'"
+		pushed+=("$ref")
+		ok "pushed $ref"
+	done
+}
+
+# Combine the amd64 and arm64 tags into multi-arch tags. Run once, after both machines have pushed.
+step_manifest() {
+	local compiler server rest ref missing=() pairs=() pair plain amd64 arm64 platforms
+	compiler=$(gen --layer os --base-name-only --ignore-architecture)
+	server="$DOCKER_NAMESPACE/catapult-server:$(server_manifest_tag)"
+	rest="$DOCKER_NAMESPACE/catapult-rest:$(rest_manifest_tag)"
+	pairs=(
+		"$compiler $(ARCH=amd64 gen --layer os --base-name-only) $(ARCH=arm64 gen --layer os --base-name-only)"
+		"$(testbase_ref) $(testbase_hub_ref amd64) $(testbase_hub_ref arm64)"
+		"$server $(server_ref amd64) $(server_ref arm64)"
+		"$rest $(rest_ref amd64) $(rest_ref arm64)"
+	)
+
+	for pair in "${pairs[@]}"; do
+		read -r plain amd64 arm64 <<< "$pair"
+		for ref in "$amd64" "$arm64"; do
+			docker buildx imagetools inspect "$ref" > /dev/null 2>&1 || missing+=("$ref")
+		done
+	done
+	[ ${#missing[@]} -eq 0 ] \
+		|| fail "not on Docker Hub yet (run 'build.sh push' on the other machine first): ${missing[*]}"
+
+	for pair in "${pairs[@]}"; do
+		read -r plain amd64 arm64 <<< "$pair"
+		log_run docker buildx imagetools create -t "$plain" "$amd64" "$arm64" || fail "$plain: manifest creation failed"
+		platforms=$(docker buildx imagetools inspect "$plain") || fail "$plain: not found after creation"
+		[[ "$platforms" == *linux/amd64* && "$platforms" == *linux/arm64* ]] \
+			|| fail "$plain: expected linux/amd64 and linux/arm64"
+		ok "$plain (linux/amd64, linux/arm64)"
+	done
+}
