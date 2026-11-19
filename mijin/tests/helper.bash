@@ -43,3 +43,27 @@ load_common() {
 	# shellcheck source=../lib/common.sh
 	source "$MIJIN_DIR/lib/common.sh"
 }
+
+load_steps() {
+	load_common
+	# shellcheck source=../lib/steps.sh
+	source "$MIJIN_DIR/lib/steps.sh"
+}
+
+# Put the docker stub first on PATH with empty state.
+setup_stub_docker() {
+	STUB_DIR="$BATS_TEST_TMPDIR/stub"
+	DOCKER_LOG="$STUB_DIR/log"
+	export STUB_DIR DOCKER_LOG
+	mkdir -p "$STUB_DIR" "$BATS_TEST_TMPDIR/bin"
+	: > "$DOCKER_LOG"
+	ln -sf "$MIJIN_DIR/tests/stub/docker" "$BATS_TEST_TMPDIR/bin/docker"
+	PATH="$BATS_TEST_TMPDIR/bin:$PATH"
+}
+
+stub_local_image() { echo "$1 ${2:--}" >> "$STUB_DIR/local"; }
+stub_hub_image() { echo "$1 ${2:--}" >> "$STUB_DIR/hub"; }
+stub_run_output() { printf '%s\t%s\n' "$1" "$2" >> "$STUB_DIR/run"; }
+
+# True when the docker log has a line containing the given text.
+docker_called() { grep -qF -- "$1" "$DOCKER_LOG"; }

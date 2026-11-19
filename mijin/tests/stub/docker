@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Test stand-in for docker. Records every call in $DOCKER_LOG and keeps image state in $STUB_DIR:
+#   local  lines "<ref> <input-hash>"   images present on this machine (hash may be "-" for no label)
+#   hub    lines "<ref> <input-hash>"   images present on Docker Hub
+#   run    lines "<pattern>\t<output>"  output printed by `docker run` when its arguments contain <pattern>
+# STUB_FAIL_PUSH=1 makes push fail; STUB_FAIL_BUILD=<text> makes a build whose arguments contain <text> fail.
+set -euo pipefail
+
+echo "$*" >> "$DOCKER_LOG"
+touch "$STUB_DIR/local" "$STUB_DIR/hub" "$STUB_DIR/run"
+
+lookup() { # file ref -> prints hash, fails if absent
+	awk -v ref="$2" '$1 == ref { print $2; found = 1 } END { exit !found }' "$STUB_DIR/$1"
+}
+
+add() { # file ref hash
+	grep -v "^$2 " "$STUB_DIR/$1" > "$STUB_DIR/$1.tmp" || true
+	echo "$2 $3" >> "$STUB_DIR/$1.tmp"
+	mv "$STUB_DIR/$1.tmp" "$STUB_DIR/$1"
+}
+
+label_value() { # hash -> what docker prints for a missing label
+	if [ "$1" = - ]; then echo '<no value>'; else echo "$1"; fi
+}
+
+# Record the tags and input-hash label of a build command, unless it is meant to fail.
+record_build() {
+	if [ -n "${STUB_FAIL_BUILD:-}" ] && [[ "$*" == *"$STUB_FAIL_BUILD"* ]]; then
+		echo "build failed" >&2
+		exit 1
+	fi
+	local hash=- tags=() previous=""
+	for arg in "$@"; do
+		case "$previous" in
+			-t) tags+=("$arg") ;;
+			--label) [[ "$arg" == mijin.input-hash=* ]] && hash=${arg#mijin.input-hash=} ;;
+		esac
+		previous=$arg
+	done
+	for tag in "${tags[@]}"; do add local "$tag" "$hash"; done
+}
+
+case "$1 ${2:-}" in
+	"image inspect")
+		ref=${*: -1}
+		hash=$(lookup local "$ref") || { echo "No such image: $ref" >&2; exit 1; }
+		case "$*" in
+			*mijin.input-hash*) label_value "$hash" ;;
+			*Architecture*) echo "${STUB_IMAGE_ARCH:-$ARCH}" ;;
+		esac
+		;;
+	"buildx imagetools")
+		if [ "$3" = inspect ]; then
+			ref=${*: -1}
+			lookup hub "$ref" > /dev/null || { echo "not found: $ref" >&2; exit 1; }
+			case "$*" in
+				*Manifest.Digest*) echo "sha256:stub" ;;
+				*) printf 'Name: %s\nPlatform: linux/amd64\nPlatform: linux/arm64\n' "$ref" ;;
+			esac
+		else
+			shift 3
+			[ "$1" = -t ] && add hub "$2" multi
+		fi
+		;;
+	"buildx build") shift 2; record_build "$@" ;;
+	"build "*) shift; record_build "$@" ;;
+	"pull "*)
+		hash=$(lookup hub "$2") || { echo "not found: $2" >&2; exit 1; }
+		add local "$2" "$hash"
+		;;
+	"tag "*)
+		hash=$(lookup local "$2") || exit 1
+		add local "$3" "$hash"
+		;;
+	"push "*)
+		[ -z "${STUB_FAIL_PUSH:-}" ] || { echo "denied: requested access to the resource is denied" >&2; exit 1; }
+		hash=$(lookup local "$2") || exit 1
+		add hub "$2" "$hash"
+		echo "latest: digest: sha256:stub size: 1234"
+		;;
+	"run "*)
+		while IFS=$'\t' read -r pattern output; do
+			[ -n "$pattern" ] && [[ "$*" == *"$pattern"* ]] && printf '%b\n' "$output"
+		done < "$STUB_DIR/run"
+		;;
+esac
+exit 0
