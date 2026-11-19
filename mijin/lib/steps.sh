@@ -121,3 +121,52 @@ step_base() {
 	done
 	ok "base: ${BASE_LAYERS[*]}, $ARCH"
 }
+
+server_ref() { echo "$DOCKER_NAMESPACE/catapult-server:$(server_tag "$1")"; }
+rest_ref() { echo "$DOCKER_NAMESPACE/catapult-rest:$(rest_tag "$1")"; }
+
+# catapult-server release image, built by the upstream runDockerBuild.py and labelled with the source commit.
+step_server() {
+	require_clean_tree
+	local version label ref commit output
+	version=$(catapult_version)
+	label=$(server_tag "$ARCH")
+	ref=$(server_ref "$ARCH")
+	commit=$(git -C "$REPO_ROOT" rev-parse HEAD)
+
+	log_run python3 jenkins/catapult/runDockerBuild.py \
+		--compiler-configuration "jenkins/catapult/configurations/$ARCH/gcc-latest.yaml" \
+		--build-configuration jenkins/catapult/configurations/release-mijin.yaml \
+		--operating-system ubuntu \
+		--user "$(id -u):$(id -g)" \
+		--source-path ./ \
+		--destination-image-label "$label" || fail "$ref: build failed"
+	printf 'FROM %s\n' "$ref" | log_run docker build --label "mijin.git-commit=$commit" -t "$ref" - \
+		|| fail "$ref: labelling failed"
+
+	# The server prints its version before it fails to load the (missing) configuration.
+	output=$(docker run --rm --entrypoint /usr/catapult/bin/catapult.server "$ref" /nonexistent 2>&1) || true
+	[[ "$output" == *"catapult version: $version"* ]] \
+		|| fail "$ref: expected 'catapult version: $version', got: $(head -n 3 <<< "$output")"
+	require_arch "$ref"
+	ok "server: $ref ($version, $ARCH)"
+}
+
+# catapult-rest image from client/rest/prod/Dockerfile.
+step_rest() {
+	require_clean_tree
+	local version ref commit node package
+	version=$(rest_version)
+	ref=$(rest_ref "$ARCH")
+	commit=$(git -C "$REPO_ROOT" rev-parse HEAD)
+
+	log_run docker build -f client/rest/prod/Dockerfile --label "mijin.git-commit=$commit" -t "$ref" client/rest \
+		|| fail "$ref: build failed"
+
+	node=$(docker run --rm "$ref" node --version) || fail "$ref: cannot run node"
+	[[ "$node" == v24.* ]] || fail "$ref: node is $node, expected v24.x"
+	package=$(docker run --rm "$ref" node -p "require('/app/package.json').version") || fail "$ref: cannot read package.json"
+	[ "$package" = "$version" ] || fail "$ref: package version is '$package', expected '$version'"
+	require_arch "$ref"
+	ok "rest: $ref (node $node, $ARCH)"
+}
