@@ -27,6 +27,7 @@
 #include "catapult/cache_core/AccountStateCacheUtils.h"
 #include "catapult/chain/ChainResults.h"
 #include "catapult/chain/ChainUtils.h"
+#include "catapult/crypto/CryptoUtils.h"
 #include "catapult/io/BlockStatementSerializer.h"
 #include "catapult/io/Stream.h"
 #include "catapult/model/BlockUtils.h"
@@ -97,10 +98,12 @@ namespace catapult { namespace consumers {
 			DefaultBlockchainProcessor(
 					const BlockHitPredicateFactory& blockHitPredicateFactory,
 					const chain::BatchEntityProcessor& batchEntityProcessor,
-					ReceiptValidationMode receiptValidationMode)
+					ReceiptValidationMode receiptValidationMode,
+					const VrfForkHeights& vrfForkHeights)
 					: m_blockHitPredicateFactory(blockHitPredicateFactory)
 					, m_batchEntityProcessor(batchEntityProcessor)
 					, m_receiptValidationMode(receiptValidationMode)
+					, m_vrfForkHeights(vrfForkHeights)
 			{}
 
 		public:
@@ -126,7 +129,13 @@ namespace catapult { namespace consumers {
 
 				for (auto& element : elements) {
 					// 1. check generation hash
-					auto result = CheckGenerationHash(element, *pParent, *pParentGenerationHash, blockHitPredicate, readOnlyCache);
+					auto result = CheckGenerationHash(
+						element,
+						*pParent,
+						*pParentGenerationHash,
+						blockHitPredicate,
+						readOnlyCache,
+						m_vrfForkHeights);
 					if (!IsValidationResultSuccess(result))
 						return result;
 
@@ -180,7 +189,8 @@ namespace catapult { namespace consumers {
 					const model::Block& parentBlock,
 					const GenerationHash& parentGenerationHash,
 					const BlockHitPredicate& blockHitPredicate,
-					const cache::ReadOnlyCatapultCache& readOnlyCache) {
+					const cache::ReadOnlyCatapultCache& readOnlyCache,
+					const VrfForkHeights& vrfForkHeights) {
 				const auto& block = element.Block;
 				const auto& accountStateCache = readOnlyCache.sub<cache::AccountStateCache>();
 
@@ -193,7 +203,18 @@ namespace catapult { namespace consumers {
 				}
 
 				auto vrfPublicKey = GetVrfPublicKey(accountStateCache, accountStateIter.get().Address);
-				auto vrfVerifyResult = crypto::VerifyVrfProof(block.GenerationHashProof, parentGenerationHash, vrfPublicKey);
+				auto vrfProofOptions = crypto::VrfProofOptions::None;
+				if (block.Height >= vrfForkHeights.StrictPublicKeyCheck)
+					vrfProofOptions |= crypto::VrfProofOptions::Check_Public_Key;
+
+				if (block.Height >= vrfForkHeights.GammaSubgroupCheck)
+					vrfProofOptions |= crypto::VrfProofOptions::Check_Gamma | crypto::VrfProofOptions::Check_Public_Key_Neutral;
+
+				auto vrfVerifyResult = crypto::VerifyVrfProof(
+					block.GenerationHashProof,
+					parentGenerationHash,
+					vrfPublicKey,
+					vrfProofOptions);
 
 				if (Hash512() == vrfVerifyResult) {
 					CATAPULT_LOG(warning) << "vrf proof does not validate at height " << block.Height;
@@ -264,13 +285,15 @@ namespace catapult { namespace consumers {
 			BlockHitPredicateFactory m_blockHitPredicateFactory;
 			chain::BatchEntityProcessor m_batchEntityProcessor;
 			ReceiptValidationMode m_receiptValidationMode;
+			VrfForkHeights m_vrfForkHeights;
 		};
 	}
 
 	BlockchainProcessor CreateBlockchainProcessor(
 			const BlockHitPredicateFactory& blockHitPredicateFactory,
 			const chain::BatchEntityProcessor& batchEntityProcessor,
-			ReceiptValidationMode receiptValidationMode) {
-		return DefaultBlockchainProcessor(blockHitPredicateFactory, batchEntityProcessor, receiptValidationMode);
+			ReceiptValidationMode receiptValidationMode,
+			const VrfForkHeights& vrfForkHeights) {
+		return DefaultBlockchainProcessor(blockHitPredicateFactory, batchEntityProcessor, receiptValidationMode, vrfForkHeights);
 	}
 }}

@@ -20,6 +20,12 @@ builds:
       - catbuffer/parser
       - linters
 
+  - name: Sdk Java
+    path: sdk/java
+    dependsOn:
+      - catbuffer/parser
+      - linters
+
   - name: Sdk Javascript
     path: sdk/javascript
     dependsOn:
@@ -34,6 +40,18 @@ builds:
   - name: Linters
     path: linters
     required: true
+
+  - name: OpenAPI
+    path: openapi
+    dependsOn:
+      - linters
+
+  - name: mkdocs
+    path: mkdocs
+    dependsOn:
+      - sdk/javascript
+      - sdk/python
+      - sdk/java
 
 customBuilds:
   - name: Nightly Job

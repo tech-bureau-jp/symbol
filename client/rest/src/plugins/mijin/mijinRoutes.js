@@ -48,97 +48,92 @@ export default {
     const { connections } = services;
     const { timeout } = services.config.apiNode;
 
-    server.get("/mijin/peersinfo", async (req, res, next) => {
-      try {
-        const packetBuffer = packetHeader.createBuffer(
-          PacketType.nodeDiscoveryPullPeers,
-          packetHeader.size
-        );
-        const conn0 = await connections.singleUse();
-        const packet0 = await conn0.pushPull(packetBuffer, timeout);
-        const peersInfo = buildResponse(
-          packet0,
-          nodePeersCodec,
-          routeResultTypes.nodeInfo
-        ).payload;
+    server.get("/mijin/peersinfo", async (request, reply) => {
+      const packetBuffer = packetHeader.createBuffer(
+        PacketType.nodeDiscoveryPullPeers,
+        packetHeader.size
+      );
+      const conn0 = await connections.singleUse();
+      const packet0 = await conn0.pushPull(packetBuffer, timeout);
+      const peersInfo = buildResponse(
+        packet0,
+        nodePeersCodec,
+        routeResultTypes.nodeInfo
+      ).payload;
 
-        const hosts = peersInfo.map((p) => p.host.toString());
-        hosts.push(services.config.apiNode.host);
+      const hosts = peersInfo.map((p) => p.host.toString());
+      hosts.push(services.config.apiNode.host);
 
-        const pingPromises = hosts.map(async (host) => {
-          try {
-            const pingBuf = packetHeader.createBuffer(
-              PacketType.nodeDiscoveryPullPing,
-              packetHeader.size
-            );
-            const chainBuf = packetHeader.createBuffer(
-              PacketType.chainStatistics,
-              packetHeader.size
-            );
+      const pingPromises = hosts.map(async (host) => {
+        try {
+          const pingBuf = packetHeader.createBuffer(
+            PacketType.nodeDiscoveryPullPing,
+            packetHeader.size
+          );
+          const chainBuf = packetHeader.createBuffer(
+            PacketType.chainStatistics,
+            packetHeader.size
+          );
 
-            const peerConfig = {
-              apiNode: {
-                host: host,
-                port: services.config.apiNode.port,
-                key: fs.readFileSync(services.config.apiNode.tlsClientKeyPath),
-                certificate: fs.readFileSync(
-                  services.config.apiNode.tlsClientCertificatePath
-                ),
-                caCertificate: fs.readFileSync(
-                  services.config.apiNode.tlsCaCertificatePath
-                ),
-              },
-            };
-            const peerConnections = createConnectionService(peerConfig, winston.verbose);
+          const peerConfig = {
+            apiNode: {
+              host: host,
+              port: services.config.apiNode.port,
+              key: fs.readFileSync(services.config.apiNode.tlsClientKeyPath),
+              certificate: fs.readFileSync(
+                services.config.apiNode.tlsClientCertificatePath
+              ),
+              caCertificate: fs.readFileSync(
+                services.config.apiNode.tlsCaCertificatePath
+              ),
+            },
+          };
+          const peerConnections = createConnectionService(peerConfig, winston.verbose);
 
-            const conn1 = await peerConnections.singleUse();
-            const pingPkt = await conn1.pushPull(pingBuf, timeout);
-            const nodeInfo = buildResponse(pingPkt, nodeInfoCodec, routeResultTypes.nodeInfo).payload;
+          const conn1 = await peerConnections.singleUse();
+          const pingPkt = await conn1.pushPull(pingBuf, timeout);
+          const nodeInfo = buildResponse(pingPkt, nodeInfoCodec, routeResultTypes.nodeInfo).payload;
 
-            const conn2 = await peerConnections.singleUse();
-            const chainPkt = await conn2.pushPull(chainBuf, timeout);
-            const chainInfo = buildResponse(chainPkt, chainInfoCodec, routeResultTypes.chainInfo).payload;
+          const conn2 = await peerConnections.singleUse();
+          const chainPkt = await conn2.pushPull(chainBuf, timeout);
+          const chainInfo = buildResponse(chainPkt, chainInfoCodec, routeResultTypes.chainInfo).payload;
 
-            return { ...nodeInfo, ...chainInfo };
-          } catch (error) {
-            return null;
-          }
-        });
-        const nodeInfos = (await Promise.all(pingPromises)).filter(info => info !== null);
+          return { ...nodeInfo, ...chainInfo };
+        } catch (error) {
+          return null;
+        }
+      });
+      const nodeInfos = (await Promise.all(pingPromises)).filter(info => info !== null);
 
-        const finalizedBlockInfo = await db.latestFinalizedBlock();
+      const finalizedBlockInfo = await db.latestFinalizedBlock();
 
-        const formattedPayload = nodeInfos.map(info => {
-          const formatted = {};
-          Object.keys(info).forEach(key => {
-            const value = info[key];
-            if (typeof value === 'bigint') {
-              formatted[key] = value.toString();
-            } else if (Buffer.isBuffer(value)) {
-              if (key === 'host' || key === 'friendlyName') {
-                formatted[key] = value.toString('utf8');
-              } else {
-                formatted[key] = value.toString('hex').toUpperCase();
-              }
+      const formattedPayload = nodeInfos.map(info => {
+        const formatted = {};
+        Object.keys(info).forEach(key => {
+          const value = info[key];
+          if (typeof value === 'bigint') {
+            formatted[key] = value.toString();
+          } else if (Buffer.isBuffer(value)) {
+            if (key === 'host' || key === 'friendlyName') {
+              formatted[key] = value.toString('utf8');
             } else {
-              formatted[key] = value;
+              formatted[key] = value.toString('hex').toUpperCase();
             }
-          });
-          if (finalizedBlockInfo?.block) {
-            formatted.latestFinalizedBlock = {
-              height: finalizedBlockInfo.block.height?.toString(),
-              finalizationEpoch: finalizedBlockInfo.block.finalizationEpoch,
-              finalizationPoint: finalizedBlockInfo.block.finalizationPoint
-            };
+          } else {
+            formatted[key] = value;
           }
-          return formatted;
         });
+        if (finalizedBlockInfo?.block) {
+          formatted.latestFinalizedBlock = {
+            height: finalizedBlockInfo.block.height?.toString(),
+            finalizationEpoch: finalizedBlockInfo.block.finalizationEpoch,
+            finalizationPoint: finalizedBlockInfo.block.finalizationPoint
+          };
+        }
+        return formatted;
+      });
 
-        res.send(formattedPayload);
-        next();
-      } catch (err) {
-        next(err);
-      }
+      return reply.send(formattedPayload);
     });
   },
 };

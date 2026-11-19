@@ -160,7 +160,8 @@ namespace catapult { namespace sync {
 			return CreateBlockchainProcessor(
 					blockHitPredicateFactory,
 					chain::CreateBatchEntityProcessor(executionConfig),
-					GetReceiptValidationMode(blockchainConfig));
+					GetReceiptValidationMode(blockchainConfig),
+					{ blockchainConfig.ForkHeights.StrictVrfPublicKeyCheck, blockchainConfig.ForkHeights.VrfGammaSubgroupCheck });
 		}
 
 		BlockchainSyncHandlers CreateBlockchainSyncHandlers(extensions::ServiceState& state, RollbackInfo& rollbackInfo) {

@@ -94,14 +94,14 @@ cd symbol/client/catapult
 ### Linux and Macos
 
 ```sh
-conan install . --build=missing -s build_type=Release
+conan install . --build=missing -s compiler.cppstd=20 -s build_type=Release
 cd build/Release
 ```
 
 ### Windows
 
 ```sh
-conan install . --build=missing -s compiler.cppstd=17 -s build_type=Release
+conan install . --build=missing -s compiler.cppstd=20 -s build_type=Release
 cd build
 ```
 
@@ -129,7 +129,6 @@ _where `build_type` argument value can be any of Release, RelWithDebInfo, Debug*
 - Build:
 
   ```sh
-  cmake --build . --target publish
   msbuild /p:Configuration=Release /p:Platform=x64 /m ALL_BUILD.vcxproj
   ```
 
@@ -151,7 +150,6 @@ _where `build_type` argument value can be any of Release, RelWithDebInfo, Debug*
 
   ```sh
   cmake --preset conan-release -G Ninja -DUSE_CONAN=ON ../../
-  ninja publish
   ninja -j4
   ```
 

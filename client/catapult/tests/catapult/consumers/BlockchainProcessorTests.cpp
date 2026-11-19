@@ -25,7 +25,9 @@
 #include "catapult/cache_core/BlockStatisticCache.h"
 #include "catapult/chain/ChainResults.h"
 #include "catapult/consumers/InputUtils.h"
+#include "catapult/crypto/Vrf.h"
 #include "catapult/model/BlockUtils.h"
+#include "catapult/utils/HexParser.h"
 #include "tests/catapult/consumers/test/ConsumerTestUtils.h"
 #include "tests/test/cache/CacheTestUtils.h"
 #include "tests/test/core/BlockTestUtils.h"
@@ -201,11 +203,21 @@ namespace catapult { namespace consumers {
 
 		// region ProcessorTestContext
 
-		enum class PrepareAccountMode { Not_In_Cache, No_Vrf_Public_Key, Wrong_Vrf_Public_Key, Remote_Harvester, Default };
+		enum class PrepareAccountMode {
+			Not_In_Cache,
+			No_Vrf_Public_Key,
+			Wrong_Vrf_Public_Key,
+			Neutral_Vrf_Public_Key,
+			Remote_Harvester,
+			Default
+		};
 
 		struct ProcessorTestContext {
 		public:
-			explicit ProcessorTestContext(ReceiptValidationMode receiptValidationMode = ReceiptValidationMode::Disabled)
+			explicit ProcessorTestContext(
+					ReceiptValidationMode receiptValidationMode = ReceiptValidationMode::Disabled,
+					Height strictVrfPublicKeyForkHeight = Height(1),
+					Height vrfGammaSubgroupForkHeight = Height(1))
 					: BlockHitPredicateFactory(BlockHitPredicate) {
 				Processor = CreateBlockchainProcessor(
 						[this](const auto& cache) {
@@ -214,7 +226,8 @@ namespace catapult { namespace consumers {
 						[this](auto height, auto timestamp, const auto& entities, auto& state) {
 							return BatchEntityProcessor(height, timestamp, entities, state);
 						},
-						receiptValidationMode);
+						receiptValidationMode,
+						{ strictVrfPublicKeyForkHeight, vrfGammaSubgroupForkHeight });
 			}
 
 		public:
@@ -222,6 +235,10 @@ namespace catapult { namespace consumers {
 			MockBlockHitPredicateFactory BlockHitPredicateFactory;
 			MockBatchEntityProcessor BatchEntityProcessor;
 			BlockchainProcessor Processor;
+
+			// when false, the proof already set on each block is processed as-is instead of generating an honest one
+			// (used to supply a forged proof)
+			bool GenerateVrfProofs = true;
 
 		public:
 			ValidationResult Process(
@@ -238,9 +255,12 @@ namespace catapult { namespace consumers {
 					auto prepareAccountMode = lookupPrepareAccountMode(element.Block.Height);
 					auto vrfKeyPair = PrepareAccount(accountStateCacheDelta, element.Block.SignerPublicKey, prepareAccountMode);
 
-					auto vrfProof = crypto::GenerateVrfProof(previousGenerationHash, vrfKeyPair);
-					auto& blockGenerationHashProof = const_cast<model::Block&>(element.Block).GenerationHashProof;
-					blockGenerationHashProof = { vrfProof.Gamma, vrfProof.VerificationHash, vrfProof.Scalar };
+					if (GenerateVrfProofs) {
+						auto vrfProof = crypto::GenerateVrfProof(previousGenerationHash, vrfKeyPair);
+						auto& blockGenerationHashProof = const_cast<model::Block&>(element.Block).GenerationHashProof;
+						blockGenerationHashProof = { vrfProof.Gamma, vrfProof.VerificationHash, vrfProof.Scalar };
+					}
+
 					previousGenerationHash = model::CalculateGenerationHash(element.Block.GenerationHashProof.Gamma);
 				}
 
@@ -293,9 +313,14 @@ namespace catapult { namespace consumers {
 				auto vrfKeyPair = test::GenerateKeyPair();
 				if (PrepareAccountMode::No_Vrf_Public_Key < prepareAccountMode) {
 					auto accountStateIter = accountStateCacheDelta.find(mainPublicKey);
-					auto vrfPublicKey = PrepareAccountMode::Wrong_Vrf_Public_Key < prepareAccountMode
-							? vrfKeyPair.publicKey()
-							: test::GenerateRandomByteArray<Key>();
+					Key vrfPublicKey;
+					if (PrepareAccountMode::Neutral_Vrf_Public_Key == prepareAccountMode)
+						vrfPublicKey = utils::ParseByteArray<Key>("0100000000000000000000000000000000000000000000000000000000000000");
+					else
+						vrfPublicKey = PrepareAccountMode::Wrong_Vrf_Public_Key < prepareAccountMode
+								? vrfKeyPair.publicKey()
+								: test::GenerateRandomByteArray<Key>();
+
 					accountStateIter.get().SupplementalPublicKeys.vrf().set(vrfPublicKey);
 				}
 
@@ -596,6 +621,119 @@ namespace catapult { namespace consumers {
 
 	TEST(TEST_CLASS, ExecuteShortCircuitsOnBlockWithSignerWithWrongVrfPublicKey) {
 		AssertExecuteShortCircuitsOnVrfFailure(chain::Failure_Chain_Block_Invalid_Vrf_Proof, PrepareAccountMode::Wrong_Vrf_Public_Key);
+	}
+
+	// endregion
+
+	// region strict vrf public key fork height
+
+	namespace {
+		GenerationHash ForgedProofParentGenerationHash() {
+			return utils::ParseByteArray<GenerationHash>("D9F3A5C4E1B207685A3C9D0F74E2186B4C7A91D3058EF62A1B9C4D7E830A5F2C");
+		}
+
+		crypto::VrfProof CreateForgedProofForUnsetKey() {
+			return {
+				utils::ParseByteArray<crypto::ProofGamma>("2617AF70D56B864E51544CB5B710DFFC8D86F3D2E64E7A2611FE629B28C26C52"),
+				utils::ParseByteArray<crypto::ProofVerificationHash>("9897F8C2C65B6659838B80E53EAFC33B"),
+				utils::ParseByteArray<crypto::ProofScalar>("09EEACCDB30D1CD9F3B733EA6797B43D27D92153F3695DC493A027EDA1D52200")
+			};
+		}
+
+		void AssertForgedVrfProofHandledAroundForkHeight(Height strictVrfPublicKeyForkHeight, ValidationResult expectedResult) {
+			// Arrange: a single block at height 12 whose signer has an unset on-chain VRF public key (invalid),
+			//          carrying a proof forged for that unset key
+			ProcessorTestContext context(ReceiptValidationMode::Disabled, strictVrfPublicKeyForkHeight);
+			context.GenerateVrfProofs = false;
+
+			auto pParentBlock = test::GenerateEmptyRandomBlock();
+			auto elements = test::CreateBlockElements(1);
+			PrepareChain(Height(11), *pParentBlock, elements);
+			const_cast<model::Block&>(elements[0].Block).GenerationHashProof = CreateForgedProofForUnsetKey();
+
+			// - the forged proof is only valid for this specific block
+			auto parentBlockElement = test::BlockToBlockElement(*pParentBlock);
+			parentBlockElement.GenerationHash = ForgedProofParentGenerationHash();
+
+			// Act:
+			auto result = context.Process(parentBlockElement, elements, [](auto) {
+				return PrepareAccountMode::No_Vrf_Public_Key;
+			});
+
+			// Assert:
+			EXPECT_EQ(expectedResult, result);
+		}
+	}
+
+	TEST(TEST_CLASS, AcceptsForgedVrfProofForUnsetKeyBelowStrictVrfPublicKeyForkHeight) {
+		// Assert: block height (12) is below the fork height, so the invalid public key is tolerated and the forgery passes
+		AssertForgedVrfProofHandledAroundForkHeight(Height(13), ValidationResult::Success);
+	}
+
+	TEST(TEST_CLASS, RejectsForgedVrfProofForUnsetKeyAtStrictVrfPublicKeyForkHeight) {
+		// Assert: block height (12) is exactly at the fork height, so strict validation rejects the forgery
+		AssertForgedVrfProofHandledAroundForkHeight(Height(12), chain::Failure_Chain_Block_Invalid_Vrf_Proof);
+	}
+
+	TEST(TEST_CLASS, RejectsForgedVrfProofForUnsetKeyAboveStrictVrfPublicKeyForkHeight) {
+		// Assert: block height (12) is above the fork height, so strict validation rejects the forgery
+		AssertForgedVrfProofHandledAroundForkHeight(Height(1), chain::Failure_Chain_Block_Invalid_Vrf_Proof);
+	}
+
+	// endregion
+
+	// region vrf gamma subgroup fork height
+
+	namespace {
+		// a proof forged for a neutral (identity) registered VRF public key whose gamma lies outside the main subgroup;
+		// the neutral key passes the strict public key check (u = s*B != 0), so only the gamma subgroup fork rejects it
+		crypto::VrfProof CreateForgedProofForNeutralKey() {
+			return {
+				utils::ParseByteArray<crypto::ProofGamma>("C7176A703D4DD84FBA3C0B760D10670F2A2053FA2C39CCC64EC7FD7792AC037A"),
+				utils::ParseByteArray<crypto::ProofVerificationHash>("F501F950AFE77B642D2B60D6A6D85A91"),
+				utils::ParseByteArray<crypto::ProofScalar>("0100000000000000000000000000000000000000000000000000000000000000")
+			};
+		}
+
+		void AssertNeutralKeyForgeryHandledAroundGammaForkHeight(Height vrfGammaSubgroupForkHeight, ValidationResult expectedResult) {
+			// Arrange: a single block at height 12 whose signer has the neutral element registered as its VRF public key,
+			//          carrying a proof forged for that key with an out-of-subgroup gamma.
+			//          the strict public key check is always active (Height(1)) to show it does not catch this forgery.
+			ProcessorTestContext context(ReceiptValidationMode::Disabled, Height(1), vrfGammaSubgroupForkHeight);
+			context.GenerateVrfProofs = false;
+
+			auto pParentBlock = test::GenerateEmptyRandomBlock();
+			auto elements = test::CreateBlockElements(1);
+			PrepareChain(Height(11), *pParentBlock, elements);
+			const_cast<model::Block&>(elements[0].Block).GenerationHashProof = CreateForgedProofForNeutralKey();
+
+			// - the forged proof is only valid for this specific block (alpha == parent generation hash)
+			auto parentBlockElement = test::BlockToBlockElement(*pParentBlock);
+			parentBlockElement.GenerationHash = ForgedProofParentGenerationHash();
+
+			// Act:
+			auto result = context.Process(parentBlockElement, elements, [](auto) {
+				return PrepareAccountMode::Neutral_Vrf_Public_Key;
+			});
+
+			// Assert:
+			EXPECT_EQ(expectedResult, result);
+		}
+	}
+
+	TEST(TEST_CLASS, AcceptsNeutralKeyForgeryBelowVrfGammaSubgroupForkHeight) {
+		// Assert: block height (12) is below the fork height, so the gamma subgroup check is inactive and the forgery passes
+		AssertNeutralKeyForgeryHandledAroundGammaForkHeight(Height(13), ValidationResult::Success);
+	}
+
+	TEST(TEST_CLASS, RejectsNeutralKeyForgeryAtVrfGammaSubgroupForkHeight) {
+		// Assert: block height (12) is exactly at the fork height, so the gamma subgroup check rejects the forgery
+		AssertNeutralKeyForgeryHandledAroundGammaForkHeight(Height(12), chain::Failure_Chain_Block_Invalid_Vrf_Proof);
+	}
+
+	TEST(TEST_CLASS, RejectsNeutralKeyForgeryAboveVrfGammaSubgroupForkHeight) {
+		// Assert: block height (12) is above the fork height, so the gamma subgroup check rejects the forgery
+		AssertNeutralKeyForgeryHandledAroundGammaForkHeight(Height(1), chain::Failure_Chain_Block_Invalid_Vrf_Proof);
 	}
 
 	// endregion

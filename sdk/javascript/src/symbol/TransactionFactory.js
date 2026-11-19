@@ -1,17 +1,13 @@
 import {
 	Address,
-	/* eslint-disable no-unused-vars */
 	Network
-	/* eslint-enable no-unused-vars */
 } from './Network.js';
 import { generateMosaicId, generateNamespaceId } from './idGenerator.js';
 import * as sc from './models.js';
 import {
 	Hash256,
 	PublicKey,
-	/* eslint-disable no-unused-vars */
 	Signature
-	/* eslint-enable no-unused-vars */
 } from '../CryptoTypes.js';
 import RuleBasedTransactionFactory from '../RuleBasedTransactionFactory.js';
 import { uint8ToHex } from '../utils/converter.js';
@@ -41,7 +37,7 @@ export default class TransactionFactory {
 	 * Gets class type.
 	 * @returns {typeof TransactionFactory} Class type.
 	 */
-	get static() { // eslint-disable-line class-methods-use-this
+	get static() {
 		return TransactionFactory;
 	}
 
@@ -142,7 +138,15 @@ export default class TransactionFactory {
 	 */
 	static attachSignature(transaction, signature) {
 		transaction.signature = new sc.Signature(signature.bytes);
+		return TransactionFactory.toJson(transaction);
+	}
 
+	/**
+	 * Generates a JSON representation of transaction that can be sent to a node.
+	 * @param {sc.Transaction} transaction Transaction object.
+	 * @returns {string} JSON transaction payload.
+	 */
+	static toJson(transaction) {
 		const transactionBuffer = transaction.serialize();
 		const hexPayload = uint8ToHex(transactionBuffer);
 		const jsonPayload = `{"payload": "${hexPayload}"}`;
