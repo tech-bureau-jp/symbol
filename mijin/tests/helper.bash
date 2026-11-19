@@ -61,8 +61,16 @@ setup_stub_docker() {
 	PATH="$BATS_TEST_TMPDIR/bin:$PATH"
 }
 
-stub_local_image() { echo "$1 ${2:--}" >> "$STUB_DIR/local"; }
-stub_hub_image() { echo "$1 ${2:--}" >> "$STUB_DIR/hub"; }
+# stub_local_image / stub_hub_image <ref> [input-hash] [layers, comma separated] [git-commit]
+stub_image() { # file ref [hash] [layers] [commit]; replaces an existing entry for ref
+	local file="$STUB_DIR/$1"
+	touch "$file"
+	grep -v "^$2 " "$file" > "$file.tmp" || true
+	echo "$2 ${3:--} ${4:--} ${5:--}" >> "$file.tmp"
+	mv "$file.tmp" "$file"
+}
+stub_local_image() { stub_image local "$@"; }
+stub_hub_image() { stub_image hub "$@"; }
 stub_run_output() { printf '%s\t%s\n' "$1" "$2" >> "$STUB_DIR/run"; }
 
 # Replace gen() with the names the upstream generator prints (checked against the real generator for gcc 16).
@@ -76,10 +84,22 @@ stub_gen() {
 			*--base-name-only*--ignore-architecture*) echo "techbureauhd/catapult-server-compiler:ubuntu-gcc-16" ;;
 			*--base-name-only*) echo "techbureauhd/catapult-server-compiler:ubuntu-gcc-16-$suffix" ;;
 			*--name-only*)
+				[ "${STUB_GEN_FAIL:-}" != "$layer" ] || return 1
 				local tag=${tags[$layer]}
 				echo "techbureauhd/catapult-server-build-base:ubuntu-gcc-16${tag:+-$tag}-$suffix"
 				;;
-			*) printf 'FROM previous\nRUN build %s for %s\n' "$layer" "$ARCH" ;;
+			*)
+				[ "${STUB_GEN_FAIL:-}" != "$layer" ] || return 1
+				local -A parents=([os]=compiler [boost]=os [deps]=boost [test]=deps)
+				local parent=${parents[$layer]}
+				local from
+				if [ "$parent" = compiler ]; then
+					from=$(gen --layer os --base-name-only --ignore-architecture)
+				else
+					from=$(gen --layer "$parent" --name-only)
+				fi
+				printf 'FROM %s\nRUN build %s for %s\n' "$from" "$layer" "$ARCH"
+				;;
 		esac
 	}
 }

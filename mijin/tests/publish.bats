@@ -21,8 +21,15 @@ arch_refs() {
 	rest_ref "$ARCH"
 }
 
+# Every image this machine pushes, present locally; server and rest built from HEAD.
+stub_pushable() {
+	local head ref
+	head=$(git -C "$REPO_ROOT" rev-parse HEAD)
+	for ref in $(arch_refs arm64); do stub_local_image "$ref" - - "$head"; done
+}
+
 @test "push pushes only arch-specific tags" {
-	for ref in $(arch_refs arm64); do stub_local_image "$ref"; done
+	stub_pushable
 	run step_push
 	[ "$status" -eq 0 ]
 	docker_called "push techbureauhd/catapult-server-compiler:ubuntu-gcc-16-arm64"
@@ -36,7 +43,7 @@ arch_refs() {
 }
 
 @test "push reports docker login hint on failure" {
-	for ref in $(arch_refs arm64); do stub_local_image "$ref"; done
+	stub_pushable
 	export STUB_FAIL_PUSH=1
 	run step_push
 	[ "$status" -ne 0 ]
@@ -61,4 +68,21 @@ arch_refs() {
 	docker_called "imagetools create -t techbureauhd/catapult-rest:mijin-2.5.2-100311 techbureauhd/catapult-rest:mijin-x86-2.5.2-100311 techbureauhd/catapult-rest:mijin-arm-2.5.2-100311"
 	docker_called "imagetools create -t techbureauhd/catapult-server-compiler:ubuntu-gcc-16 techbureauhd/catapult-server-compiler:ubuntu-gcc-16-skylake techbureauhd/catapult-server-compiler:ubuntu-gcc-16-arm64"
 	docker_called "imagetools create -t techbureauhd/catapult-server-test-base:ubuntu techbureauhd/catapult-server-test-base:ubuntu-amd64 techbureauhd/catapult-server-test-base:ubuntu-arm64"
+}
+
+@test "push refuses a server image built from another commit" {
+	stub_pushable
+	stub_local_image "$(server_ref arm64)" - - 0000000
+	run step_push
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"catapult-server:gcc-mijin-arm-1.0.3.11"* ]]
+	! grep -q '^push ' "$DOCKER_LOG"
+}
+
+@test "push pushes nothing when listing the images fails" {
+	stub_pushable
+	export STUB_GEN_FAIL=deps
+	run step_push
+	[ "$status" -ne 0 ]
+	! grep -q '^push ' "$DOCKER_LOG"
 }

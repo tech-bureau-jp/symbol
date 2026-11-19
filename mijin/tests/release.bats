@@ -5,8 +5,11 @@ setup() {
 	setup_repo
 	setup_stub_docker
 	load_steps
+	stub_gen
 	export ARCH=arm64
 	DOCKER_NAMESPACE=techbureauhd
+	JENKINS_CACHE="$BATS_TEST_TMPDIR/jenkins_cache"
+	mkdir -p "$JENKINS_CACHE"
 	cd "$REPO_ROOT"
 
 	# runDockerBuild.py produces techbureauhd/catapult-server:<label>; other python3 calls run for real.
@@ -35,7 +38,14 @@ setup() {
 	[[ "$output" == *"client/rest/package.json"* ]]
 }
 
+# The images runDockerBuild.py builds on, present locally with the current input hashes.
+stub_server_inputs() {
+	stub_local_image "$(testbase_ref)" "$(testbase_hash)"
+	stub_local_image "$(gen --layer test --name-only)" "$(layer_hash test)"
+}
+
 @test "server passes release-mijin and server_tag" {
+	stub_server_inputs
 	stub_run_output "catapult.server" "catapult version: 1.0.3.11"
 	run step_server
 	[ "$status" -eq 0 ]
@@ -46,6 +56,7 @@ setup() {
 }
 
 @test "server check fails when version line differs" {
+	stub_server_inputs
 	stub_run_output "catapult.server" "catapult version: 1.0.3.9"
 	run step_server
 	[ "$status" -ne 0 ]
@@ -82,4 +93,30 @@ setup() {
 	run step_rest
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"2.5.2-mijin-100311"* ]]
+}
+
+@test "server fails when the jenkins cache is not writable" {
+	stub_server_inputs
+	JENKINS_CACHE="$BATS_TEST_TMPDIR/missing"
+	run step_server
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"$BATS_TEST_TMPDIR/missing"* ]]
+	! docker_called "runDockerBuild.py"
+}
+
+@test "server refuses a stale test base image" {
+	stub_local_image "$(testbase_ref)" OLD
+	stub_local_image "$(gen --layer test --name-only)" "$(layer_hash test)"
+	run step_server
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"catapult-server-test-base:ubuntu"* ]]
+	! docker_called "runDockerBuild.py"
+}
+
+@test "server refuses a missing base test layer" {
+	stub_local_image "$(testbase_ref)" "$(testbase_hash)"
+	run step_server
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"ubuntu-gcc-16-arm64"* ]]
+	! docker_called "runDockerBuild.py"
 }

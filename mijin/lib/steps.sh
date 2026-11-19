@@ -45,6 +45,9 @@ ensure_image() {
 	ok "$local_ref (built)"
 }
 
+# Host directory that the upstream runDockerBuild.py uses for ccache and conan caches.
+JENKINS_CACHE=${JENKINS_CACHE:-/jenkins_cache}
+
 # Install the build tools on Ubuntu (safe to run again). Rootful docker with the docker group; no subuid/subgid setup.
 step_setup() {
 	local keyring=/etc/apt/keyrings/docker.asc list=/etc/apt/sources.list.d/docker.list codename relogin=0
@@ -61,6 +64,8 @@ step_setup() {
 		log_run sudo apt-get update || fail "apt-get update failed (is '$codename' published on download.docker.com?)"
 	fi
 	log_run sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin || fail "docker install failed"
+
+	log_run sudo install -d -o "$(id -un)" -g "$(id -gn)" "$JENKINS_CACHE" || fail "cannot create $JENKINS_CACHE"
 
 	if ! id -nG "$USER" | grep -qw docker; then
 		log_run sudo usermod -aG docker "$USER"
@@ -127,14 +132,31 @@ step_testbase() {
 
 BASE_LAYERS=(os boost deps test)
 
+# Print the layer digests of a local image, base first.
+image_layers() {
+	docker image inspect -f '{{range .RootFS.Layers}}{{println .}}{{end}}' "$1"
+}
+
+# Stop unless <child> was built on top of the current local <parent> (its layers start with the parent's layers).
+require_built_on() {
+	local child=$1 parent=$2 child_layers parent_layers
+	parent_layers=$(image_layers "$parent") || fail "$parent: image not found (build it first)"
+	child_layers=$(image_layers "$child") || fail "$child: image not found"
+	[[ "$child_layers" == "$parent_layers"* ]] \
+		|| fail "$child was not built on the current $parent. Re-run with --rebuild to build it again."
+}
+
 # Base image layers, built in order from the Dockerfiles printed by the upstream generator.
+# Each layer must be built on the current image named in its FROM line (the compiler image for os).
 step_base() {
-	local layer ref hash dockerfile
+	local layer ref hash dockerfile parent
 	for layer in "${BASE_LAYERS[@]}"; do
-		ref=$(gen --layer "$layer" --name-only)
+		ref=$(gen --layer "$layer" --name-only) || fail "cannot get the image name of the $layer layer"
 		dockerfile=$(mktemp)
-		gen --layer "$layer" > "$dockerfile"
+		gen --layer "$layer" > "$dockerfile" || fail "cannot generate the $layer layer Dockerfile"
 		hash=$(sha256 < "$dockerfile")
+		parent=$(sed -n 's/^FROM //p' "$dockerfile" | head -n 1)
+		docker image inspect "$parent" > /dev/null 2>&1 || fail "$parent: image not found (run the step that builds it first)"
 
 		# shellcheck disable=SC2329 # called indirectly by ensure_image
 		build_layer() {
@@ -142,6 +164,7 @@ step_base() {
 		}
 		ensure_image "$ref" "$ref" "$hash" build_layer
 		rm -f "$dockerfile"
+		require_built_on "$ref" "$parent"
 	done
 
 	for layer in "${BASE_LAYERS[@]}"; do
@@ -161,6 +184,12 @@ step_server() {
 	label=$(server_tag "$ARCH")
 	ref=$(server_ref "$ARCH")
 	commit=$(git -C "$REPO_ROOT" rev-parse HEAD)
+
+	[ -d "$JENKINS_CACHE" ] && [ -w "$JENKINS_CACHE" ] \
+		|| fail "$JENKINS_CACHE is missing or not writable (run 'build.sh setup')"
+	# runDockerBuild.py would otherwise pull these from Docker Hub without checking them.
+	require_input_hash "$(testbase_ref)" "$(testbase_hash)"
+	require_input_hash "$(gen --layer test --name-only)" "$(layer_hash test)"
 
 	log_run python3 jenkins/catapult/runDockerBuild.py \
 		--compiler-configuration "jenkins/catapult/configurations/$ARCH/gcc-latest.yaml" \
@@ -202,19 +231,30 @@ step_rest() {
 # Images this machine publishes for the given arch, in push order (all tags carry the architecture).
 arch_refs() {
 	local ARCH=$1 layer
-	gen --layer os --base-name-only
-	testbase_hub_ref "$ARCH"
+	gen --layer os --base-name-only || return 1
+	testbase_hub_ref "$ARCH" || return 1
 	for layer in "${BASE_LAYERS[@]}"; do
-		gen --layer "$layer" --name-only
+		gen --layer "$layer" --name-only || return 1
 	done
-	server_ref "$ARCH"
+	server_ref "$ARCH" || return 1
 	rest_ref "$ARCH"
+}
+
+# Stop unless the local image was built from the current commit.
+require_current_commit() {
+	local commit head
+	head=$(git -C "$REPO_ROOT" rev-parse HEAD)
+	commit=$(docker image inspect -f '{{index .Config.Labels "mijin.git-commit"}}' "$1") || fail "$1: image not found"
+	[ "$commit" = "$head" ] || fail "$1 was built from '$commit', not the current commit $head. Re-run its step first."
 }
 
 # Push this machine's images and check that Docker Hub serves the pushed digest.
 step_push() {
-	local ref output digest remote pushed=()
-	for ref in $(arch_refs "$ARCH"); do
+	local refs ref output digest remote pushed=()
+	refs=$(arch_refs "$ARCH") || fail "cannot list the images to push"
+	require_current_commit "$(server_ref "$ARCH")"
+	require_current_commit "$(rest_ref "$ARCH")"
+	for ref in $refs; do
 		output=$(log_run docker push "$ref") \
 			|| fail "push failed: $ref (run 'docker login' and retry). Already pushed: ${pushed[*]:-none}"
 		digest=$(grep -o 'digest: sha256:[0-9a-f]*' <<< "$output" | tail -n 1 | cut -d' ' -f2)
@@ -229,12 +269,14 @@ step_push() {
 
 # Combine the amd64 and arm64 tags into multi-arch tags. Run once, after both machines have pushed.
 step_manifest() {
-	local compiler server rest ref missing=() pairs=() pair plain amd64 arm64 platforms
-	compiler=$(gen --layer os --base-name-only --ignore-architecture)
+	local compiler compiler_amd64 compiler_arm64 server rest ref missing=() pairs=() pair plain amd64 arm64 platforms
+	compiler=$(gen --layer os --base-name-only --ignore-architecture) || fail "cannot get the compiler image name"
+	compiler_amd64=$(ARCH=amd64 gen --layer os --base-name-only) || fail "cannot get the amd64 compiler image name"
+	compiler_arm64=$(ARCH=arm64 gen --layer os --base-name-only) || fail "cannot get the arm64 compiler image name"
 	server="$DOCKER_NAMESPACE/catapult-server:$(server_manifest_tag)"
 	rest="$DOCKER_NAMESPACE/catapult-rest:$(rest_manifest_tag)"
 	pairs=(
-		"$compiler $(ARCH=amd64 gen --layer os --base-name-only) $(ARCH=arm64 gen --layer os --base-name-only)"
+		"$compiler $compiler_amd64 $compiler_arm64"
 		"$(testbase_ref) $(testbase_hub_ref amd64) $(testbase_hub_ref arm64)"
 		"$server $(server_ref amd64) $(server_ref arm64)"
 		"$rest $(rest_ref amd64) $(rest_ref arm64)"

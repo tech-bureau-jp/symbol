@@ -49,7 +49,13 @@ setup() {
 	[[ "$output" == *"24.04"* ]]
 }
 
+# The compiler image that the os layer is built FROM, present locally with the given layers.
+stub_compiler() {
+	stub_local_image "$(gen --layer os --base-name-only --ignore-architecture)" "$(compiler_hash)" "${1:-C1}"
+}
+
 @test "base builds layers in order os boost deps test" {
+	stub_compiler
 	run step_base
 	[ "$status" -eq 0 ]
 	grep 'buildx build' "$DOCKER_LOG" | grep -o 'ubuntu-gcc-16[a-z0-9-]*-arm64' > "$BATS_TEST_TMPDIR/order"
@@ -58,6 +64,7 @@ setup() {
 }
 
 @test "base stops at the first failing layer" {
+	stub_compiler
 	export STUB_FAIL_BUILD=preimage2
 	run step_base
 	[ "$status" -ne 0 ]
@@ -66,11 +73,30 @@ setup() {
 }
 
 @test "base reuses layers already on hub" {
+	stub_compiler C1
+	local layers=C1
 	for layer in os boost deps test; do
-		stub_hub_image "$(gen --layer "$layer" --name-only)" "$(layer_hash "$layer")"
+		layers="$layers,L-$layer"
+		stub_hub_image "$(gen --layer "$layer" --name-only)" "$(layer_hash "$layer")" "$layers"
 	done
 	run step_base
 	[ "$status" -eq 0 ]
 	! docker_called "buildx build"
 	docker_called "pull techbureauhd/catapult-server-build-base:ubuntu-gcc-16-arm64"
+}
+
+@test "base fails when the compiler image is missing" {
+	run step_base
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"catapult-server-compiler:ubuntu-gcc-16"* ]]
+	! docker_called "buildx build"
+}
+
+@test "base refuses a local layer not built on the current compiler" {
+	stub_compiler C2
+	stub_local_image "$(gen --layer os --name-only)" "$(layer_hash os)" "C1,L-os"
+	run step_base
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"--rebuild"* ]]
+	[[ "$output" == *"catapult-server-compiler:ubuntu-gcc-16"* ]]
 }
