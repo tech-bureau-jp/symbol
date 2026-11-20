@@ -160,7 +160,7 @@ step_base() {
 
 		# shellcheck disable=SC2329 # called indirectly by ensure_image
 		build_layer() {
-			log_run docker buildx build --load --label "mijin.input-hash=$hash" -t "$ref" - < "$dockerfile"
+			log_run docker buildx build --load --progress=plain --label "mijin.input-hash=$hash" -t "$ref" - < "$dockerfile"
 		}
 		ensure_image "$ref" "$ref" "$hash" build_layer
 		rm -f "$dockerfile"

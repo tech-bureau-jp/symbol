@@ -63,6 +63,13 @@ stub_compiler() {
 	docker_called "--label mijin.input-hash=$(layer_hash boost)"
 }
 
+@test "base prints the full build log" {
+	stub_compiler
+	run step_base
+	[ "$status" -eq 0 ]
+	[ "$(grep 'buildx build' "$DOCKER_LOG" | grep -vc -- '--progress=plain')" -eq 0 ]
+}
+
 @test "base stops at the first failing layer" {
 	stub_compiler
 	export STUB_FAIL_BUILD=preimage2
