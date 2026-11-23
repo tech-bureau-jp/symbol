@@ -203,6 +203,12 @@ namespace catapult { namespace local {
 						"ChainImporterTests");
 				pBootstrapper->loadExtensions();
 
+				// added after the extensions are loaded so that only the name is seen by the importer
+				if (m_isMongoExtensionEnabled) {
+					auto& extensionsConfig = const_cast<config::ExtensionsConfiguration&>(pBootstrapper->config().Extensions);
+					extensionsConfig.Names.push_back("extension.mongo");
+				}
+
 				auto& subscriptionManager = pBootstrapper->subscriptionManager();
 				if (SubscriberMode::Block_Change == subscriberMode)
 					subscriptionManager.addBlockChangeSubscriber(std::make_unique<MockBlockChangeSubscriber>(m_blockChangeHeights));
@@ -221,6 +227,29 @@ namespace catapult { namespace local {
 				EXPECT_EQ(expected, io::IndexFile(stateChangeDir.file("index.dat")).get());
 			}
 
+			bool hasBrokerStateChangeIndex() const {
+				return std::filesystem::exists(m_dataDirectory.spoolDir("state_change").file("index_broker_r.dat"));
+			}
+
+			uint64_t brokerStateChangeIndex() const {
+				return io::IndexFile(m_dataDirectory.spoolDir("state_change").file("index_broker_r.dat")).get();
+			}
+
+			size_t countStateChangeMessages() const {
+				auto count = 0u;
+				for (const auto& entry : std::filesystem::directory_iterator(m_dataDirectory.spoolDir("state_change").str())) {
+					if (0 != entry.path().filename().generic_string().rfind("index", 0))
+						++count;
+				}
+
+				return count;
+			}
+
+		public:
+			void enableMongoExtension() {
+				m_isMongoExtensionEnabled = true;
+			}
+
 		private:
 			test::TempDirectoryGuard m_tempDir;
 			config::CatapultDataDirectory m_dataDirectory;
@@ -228,6 +257,7 @@ namespace catapult { namespace local {
 			std::vector<Height> m_blockChangeHeights;
 			std::vector<Height> m_stateChangeHeights;
 			std::vector<Height> m_finalizationHeights;
+			bool m_isMongoExtensionEnabled = false;
 		};
 
 		// endregion
@@ -384,6 +414,42 @@ namespace catapult { namespace local {
 		EXPECT_TRUE(context.blockChangeHeights().empty());
 		EXPECT_TRUE(context.stateChangeHeights().empty());
 		EXPECT_EQ(std::vector<Height>({ Height(1), Height(3), Height(5) }), context.finalizationHeights());
+	}
+
+	// endregion
+
+	// region broker state change index
+
+	TEST(TEST_CLASS, StateChangesAreLeftForBrokerWhenMongoExtensionIsNotEnabled) {
+		// Arrange:
+		TestContext context;
+		context.seedBlocks(5);
+		context.seedProofs(2);
+
+		// Act:
+		context.boot(SubscriberMode::State_Change);
+
+		// Assert: the broker applies the state changes
+		context.assertStateChangeIndex(2 * 6);
+		EXPECT_FALSE(context.hasBrokerStateChangeIndex());
+		EXPECT_EQ(2u * 6, context.countStateChangeMessages());
+	}
+
+	TEST(TEST_CLASS, StateChangesAreConsumedForBrokerWhenMongoExtensionIsEnabled) {
+		// Arrange:
+		TestContext context;
+		context.seedBlocks(5);
+		context.seedProofs(2);
+		context.enableMongoExtension();
+
+		// Act:
+		context.boot(SubscriberMode::State_Change);
+
+		// Assert: the state changes were written by the importer, so the broker must not apply them again
+		context.assertStateChangeIndex(2 * 6);
+		EXPECT_EQ(2u * 6, context.brokerStateChangeIndex());
+		EXPECT_EQ(0u, context.countStateChangeMessages());
+		EXPECT_EQ(GetHeightRange(Height(1), Height(6)), context.stateChangeHeights());
 	}
 
 	// endregion
