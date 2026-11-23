@@ -25,7 +25,9 @@
 #include "catapult/chain/BlockExecutor.h"
 #include "catapult/chain/BlockScorer.h"
 #include "catapult/extensions/LocalNodeStateRef.h"
+#include "catapult/io/BlockStatementSerializer.h"
 #include "catapult/io/BlockStorageCache.h"
+#include "catapult/io/BufferInputStreamAdapter.h"
 #include "catapult/model/Block.h"
 #include "catapult/model/BlockchainConfiguration.h"
 #include "catapult/model/Elements.h"
@@ -105,6 +107,27 @@ namespace catapult { namespace local {
 		};
 	}
 
+	namespace {
+		// returns a copy of \a pBlockElement with the block statement saved in \a storage, or \a pBlockElement when there is none
+		// \note the copy references the block owned by \a pBlockElement, which must outlive it
+		std::shared_ptr<const model::BlockElement> WithBlockStatement(
+				const io::BlockStorageView& storage,
+				const std::shared_ptr<const model::BlockElement>& pBlockElement) {
+			auto blockStatementPair = storage.loadBlockStatementData(pBlockElement->Block.Height);
+			if (!blockStatementPair.second)
+				return pBlockElement;
+
+			auto pBlockStatement = std::make_shared<model::BlockStatement>();
+			io::BufferInputStreamAdapter<std::vector<uint8_t>> blockStatementStream(blockStatementPair.first);
+			io::ReadBlockStatement(blockStatementStream, *pBlockStatement);
+
+			// copy instead of modifying the loaded element, which can be shared with the storage (cache)
+			auto pBlockElementWithStatement = std::make_shared<model::BlockElement>(*pBlockElement);
+			pBlockElementWithStatement->OptionalStatement = std::move(pBlockStatement);
+			return pBlockElementWithStatement;
+		}
+	}
+
 	class BlockchainLoader {
 	private:
 		using NotifyProgressFunc = consumer<Height, Height>;
@@ -138,7 +161,9 @@ namespace catapult { namespace local {
 				auto pBlockElement = storage.loadBlockElement(height);
 				score += model::ChainScore(chain::CalculateScore(pParentBlockElement->Block, pBlockElement->Block));
 
-				const auto& blockElement = *pBlockElement;
+				// status consumers (e.g. importer) forward the element to subscribers, which need the block statement
+				auto pStatusBlockElement = m_statusConsumer ? WithBlockStatement(storage, pBlockElement) : pBlockElement;
+				const auto& blockElement = *pStatusBlockElement;
 				const auto& statusConsumer = m_statusConsumer;
 				stateHash = execute(blockElement, [&previousScore, &score, &blockElement, &statusConsumer](auto&& cacheChanges) {
 					if (!statusConsumer)
