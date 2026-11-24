@@ -40,6 +40,12 @@ describe('mijin status routes', () => {
 		'blockGenerationTargetTime = 15s'
 	].join('\n'));
 
+	const createNodeFile = batchSize => {
+		const nodeFile = tmp.fileSync();
+		fs.writeFileSync(nodeFile.name, ['[node]', `fileDatabaseBatchSize = ${batchSize}`].join('\n'));
+		return nodeFile.name;
+	};
+
 	const harvestingMosaicId = Long.fromBigInt(0x0123456789ABCDEFn);
 	const otherMosaicId = Long.fromBigInt(0xFEDCBA9876543210n, true);
 
@@ -160,7 +166,9 @@ describe('mijin status routes', () => {
 			}
 		});
 
-		const createServices = (packets, isReachable = true) => ({
+		const nodeFileWithBatchSize1 = createNodeFile(1);
+
+		const createServices = (packets, isReachable = true, nodePropertyFilePath = nodeFileWithBatchSize1) => ({
 			connections: {
 				singleUse: () => (isReachable
 					? Promise.resolve({
@@ -171,7 +179,7 @@ describe('mijin status routes', () => {
 					})
 					: Promise.reject(Error('connection refused')))
 			},
-			config: { apiNode: { timeout: 1000, networkPropertyFilePath: networkFile.name } }
+			config: { apiNode: { timeout: 1000, networkPropertyFilePath: networkFile.name, nodePropertyFilePath } }
 		});
 
 		const databaseCounts = {
@@ -202,11 +210,23 @@ describe('mijin status routes', () => {
 			'MEM CUR RSS': 122
 		};
 
+		// blocks without transactions: 736 bytes in the .dat file, 8 KB on disk with the .stmt file
+		const emptyBlocks = function* (fromHeight, toHeight) {
+			for (let height = fromHeight; height <= toHeight; ++height)
+				yield { height: Long.fromNumber(height), size: 376, transactionsCount: 0, subCacheMerkleRootsCount: 9 };
+		};
+
 		const createDb = (height, finalizedHeight, counts) => ({
 			chainStatisticCurrent: () => Promise.resolve({ height: Long.fromNumber(height) }),
-			latestFinalizedBlock: () => Promise.resolve({ block: { height: Long.fromNumber(finalizedHeight) } }),
+			latestFinalizedBlock: () => Promise.resolve({ block: { height: Long.fromNumber(finalizedHeight), finalizationEpoch: 17 } }),
 			database: {
-				collection: name => ({ countDocuments: () => Promise.resolve(counts[name]) })
+				collection: name => ({
+					countDocuments: () => Promise.resolve(counts[name]),
+					aggregate: pipeline => {
+						const range = pipeline[0].$match['block.height'];
+						return emptyBlocks(range.$gt.toNumber() + 1, range.$lte.toNumber());
+					}
+				})
 			}
 		});
 
@@ -276,6 +296,41 @@ describe('mijin status routes', () => {
 			expect(response.nodeError).to.contain('chain statistics');
 			expect(response.database.height).to.equal('2568');
 			expect(response.comparisons).to.deep.equal([]);
+		});
+
+		it('estimates the block files on disk and their growth', async () => {
+			// Act:
+			const response = await executeRoute(
+				'/mijin/storage',
+				createDb(2566, 2552, databaseCounts),
+				createServices(createPackets(2566, 2552, nodeCounters))
+			);
+
+			// Assert: 8 KB per block, hashes.dat (32 bytes per block) and one .proof file per finalized epoch
+			expect(response.blockFiles).to.deep.equal({
+				estimated: true,
+				readHeight: 2552,
+				complete: true,
+				blockFileBytes: 2552 * 736,
+				diskBytes: (2566 * 8192) + (21 * 4096) + (17 * 4096),
+				growthPerDayBytes: 5760 * 8192,
+				fileSystemBlockSize: 4096
+			});
+		});
+
+		it('does not estimate the block files of a node that groups blocks in files', async () => {
+			// Act:
+			const response = await executeRoute(
+				'/mijin/storage',
+				createDb(2566, 2552, databaseCounts),
+				createServices(createPackets(2566, 2552, nodeCounters), true, createNodeFile(100))
+			);
+
+			// Assert:
+			expect(response.blockFiles).to.deep.equal({
+				estimated: false,
+				reason: 'only estimated with fileDatabaseBatchSize = 1, not 100'
+			});
 		});
 	});
 });

@@ -19,6 +19,7 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+import { File_System_Block_Size, createBlockFilesEstimator, diskSize } from './blockFilesEstimator.js';
 import catapult from '../../catapult-sdk/index.js';
 import { longToUint64 } from '../../db/dbUtils.js';
 import chainInfoCodec from '../../sockets/chainInfoCodec.js';
@@ -35,6 +36,9 @@ const fileLoader = new catapult.utils.CachedFileLoader();
 const Diagnostic_Counters_Packet_Type = 0x300;
 const Counter_Name_Alphabet_Size = 27n;
 const Seconds_Per_Day = 24 * 60 * 60;
+
+// a request waits for the block files estimate only when it has at most this many new blocks to read
+const Max_Blocks_Read_In_Request = 10000;
 
 /**
  * Counters of the node caches, with the mongo collection that holds the same entries.
@@ -110,6 +114,47 @@ export default {
 			services.config.apiNode.networkPropertyFilePath,
 			contents => ini.parse(contents)
 		);
+
+		const readAndParseNodePropertiesFile = () => fileLoader.readOnce(
+			services.config.apiNode.nodePropertyFilePath,
+			contents => ini.parse(contents)
+		);
+
+		// created on the first request, when the block time is known
+		let blockFilesEstimator = null;
+
+		const estimateBlockFiles = async (databaseHeight, finalizedHeight, finalizationEpoch) => {
+			const { node } = await readAndParseNodePropertiesFile();
+			const batchSize = Number(toInteger(node.fileDatabaseBatchSize));
+			if (1 !== batchSize)
+				return { estimated: false, reason: `only estimated with fileDatabaseBatchSize = 1, not ${batchSize}` };
+
+			const { chain } = await readAndParseNetworkPropertiesFile();
+			const blocksPerDay = Seconds_Per_Day / timeSpanToSeconds(chain.blockGenerationTargetTime);
+			if (!blockFilesEstimator)
+				blockFilesEstimator = createBlockFilesEstimator(db, Math.round(blocksPerDay));
+
+			// finalized blocks do not change; a large first read goes on in the background
+			const update = blockFilesEstimator.update(finalizedHeight);
+			if (Max_Blocks_Read_In_Request >= finalizedHeight - blockFilesEstimator.snapshot().height)
+				await update;
+
+			const read = blockFilesEstimator.snapshot();
+			const averageDiskBytes = 0 === read.height ? 2 * File_System_Block_Size : read.averageDiskBytes;
+			const recentAverageDiskBytes = 0 === read.height ? averageDiskBytes : read.recentAverageDiskBytes;
+			const otherDiskBytes = diskSize(32 * databaseHeight) // hashes.dat
+				+ (finalizationEpoch * File_System_Block_Size); // one .proof file per finalized epoch
+
+			return {
+				estimated: true,
+				readHeight: read.height,
+				complete: read.height >= finalizedHeight,
+				blockFileBytes: read.fileBytes,
+				diskBytes: Math.round(read.diskBytes + ((databaseHeight - read.height) * averageDiskBytes) + otherDiskBytes),
+				growthPerDayBytes: Math.round(recentAverageDiskBytes * blocksPerDay),
+				fileSystemBlockSize: File_System_Block_Size
+			};
+		};
 
 		const fetchAndParse = async (packetType, codec) => {
 			const connection = await connections.singleUse();
@@ -224,12 +269,19 @@ export default {
 				}
 				: null;
 
+			const blockFiles = await estimateBlockFiles(
+				Number(database.height),
+				Number(database.finalizedHeight),
+				finalizedBlock ? finalizedBlock.block.finalizationEpoch : 0
+			);
+
 			return reply.send({
 				node,
 				...(nodeError ? { nodeError } : {}),
 				database,
 				behind,
-				comparisons
+				comparisons,
+				blockFiles
 			});
 		});
 	}
