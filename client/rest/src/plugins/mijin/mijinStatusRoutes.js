@@ -38,6 +38,7 @@ const fileLoader = new catapult.utils.CachedFileLoader();
 const Diagnostic_Counters_Packet_Type = 0x300;
 const Counter_Name_Alphabet_Size = 27n;
 const Seconds_Per_Day = 24 * 60 * 60;
+const Days_Per_Year = 365;
 
 // a request waits for the block files estimate only when it has at most this many new blocks to read
 const Max_Blocks_Read_In_Request = 10000;
@@ -153,6 +154,7 @@ export default {
 				blockFileBytes: read.fileBytes,
 				diskBytes: Math.round(read.diskBytes + ((databaseHeight - read.height) * averageDiskBytes) + otherDiskBytes),
 				growthPerDayBytes: Math.round(recentAverageDiskBytes * blocksPerDay),
+				growthPerYearBytes: Math.round(recentAverageDiskBytes * blocksPerDay) * Days_Per_Year,
 				fileSystemBlockSize: File_System_Block_Size
 			};
 		};
@@ -171,7 +173,8 @@ export default {
 			const disk = {
 				dataBytes: toNumber(stats.dataSize),
 				diskBytes,
-				growthPerDayBytes
+				growthPerDayBytes,
+				growthPerYearBytes: growthPerDayBytes * Days_Per_Year
 			};
 
 			// the file system that holds the database files (the mongo volume)

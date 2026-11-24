@@ -324,6 +324,7 @@ describe('mijin status routes', () => {
 				blockFileBytes: 2552 * 736,
 				diskBytes: (2566 * 8192) + (21 * 4096) + (17 * 4096),
 				growthPerDayBytes: 5760 * 8192,
+				growthPerYearBytes: 365 * 5760 * 8192,
 				fileSystemBlockSize: 4096
 			});
 		});
@@ -356,6 +357,7 @@ describe('mijin status routes', () => {
 				dataBytes: 4602426,
 				diskBytes: 5760000,
 				growthPerDayBytes: 5760000,
+				growthPerYearBytes: 365 * 5760000,
 				fileSystem: {
 					totalBytes: 10_000_000_000,
 					usedBytes: 2_000_000_000,
@@ -378,6 +380,7 @@ describe('mijin status routes', () => {
 			// Assert:
 			expect(response.database.disk.diskBytes).to.equal(5760);
 			expect(response.database.disk.growthPerDayBytes).to.equal(5760);
+			expect(response.database.disk.growthPerYearBytes).to.equal(365 * 5760);
 			expect(response.database.disk.fileSystem).to.equal(undefined);
 		});
 	});
