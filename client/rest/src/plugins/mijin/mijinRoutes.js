@@ -26,6 +26,7 @@ import winston from "winston";
 import nodeInfoCodec from "../../sockets/nodeInfoCodec.js";
 import nodePeersCodec from "../../sockets/nodePeersCodec.js";
 import chainInfoCodec from "../../sockets/chainInfoCodec.js";
+import finalizedBlockCodec from "../../sockets/finalizedBlockCodec.js";
 import fs from "fs";
 import path from "path";
 
@@ -98,16 +99,28 @@ export default {
           const chainPkt = await conn2.pushPull(chainBuf, timeout);
           const chainInfo = buildResponse(chainPkt, chainInfoCodec, routeResultTypes.chainInfo).payload;
 
-          return { ...nodeInfo, ...chainInfo };
+          // the finalized block of this node; a node that cannot answer is still listed, without it
+          let latestFinalizedBlock = null;
+          try {
+            const finalizationBuf = packetHeader.createBuffer(
+              PacketType.finalizationStatistics,
+              packetHeader.size
+            );
+            const conn3 = await peerConnections.singleUse();
+            const finalizationPkt = await conn3.pushPull(finalizationBuf, timeout);
+            latestFinalizedBlock = buildResponse(finalizationPkt, finalizedBlockCodec, routeResultTypes.chainInfo).payload;
+          } catch (error) {
+            winston.verbose(`cannot get the finalized block of ${host}: ${error}`);
+          }
+
+          return { ...nodeInfo, ...chainInfo, latestFinalizedBlock };
         } catch (error) {
           return null;
         }
       });
       const nodeInfos = (await Promise.all(pingPromises)).filter(info => info !== null);
 
-      const finalizedBlockInfo = await db.latestFinalizedBlock();
-
-      const formattedPayload = nodeInfos.map(info => {
+      const formattedPayload = nodeInfos.map(({ latestFinalizedBlock, ...info }) => {
         const formatted = {};
         Object.keys(info).forEach(key => {
           const value = info[key];
@@ -123,11 +136,12 @@ export default {
             formatted[key] = value;
           }
         });
-        if (finalizedBlockInfo?.block) {
+        if (latestFinalizedBlock) {
           formatted.latestFinalizedBlock = {
-            height: finalizedBlockInfo.block.height?.toString(),
-            finalizationEpoch: finalizedBlockInfo.block.finalizationEpoch,
-            finalizationPoint: finalizedBlockInfo.block.finalizationPoint
+            height: latestFinalizedBlock.height.toString(),
+            finalizationEpoch: latestFinalizedBlock.finalizationEpoch,
+            finalizationPoint: latestFinalizedBlock.finalizationPoint,
+            hash: latestFinalizedBlock.hash.toString('hex').toUpperCase()
           };
         }
         return formatted;
