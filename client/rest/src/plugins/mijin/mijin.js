@@ -1,20 +1,20 @@
 /** @module plugins/mijin */
-import mijinRoutes from "./mijinRoutes.js";
-import mijinStatusRoutes from "./mijinStatusRoutes.js";
+import mijinRoutes from './mijinRoutes.js';
+import mijinStatusRoutes from './mijinStatusRoutes.js';
 
 /**
  * Creates a mijin plugin.
  * @type {module:plugins/CatapultRestPlugin}
  */
 export default {
-  createDb: (db) => db,
+	createDb: db => db,
 
-  registerTransactionStates: () => {},
+	registerTransactionStates: () => {},
 
-  registerMessageChannels: () => {},
+	registerMessageChannels: () => {},
 
-  registerRoutes: (...args) => {
-    mijinRoutes.register(...args);
-    mijinStatusRoutes.register(...args);
-  },
+	registerRoutes: (...args) => {
+		mijinRoutes.register(...args);
+		mijinStatusRoutes.register(...args);
+	}
 };
