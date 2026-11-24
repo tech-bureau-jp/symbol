@@ -19,7 +19,9 @@
  * along with Catapult.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import { File_System_Block_Size, createBlockFilesEstimator, diskSize } from './blockFilesEstimator.js';
+import {
+	File_System_Block_Size, createBlockFilesEstimator, diskSize, toNumber
+} from './blockFilesEstimator.js';
 import catapult from '../../catapult-sdk/index.js';
 import { longToUint64 } from '../../db/dbUtils.js';
 import chainInfoCodec from '../../sockets/chainInfoCodec.js';
@@ -129,8 +131,7 @@ export default {
 			if (1 !== batchSize)
 				return { estimated: false, reason: `only estimated with fileDatabaseBatchSize = 1, not ${batchSize}` };
 
-			const { chain } = await readAndParseNetworkPropertiesFile();
-			const blocksPerDay = Seconds_Per_Day / timeSpanToSeconds(chain.blockGenerationTargetTime);
+			const blocksPerDay = await readBlocksPerDay();
 			if (!blockFilesEstimator)
 				blockFilesEstimator = createBlockFilesEstimator(db, Math.round(blocksPerDay));
 
@@ -154,6 +155,39 @@ export default {
 				growthPerDayBytes: Math.round(recentAverageDiskBytes * blocksPerDay),
 				fileSystemBlockSize: File_System_Block_Size
 			};
+		};
+
+		const readBlocksPerDay = async () => {
+			const { chain } = await readAndParseNetworkPropertiesFile();
+			return Seconds_Per_Day / timeSpanToSeconds(chain.blockGenerationTargetTime);
+		};
+
+		// sizes from the database metadata, so this does not depend on the number of blocks
+		const estimateDatabaseDisk = async databaseHeight => {
+			const stats = await db.database.stats();
+			const diskBytes = toNumber(stats.totalSize);
+			const growthPerDayBytes = 0 === databaseHeight ? 0 : Math.round((diskBytes / databaseHeight) * await readBlocksPerDay());
+
+			const disk = {
+				dataBytes: toNumber(stats.dataSize),
+				diskBytes,
+				growthPerDayBytes
+			};
+
+			// the file system that holds the database files (the mongo volume)
+			if (undefined !== stats.fsTotalSize) {
+				const totalBytes = toNumber(stats.fsTotalSize);
+				const usedBytes = toNumber(stats.fsUsedSize);
+				disk.fileSystem = {
+					totalBytes,
+					usedBytes,
+					freeBytes: totalBytes - usedBytes,
+					daysUntilFull: 0 === growthPerDayBytes ? null : Math.floor((totalBytes - usedBytes) / growthPerDayBytes)
+				};
+			}
+
+			disk.note = 'mongo also keeps its journal (about 200 MB) and diagnostic data (up to 200 MB) on the same file system';
+			return disk;
 		};
 
 		const fetchAndParse = async (packetType, codec) => {
@@ -224,6 +258,7 @@ export default {
 			await Promise.all(cacheCounters.map(async ({ collection }) => {
 				database.counts[collection] = await db.database.collection(collection).countDocuments();
 			}));
+			database.disk = await estimateDatabaseDisk(Number(database.height));
 
 			let node = null;
 			let nodeError;

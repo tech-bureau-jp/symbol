@@ -27,8 +27,12 @@ const { Long } = MongoDb;
 
 export const File_System_Block_Size = 4096;
 
-// mongo values: number, Long or Int32
-const toNumber = value => {
+/**
+ * Converts a mongo value (number, Long or Int32) to a number.
+ * @param {object} value Value.
+ * @returns {number} Number.
+ */
+export const toNumber = value => {
 	if (undefined === value || null === value)
 		return 0;
 

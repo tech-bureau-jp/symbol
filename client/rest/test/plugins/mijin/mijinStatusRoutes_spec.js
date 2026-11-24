@@ -216,10 +216,18 @@ describe('mijin status routes', () => {
 				yield { height: Long.fromNumber(height), size: 376, transactionsCount: 0, subCacheMerkleRootsCount: 9 };
 		};
 
-		const createDb = (height, finalizedHeight, counts) => ({
+		const databaseStats = {
+			dataSize: 4602426,
+			totalSize: 5760 * 1000, // 1000 bytes per block at height 5760 (one day)
+			fsUsedSize: 2_000_000_000,
+			fsTotalSize: 10_000_000_000
+		};
+
+		const createDb = (height, finalizedHeight, counts, stats = databaseStats) => ({
 			chainStatisticCurrent: () => Promise.resolve({ height: Long.fromNumber(height) }),
 			latestFinalizedBlock: () => Promise.resolve({ block: { height: Long.fromNumber(finalizedHeight), finalizationEpoch: 17 } }),
 			database: {
+				stats: () => Promise.resolve(stats),
 				collection: name => ({
 					countDocuments: () => Promise.resolve(counts[name]),
 					aggregate: pipeline => {
@@ -243,7 +251,9 @@ describe('mijin status routes', () => {
 			expect(response.node.finalizedHeight).to.equal('2552');
 			expect(response.node.counters['NS C DS']).to.equal('5');
 			expect(response.node.counters['MEM CUR RSS']).to.equal('122');
-			expect(response.database).to.deep.equal({ height: '2566', finalizedHeight: '2552', counts: databaseCounts });
+			expect({ ...response.database, disk: undefined }).to.deep.equal({
+				height: '2566', finalizedHeight: '2552', counts: databaseCounts, disk: undefined
+			});
 			expect(response.behind).to.deep.equal({ height: 2, finalizedHeight: 0 });
 			expect(response.nodeError).to.equal(undefined);
 			expect(response.comparisons.map(comparison => comparison.name)).to.deep.equal([
@@ -331,6 +341,44 @@ describe('mijin status routes', () => {
 				estimated: false,
 				reason: 'only estimated with fileDatabaseBatchSize = 1, not 100'
 			});
+		});
+
+		it('gives the disk use of the database, its growth and the free space of its file system', async () => {
+			// Act:
+			const response = await executeRoute(
+				'/mijin/storage',
+				createDb(5760, 5744, databaseCounts),
+				createServices(createPackets(5760, 5744, nodeCounters))
+			);
+
+			// Assert: 1000 bytes per block, 5760 blocks a day
+			expect({ ...response.database.disk, note: undefined }).to.deep.equal({
+				dataBytes: 4602426,
+				diskBytes: 5760000,
+				growthPerDayBytes: 5760000,
+				fileSystem: {
+					totalBytes: 10_000_000_000,
+					usedBytes: 2_000_000_000,
+					freeBytes: 8_000_000_000,
+					daysUntilFull: 1388
+				},
+				note: undefined
+			});
+			expect(response.database.disk.note).to.contain('journal');
+		});
+
+		it('gives the disk use of the database without file system sizes when mongo does not give them', async () => {
+			// Act:
+			const response = await executeRoute(
+				'/mijin/storage',
+				createDb(5760, 5744, databaseCounts, { dataSize: 10, totalSize: Long.fromNumber(5760) }),
+				createServices(createPackets(5760, 5744, nodeCounters))
+			);
+
+			// Assert:
+			expect(response.database.disk.diskBytes).to.equal(5760);
+			expect(response.database.disk.growthPerDayBytes).to.equal(5760);
+			expect(response.database.disk.fileSystem).to.equal(undefined);
 		});
 	});
 });
