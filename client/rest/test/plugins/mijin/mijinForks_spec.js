@@ -89,7 +89,25 @@ describe('mijin forks', () => {
 
 		// Assert:
 		expect(at.current).to.deep.equal([3]);
-		expect([before.current, before.next, before.switchHeight]).to.deep.equal([[1], [2], '1200']);
+		expect([before.current, before.next, before.switchHeight]).to.deep.equal([[1], [3], '1200']);
+	});
+
+	it('follows the later version when its fork is lower than the fork to the earlier version', () => {
+		// Arrange: catapult checks the version 3 fork first, whatever the version 2 height is
+		const v3First = { strictAggregateTransactionHash: '5000', uniqueAggregateTransactionHash: '0' };
+		const v3Lower = { strictAggregateTransactionHash: '100', uniqueAggregateTransactionHash: '50' };
+
+		// Act:
+		const v3FirstAt10 = describeForks(v3First, 10n, 15, now).transactionVersions.AGGREGATE_COMPLETE;
+		const v3FirstAt6000 = describeForks(v3First, 6000n, 15, now).transactionVersions.AGGREGATE_COMPLETE;
+		const v3LowerAt10 = describeForks(v3Lower, 10n, 15, now).transactionVersions.AGGREGATE_COMPLETE;
+		const v3LowerAt60 = describeForks(v3Lower, 60n, 15, now).transactionVersions.AGGREGATE_COMPLETE;
+
+		// Assert:
+		expect([v3FirstAt10.current, v3FirstAt10.next, v3FirstAt10.switchHeight]).to.deep.equal([[3], null, null]);
+		expect([v3FirstAt6000.current, v3FirstAt6000.next]).to.deep.equal([[3], null]);
+		expect([v3LowerAt10.current, v3LowerAt10.next, v3LowerAt10.switchHeight]).to.deep.equal([[1], [3], '50']);
+		expect([v3LowerAt60.current, v3LowerAt60.next]).to.deep.equal([[3], null]);
 	});
 
 	it('lists the heights of an at fork and skips height 0', () => {

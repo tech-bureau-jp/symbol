@@ -156,20 +156,26 @@ const describeTransactionVersions = (forkHeights, height, secondsPerBlock, now) 
 	});
 
 	const transactionVersions = {};
+	const latestVersion = forkSwitch => Math.max(...forkSwitch.after);
 	Object.keys(switches).sort().forEach(transactionName => {
-		// at one height, the fork to the later version wins (catapult checks the latest fork first)
-		const ordered = switches[transactionName].sort((lhs, rhs) => {
-			if (lhs.height !== rhs.height)
-				return lhs.height < rhs.height ? -1 : 1;
+		// catapult checks the fork to the latest version first, whatever the heights of the others:
+		// the passed fork to the latest version decides, and only a fork to a later version can change it
+		const byVersion = switches[transactionName].sort((lhs, rhs) => latestVersion(lhs) - latestVersion(rhs));
+		const passed = byVersion.filter(forkSwitch => height >= forkSwitch.height);
+		const current = passed.length ? passed[passed.length - 1].after : byVersion[0].before;
+		const pending = byVersion
+			.filter(forkSwitch => height < forkSwitch.height && latestVersion(forkSwitch) > Math.max(...current))
+			// the nearest height; at one height, the fork to the latest version is what the node applies
+			.sort((lhs, rhs) => {
+				if (lhs.height !== rhs.height)
+					return lhs.height < rhs.height ? -1 : 1;
 
-			return Math.max(...lhs.after) - Math.max(...rhs.after);
-		});
-		const passed = ordered.filter(forkSwitch => height >= forkSwitch.height);
-		const pending = ordered.find(forkSwitch => height < forkSwitch.height);
+				return latestVersion(rhs) - latestVersion(lhs);
+			})[0];
 		const estimated = estimate(height, pending && pending.height, secondsPerBlock, now);
 		transactionVersions[transactionName] = {
 			type: transactionType(transactionName),
-			current: passed.length ? passed[passed.length - 1].after : ordered[0].before,
+			current,
 			next: pending ? pending.after : null,
 			switchHeight: estimated.nextHeight,
 			blocksLeft: estimated.blocksLeft,
