@@ -1,5 +1,6 @@
 /** @module plugins/mijin */
 import mijinRoutes from "./mijinRoutes.js";
+import mijinStatusRoutes from "./mijinStatusRoutes.js";
 
 /**
  * Creates a mijin plugin.
@@ -14,5 +15,6 @@ export default {
 
   registerRoutes: (...args) => {
     mijinRoutes.register(...args);
+    mijinStatusRoutes.register(...args);
   },
 };
