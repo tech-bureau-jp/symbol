@@ -24,6 +24,7 @@ import test from '../../routes/utils/routeTestUtils.js';
 import { Address } from '@tech-bureau/symbol-sdk/symbol';
 import { expect } from 'chai';
 import MongoDb from 'mongodb';
+import sinon from 'sinon';
 import tmp from 'tmp';
 import fs from 'fs';
 
@@ -382,6 +383,82 @@ describe('mijin status routes', () => {
 			expect(response.database.disk.growthPerDayBytes).to.equal(5760);
 			expect(response.database.disk.growthPerYearBytes).to.equal(365 * 5760);
 			expect(response.database.disk.fileSystem).to.equal(undefined);
+		});
+	});
+	describe('forks', () => {
+		const createNetworkFile = forkHeightLines => {
+			const file = tmp.fileSync();
+			fs.writeFileSync(file.name, ['[chain]', 'blockGenerationTargetTime = 15s', ...forkHeightLines].join('\n'));
+			return file.name;
+		};
+
+		const forkHeightLines = ['[fork_heights]', 'strictAggregateTransactionHash = 1', 'uniqueAggregateTransactionHash = 1\'200'];
+
+		const createServices = networkFilePath => ({ config: { apiNode: { timeout: 1000, networkPropertyFilePath: networkFilePath } } });
+
+		const createDb = (height, timestamps) => {
+			const db = {
+				requestedHeights: [],
+				chainStatisticCurrent: () => Promise.resolve({ height: Long.fromNumber(height) }),
+				blocksAtHeights: heights => {
+					db.requestedHeights.push(...heights.map(blockHeight => blockHeight.toNumber()));
+					return Promise.resolve(heights.map(blockHeight => ({
+						block: { height: blockHeight, timestamp: Long.fromNumber(timestamps[blockHeight.toNumber()]) }
+					})));
+				}
+			};
+			return db;
+		};
+
+		let clock;
+		beforeEach(() => {
+			clock = sinon.useFakeTimers(new Date('2026-11-24T00:00:00.000Z'));
+		});
+
+		afterEach(() => {
+			clock.restore();
+		});
+
+		it('returns the forks and the aggregate version from the recent block interval', async () => {
+			// Arrange:
+			const db = createDb(1000, { 900: 1_000_000, 1000: 2_450_000 });
+
+			// Act:
+			const response = await executeRoute('/mijin/forks', db, createServices(createNetworkFile(forkHeightLines)));
+
+			// Assert:
+			expect([response.height, response.secondsPerBlock]).to.deep.equal(['1000', 14.5]);
+			expect(response.transactionVersions.AGGREGATE_COMPLETE).to.deep.equal({
+				type: 16705,
+				current: [2],
+				next: [3],
+				switchHeight: '1200',
+				blocksLeft: '200',
+				estimatedAt: '2026-11-24T00:48:20.000Z'
+			});
+			expect(response.forks.map(fork => fork.name))
+				.to.deep.equal(['strictAggregateTransactionHash', 'uniqueAggregateTransactionHash']);
+			expect(db.requestedHeights.sort((lhs, rhs) => lhs - rhs)).to.deep.equal([900, 1000]);
+		});
+
+		it('uses the target block time on a chain of at most 100 blocks', async () => {
+			// Arrange:
+			const db = createDb(100, {});
+
+			// Act:
+			const response = await executeRoute('/mijin/forks', db, createServices(createNetworkFile(forkHeightLines)));
+
+			// Assert:
+			expect(response.secondsPerBlock).to.equal(15);
+			expect(db.requestedHeights).to.deep.equal([]);
+		});
+
+		it('returns no forks without a fork_heights section', async () => {
+			// Act:
+			const response = await executeRoute('/mijin/forks', createDb(100, {}), createServices(createNetworkFile([])));
+
+			// Assert:
+			expect([response.forks, response.transactionVersions]).to.deep.equal([[], {}]);
 		});
 	});
 });

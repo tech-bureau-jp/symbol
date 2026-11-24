@@ -22,13 +22,16 @@
 import {
 	File_System_Block_Size, createBlockFilesEstimator, diskSize, toNumber
 } from './blockFilesEstimator.js';
+import { describeForks } from './mijinForks.js';
 import catapult from '../../catapult-sdk/index.js';
 import { longToUint64 } from '../../db/dbUtils.js';
 import chainInfoCodec from '../../sockets/chainInfoCodec.js';
 import finalizedBlockCodec from '../../sockets/finalizedBlockCodec.js';
 import { Address } from '@tech-bureau/symbol-sdk/symbol';
 import ini from 'ini';
+import MongoDb from 'mongodb';
 
+const { Long } = MongoDb;
 const packetHeader = catapult.packet.header;
 const { PacketType } = catapult.packet;
 const { BinaryParser } = catapult.parser;
@@ -42,6 +45,9 @@ const Days_Per_Year = 365;
 
 // a request waits for the block files estimate only when it has at most this many new blocks to read
 const Max_Blocks_Read_In_Request = 10000;
+
+// mijin/forks estimates the time of a fork height from the interval of this many recent blocks
+const Fork_Estimate_Blocks = 100n;
 
 /**
  * Counters of the node caches, with the mongo collection that holds the same entries.
@@ -320,6 +326,35 @@ export default {
 				behind,
 				comparisons,
 				blockFiles
+			});
+		});
+		// seconds per block over the recent blocks, or the target block time on a short chain
+		const readSecondsPerBlock = async (height, chain) => {
+			const targetSeconds = timeSpanToSeconds(chain.blockGenerationTargetTime);
+			if (height <= Fork_Estimate_Blocks)
+				return targetSeconds;
+
+			const blocks = await db.blocksAtHeights(
+				[Long.fromBigInt(height - Fork_Estimate_Blocks), Long.fromBigInt(height)],
+				{ 'block.height': 1, 'block.timestamp': 1 }
+			);
+			if (2 !== blocks.length)
+				return targetSeconds;
+
+			const timestamps = blocks.map(block => Number(longToUint64(block.block.timestamp).toString()));
+			return Math.abs(timestamps[1] - timestamps[0]) / Number(Fork_Estimate_Blocks) / 1000;
+		};
+
+		server.get('/mijin/forks', async (request, reply) => {
+			const { chain, fork_heights: forkHeights } = await readAndParseNetworkPropertiesFile();
+			const chainStatistic = await db.chainStatisticCurrent();
+			const height = BigInt(longToUint64(chainStatistic.height).toString());
+			const secondsPerBlock = await readSecondsPerBlock(height, chain);
+
+			return reply.send({
+				height: height.toString(),
+				secondsPerBlock,
+				...describeForks(forkHeights, height, secondsPerBlock, new Date())
 			});
 		});
 	}
