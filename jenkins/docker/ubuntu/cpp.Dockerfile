@@ -1,4 +1,4 @@
-FROM techbureauhd/catapult-server-build-base:ubuntu-gcc-13-conan
+FROM techbureauhd/catapult-server-build-base:ubuntu-gcc-15-conan
 USER root
 
 # install shellcheck

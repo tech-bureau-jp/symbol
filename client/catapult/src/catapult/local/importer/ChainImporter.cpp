@@ -34,6 +34,7 @@
 #include "catapult/local/server/FileStateChangeStorage.h"
 #include "catapult/local/server/NemesisBlockNotifier.h"
 #include "catapult/utils/StackLogger.h"
+#include <algorithm>
 
 namespace catapult { namespace local {
 
@@ -54,6 +55,14 @@ namespace catapult { namespace local {
 					std::make_unique<io::FileQueueWriter>(dataDirectory.spoolDir("state_change").str(), "index_server.dat"),
 					[&catapultCache]() { return catapultCache.changesStorages(); }));
 			return subscriptionManager.createStateChangeSubscriber();
+		}
+
+		bool HasExtension(const config::ExtensionsConfiguration& config, const std::string& name) {
+			return config.Names.cend() != std::find(config.Names.cbegin(), config.Names.cend(), name);
+		}
+
+		void ConsumeAll(io::FileQueueReader&& reader) {
+			reader.skip(static_cast<uint32_t>(reader.pending()));
 		}
 
 #pragma pack(push, 1)
@@ -136,6 +145,10 @@ namespace catapult { namespace local {
 				// fix up index
 				auto stateChangeDir = m_dataDirectory.spoolDir("state_change");
 				std::filesystem::copy(stateChangeDir.file("index_server.dat"), stateChangeDir.file("index.dat"));
+
+				// the mongo extension has already written the state changes, so the broker must not apply them again
+				if (HasExtension(m_config.Extensions, "extension.mongo"))
+					ConsumeAll(io::FileQueueReader(stateChangeDir.str(), "index_broker_r.dat", "index.dat"));
 
 				// process proofs
 				generateFinalizationNotifications();

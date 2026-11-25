@@ -1,3 +1,4 @@
+import { calculateTransactionFee } from './FeeCalculator.js';
 import { KeyPair, Verifier } from './KeyPair.js';
 import MessageEncoder from './MessageEncoder.js';
 import { Address, Network, NetworkTimestamp } from './Network.js';
@@ -8,6 +9,7 @@ import {
 	generateMosaicId,
 	generateNamespaceId,
 	generateNamespacePath,
+	isMosaicAlias,
 	isValidNamespaceName
 } from './idGenerator.js';
 import {
@@ -18,6 +20,7 @@ import {
 import { metadataGenerateKey, metadataUpdateValue } from './metadata.js';
 import * as models from './models.js';
 import * as descriptors from './models_ts.js';
+import { mosaicRestrictionGenerateKey } from './restriction.js';
 import { SymbolAccount, SymbolFacade, SymbolPublicAccount } from '../facade/SymbolFacade.js';
 
 export {
@@ -91,8 +94,11 @@ export {
 
 	// region Symbol extensions
 
+	calculateTransactionFee,
+
 	generateMosaicId,
 	generateNamespaceId,
+	isMosaicAlias,
 	isValidNamespaceName,
 	generateNamespacePath,
 	generateMosaicAliasId,
@@ -103,6 +109,8 @@ export {
 
 	metadataGenerateKey,
 	metadataUpdateValue,
+
+	mosaicRestrictionGenerateKey,
 
 	/**
 	 * Generates symbol voting keys.

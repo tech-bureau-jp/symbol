@@ -1,9 +1,12 @@
 c: msvc
 cpp: msvc
-version: 17
+version: 18
 
 stl:
   version: c++14
   lib: ''
 
 deps: []
+
+conan:
+  compiler_version: 195

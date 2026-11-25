@@ -29,3 +29,7 @@ build/
 dist/
 
 .venv
+
+# Docs output
+docs
+docs-staging

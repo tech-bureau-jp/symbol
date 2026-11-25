@@ -32,7 +32,7 @@ RUN set -ex; \
 
 RUN groupadd --gid 1000 node   && useradd --uid 1000 --gid node --shell /bin/bash --create-home node
 
-ENV NODE_VERSION=20.19.5
+ENV NODE_VERSION=24.22.3
 
 RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && case "${dpkgArch##*-}" in \
@@ -52,26 +52,13 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" \
   && node --version \
   && npm --version
 
-ENV YARN_VERSION=1.22.22
-
-RUN set -ex \
-  && curl -fsSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz" \
-  && curl -fsSLO --compressed "https://yarnpkg.com/downloads/$YARN_VERSION/yarn-v$YARN_VERSION.tar.gz.asc" \
-  && mkdir -p /opt \
-  && tar -xzf yarn-v$YARN_VERSION.tar.gz -C /opt/ \
-  && ln -s /opt/yarn-v$YARN_VERSION/bin/yarn /usr/local/bin/yarn \
-  && ln -s /opt/yarn-v$YARN_VERSION/bin/yarnpkg /usr/local/bin/yarnpkg \
-  && rm yarn-v$YARN_VERSION.tar.gz.asc yarn-v$YARN_VERSION.tar.gz \
-  # smoke test
-  && yarn --version
-
 RUN apt-get update && \
   apt-get install -y --no-install-recommends libzmq3-dev && \
   rm -rf /var/lib/apt/lists/*
 
 COPY . .
 
-RUN rm -rf node_modules && yarn install
+RUN rm -rf node_modules && npm ci --omit=dev
 
 COPY ./prod/dockerd-entrypoint.sh /usr/local/bin/
 RUN chown root:root /usr/local/bin/dockerd-entrypoint.sh && \

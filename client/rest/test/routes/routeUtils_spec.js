@@ -467,25 +467,21 @@ describe('route utils', () => {
 
 	describe('sender', () => {
 		const sendTest = (sender, assertResponse) => {
-			// Arrange: set up the route params
-			const routeContext = { numNextCalls: 0 };
-			const next = () => { ++routeContext.numNextCalls; };
+			// Arrange + Act: call the sender and capture result or thrown error
+			let responseOrError;
+			try {
+				responseOrError = sender();
+			} catch (err) {
+				responseOrError = err;
+			}
 
-			routeContext.responses = [];
-			const res = { send: response => { routeContext.responses.push(response); } };
-
-			// Act: send the entity
-			sender(res, next);
-
-			// Assert: exactly one response was sent
-			expect(routeContext.numNextCalls).to.equal(1);
-			expect(routeContext.responses.length).to.equal(1);
-			assertResponse(routeContext.responses[0]);
+			// Assert: the response matches expectations
+			assertResponse(responseOrError);
 		};
 
 		describe('send array', () => {
 			const send = (object, id, type, assertResponse) => {
-				sendTest((res, next) => routeUtils.createSender(type).sendArray(id, res, next)(object), assertResponse);
+				sendTest(() => routeUtils.createSender(type).sendArray(id)(object), assertResponse);
 			};
 
 			it('forwards array when defined', () => {
@@ -515,7 +511,7 @@ describe('route utils', () => {
 
 		describe('send one', () => {
 			const send = (object, id, type, assertResponse) => {
-				sendTest((res, next) => routeUtils.createSender(type).sendOne(id, res, next)(object), assertResponse);
+				sendTest(() => routeUtils.createSender(type).sendOne(id)(object), assertResponse);
 			};
 
 			it('forwards object when defined', () => {
@@ -564,7 +560,7 @@ describe('route utils', () => {
 
 		describe('send page', () => {
 			const send = (object, type, assertResponse) => {
-				sendTest((res, next) => routeUtils.createSender(type).sendPage(res, next)(object), assertResponse);
+				sendTest(() => routeUtils.createSender(type).sendPage()(object), assertResponse);
 			};
 
 			it('forwards valid page object', () => {
@@ -767,7 +763,6 @@ describe('route utils', () => {
 		const highestHeight = 50;
 
 		const sendFake = sinon.fake();
-		const nextFake = sinon.fake();
 
 		const formatHashAsBinary = hash => test.factory.createBinary(Buffer.from(utils.hexToUint8(hash), 'hex'));
 		const formatBinaryAsHash = binary => utils.uint8ToHex(binary.buffer);
@@ -800,7 +795,6 @@ describe('route utils', () => {
 
 		beforeEach(() => {
 			sendFake.resetHistory();
-			nextFake.resetHistory();
 		});
 
 		it('returns a merkle path for valid height and hash', () => {
@@ -808,7 +802,7 @@ describe('route utils', () => {
 			const req = { params: { height: highestHeight.toString(), hash: formatBinaryAsHash(merkleTree[2]) } };
 
 			// Act:
-			return processorFunction(req, { send: sendFake }, nextFake).then(() => {
+			return processorFunction(req, { send: sendFake }).then(() => {
 				// Assert:
 				expect(sendFake.calledOnceWith(sinon.match({
 					payload: {
@@ -819,7 +813,6 @@ describe('route utils', () => {
 					},
 					type: 'merkleProofInfo'
 				}))).to.equal(true);
-				expect(nextFake.calledOnce).to.equal(true);
 			});
 		});
 
@@ -828,8 +821,10 @@ describe('route utils', () => {
 			const req = { params: { height: 'abc', hash: formatBinaryAsHash(merkleTree[2]) } };
 
 			// Act + Assert:
-			expect(processorFunction.bind(processorFunction, req, { send: sendFake }, nextFake))
-				.to.throw('height has an invalid format');
+			return processorFunction(req, { send: sendFake }).then(
+				() => { throw new Error('expected promise to be rejected'); },
+				err => { expect(err.message).to.contain('height has an invalid format'); }
+			);
 		});
 
 		it('throws error if hash has an invalid format', () => {
@@ -837,8 +832,10 @@ describe('route utils', () => {
 			const req = { params: { height: highestHeight.toString(), hash: 'AFE6C917' } };
 
 			// Act + Assert:
-			expect(processorFunction.bind(processorFunction, req, { send: sendFake }, nextFake))
-				.to.throw('hash has an invalid format');
+			return processorFunction(req, { send: sendFake }).then(
+				() => { throw new Error('expected promise to be rejected'); },
+				err => { expect(err.message).to.contain('hash has an invalid format'); }
+			);
 		});
 
 		it('returns resource not found error if there is no block at this height', () => {
@@ -848,13 +845,12 @@ describe('route utils', () => {
 			const req = { params: { height: queriedHeight.toString(), hash: queriedHash } };
 
 			// Act:
-			return processorFunction(req, { send: sendFake }, nextFake).then(() => {
+			return processorFunction(req, { send: sendFake }).catch(err => {
 				// Assert:
-				expect(sendFake.firstCall.args[0].body).to.deep.equal({
+				expect(err.body).to.deep.equal({
 					code: 'ResourceNotFound',
 					message: `no resource exists with id '${queriedHeight}'`
 				});
-				expect(nextFake.calledOnce).to.equal(true);
 			});
 		});
 
@@ -864,13 +860,12 @@ describe('route utils', () => {
 			blockInfoMockData.meta[blockMetaCountField] = 0;
 
 			// Act:
-			return processorFunction(req, { send: sendFake }, nextFake).then(() => {
+			return processorFunction(req, { send: sendFake }).catch(err => {
 				// Assert:
-				expect(sendFake.firstCall.args[0].body).to.deep.equal({
+				expect(err.body).to.deep.equal({
 					code: 'InvalidArgument',
 					message: `hash '${req.params.hash}' not included in block height '${highestHeight}'`
 				});
-				expect(nextFake.calledOnce).to.equal(true);
 				// restore data for following tests
 				blockInfoMockData.meta[blockMetaCountField] = 4;
 			});
@@ -886,13 +881,12 @@ describe('route utils', () => {
 			};
 
 			// Act:
-			return processorFunction(req, { send: sendFake }, nextFake).then(() => {
+			return processorFunction(req, { send: sendFake }).catch(err => {
 				// Assert:
-				expect(sendFake.firstCall.args[0].body).to.deep.equal({
+				expect(err.body).to.deep.equal({
 					code: 'InvalidArgument',
 					message: `hash '${req.params.hash}' not included in block height '${highestHeight}'`
 				});
-				expect(nextFake.calledOnce).to.equal(true);
 			});
 		});
 	});

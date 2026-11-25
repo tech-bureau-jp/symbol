@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Test stand-in for docker. Records every call in $DOCKER_LOG and keeps image state in $STUB_DIR:
+#   local  lines "<ref> <input-hash> <layers> <git-commit>"  images on this machine
+#   hub    lines "<ref> <input-hash> <layers> <git-commit>"  images on Docker Hub
+#          ("-" means no label / no layers; layers are comma separated, base first)
+#   run    lines "<pattern>\t<output>"  output printed by `docker run` when its arguments contain <pattern>
+# A build reading its Dockerfile from stdin ("-") inherits the layers of its FROM image and adds one layer.
+# STUB_FAIL_PUSH=1 makes push fail; STUB_FAIL_BUILD=<text> makes a build whose arguments contain <text> fail.
+set -euo pipefail
+
+echo "$*" >> "$DOCKER_LOG"
+touch "$STUB_DIR/local" "$STUB_DIR/hub" "$STUB_DIR/run"
+
+lookup() { # file ref -> prints "<input-hash> <layers> <git-commit>", fails if absent
+	awk -v ref="$2" '$1 == ref { print $2, $3, $4; found = 1 } END { exit !found }' "$STUB_DIR/$1"
+}
+
+add() { # file ref record
+	grep -v "^$2 " "$STUB_DIR/$1" > "$STUB_DIR/$1.tmp" || true
+	echo "$2 $3" >> "$STUB_DIR/$1.tmp"
+	mv "$STUB_DIR/$1.tmp" "$STUB_DIR/$1"
+}
+
+label_value() { # value -> what docker prints for a missing label
+	if [ "$1" = - ]; then echo '<no value>'; else echo "$1"; fi
+}
+
+# Record the tags, labels and layers of a build command, unless it is meant to fail.
+record_build() {
+	if [ -n "${STUB_FAIL_BUILD:-}" ] && [[ "$*" == *"$STUB_FAIL_BUILD"* ]]; then
+		echo "build failed" >&2
+		exit 1
+	fi
+	local hash=- commit=- tags=() previous="" parent_layers=- layers parent
+	for arg in "$@"; do
+		case "$previous" in
+			-t) tags+=("$arg") ;;
+			--label)
+				case "$arg" in
+					mijin.input-hash=*) hash=${arg#mijin.input-hash=} ;;
+					mijin.git-commit=*) commit=${arg#mijin.git-commit=} ;;
+				esac
+				;;
+		esac
+		previous=$arg
+	done
+	if [ "${*: -1}" = - ]; then
+		parent=$(sed -n 's/^FROM //p' | head -n 1)
+		parent_layers=$(lookup local "$parent" | cut -d' ' -f2) || parent_layers=-
+	fi
+	layers="L-${tags[0]}"
+	[ "$parent_layers" = - ] || layers="$parent_layers,$layers"
+	for tag in "${tags[@]}"; do add local "$tag" "$hash $layers $commit"; done
+}
+
+case "$1 ${2:-}" in
+	"image inspect")
+		ref=${*: -1}
+		record=$(lookup local "$ref") || { echo "No such image: $ref" >&2; exit 1; }
+		read -r hash layers commit <<< "$record"
+		case "$*" in
+			*mijin.input-hash*) label_value "$hash" ;;
+			*mijin.git-commit*) label_value "$commit" ;;
+			*RootFS.Layers*) [ "$layers" = - ] || tr ',' '\n' <<< "$layers" ;;
+			*Architecture*) echo "${STUB_IMAGE_ARCH:-$ARCH}" ;;
+		esac
+		;;
+	"buildx imagetools")
+		if [ "$3" = inspect ]; then
+			ref=${*: -1}
+			lookup hub "$ref" > /dev/null || { echo "not found: $ref" >&2; exit 1; }
+			case "$*" in
+				*Manifest.Digest*) echo "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef" ;;
+				*) printf 'Name: %s\nPlatform: linux/amd64\nPlatform: linux/arm64\n' "$ref" ;;
+			esac
+		else
+			shift 3
+			[ "$1" = -t ] && add hub "$2" "multi - -"
+		fi
+		;;
+	"buildx build") shift 2; record_build "$@" ;;
+	"build "*) shift; record_build "$@" ;;
+	"pull "*)
+		record=$(lookup hub "$2") || { echo "not found: $2" >&2; exit 1; }
+		add local "$2" "$record"
+		;;
+	"tag "*)
+		record=$(lookup local "$2") || exit 1
+		add local "$3" "$record"
+		;;
+	"push "*)
+		[ -z "${STUB_FAIL_PUSH:-}" ] || { echo "denied: requested access to the resource is denied" >&2; exit 1; }
+		record=$(lookup local "$2") || exit 1
+		add hub "$2" "$record"
+		echo "latest: digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef size: 1234"
+		;;
+	"run "*)
+		while IFS=$'\t' read -r pattern output; do
+			[ -n "$pattern" ] && [[ "$*" == *"$pattern"* ]] && printf '%b\n' "$output"
+		done < "$STUB_DIR/run"
+		;;
+esac
+exit 0

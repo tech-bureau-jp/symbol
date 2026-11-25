@@ -24,6 +24,7 @@
 #include "catapult/extensions/LocalNodeChainScore.h"
 #include "catapult/extensions/NemesisBlockLoader.h"
 #include "catapult/subscribers/StateChangeInfo.h"
+#include "tests/test/core/BlockStatementTestUtils.h"
 #include "tests/test/core/BlockTestUtils.h"
 #include "tests/test/core/ResolverTestUtils.h"
 #include "tests/test/core/mocks/MockMemoryBlockStorage.h"
@@ -36,6 +37,8 @@
 #include "tests/test/other/mocks/MockBlockHeightCapturingNotificationObserver.h"
 #include "tests/test/plugins/PluginManagerFactory.h"
 #include "tests/TestHarness.h"
+#include <map>
+#include <set>
 
 namespace catapult { namespace local {
 
@@ -163,14 +166,29 @@ namespace catapult { namespace local {
 				return m_statusHeights;
 			}
 
+			const auto& statusStatements() const {
+				return m_statusStatements;
+			}
+
+			const auto& savedStatements() const {
+				return m_savedStatements;
+			}
+
 		public:
-			void setStorageChainHeight(Height chainHeight) {
+			void setStorageChainHeight(Height chainHeight, const std::set<Height>& statementHeights = {}) {
 				auto storage = m_state.ref().Storage.modifier();
 
 				for (auto height = Height(2); height <= chainHeight; height = height + Height(1)) {
 					auto pBlock = test::GenerateBlockWithTransactions(0, height, Timestamp(height.unwrap() * 3000));
 					pBlock->Difficulty = Difficulty(Difficulty().unwrap() + height.unwrap());
-					storage.saveBlock(test::BlockToBlockElement(*pBlock));
+
+					auto blockElement = test::BlockToBlockElement(*pBlock);
+					if (statementHeights.cend() != statementHeights.find(height)) {
+						blockElement.OptionalStatement = test::GenerateRandomStatements({ 1, 2, 1 });
+						m_savedStatements.emplace(height, test::SerializeBlockStatement(*blockElement.OptionalStatement));
+					}
+
+					storage.saveBlock(blockElement);
 				}
 
 				storage.commit();
@@ -192,6 +210,10 @@ namespace catapult { namespace local {
 
 					m_statusScore = newComputedScore;
 					m_statusHeights.push_back(status.BlockElement.Block.Height);
+					if (status.BlockElement.OptionalStatement) {
+						auto serializedStatement = test::SerializeBlockStatement(*status.BlockElement.OptionalStatement);
+						m_statusStatements.emplace(status.BlockElement.Block.Height, serializedStatement);
+					}
 				});
 
 				// check score for consistency
@@ -207,6 +229,8 @@ namespace catapult { namespace local {
 
 			model::ChainScore m_statusScore;
 			std::vector<Height> m_statusHeights;
+			std::map<Height, std::vector<uint8_t>> m_statusStatements;
+			std::map<Height, std::vector<uint8_t>> m_savedStatements;
 		};
 
 		constexpr uint64_t CalculateExpectedScore(size_t height) {
@@ -285,6 +309,19 @@ namespace catapult { namespace local {
 		EXPECT_EQ(expectedHeights, context.observerBlockHeights());
 		EXPECT_EQ(expectedHeights, context.factoryHeights());
 		EXPECT_EQ(expectedHeights, context.statusHeights());
+	}
+
+	TEST(TEST_CLASS, LoadBlockchainAttachesStoredBlockStatementsToLoadedBlocks) {
+		// Arrange: create a storage with 7 blocks and statements at heights 3, 4 and 7
+		LoadBlockchainTestContext context;
+		context.setStorageChainHeight(Height(7), { Height(3), Height(4), Height(7) });
+
+		// Act:
+		context.load(Height(2));
+
+		// Assert: statements are attached to (only) the blocks that have them in storage
+		EXPECT_EQ(3u, context.savedStatements().size());
+		EXPECT_EQ(context.savedStatements(), context.statusStatements());
 	}
 
 	// endregion

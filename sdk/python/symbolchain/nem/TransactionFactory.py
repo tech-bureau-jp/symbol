@@ -33,10 +33,6 @@ class TransactionFactory:
 		if autosort:
 			transaction.sort()
 
-		# hack: explicitly translate transfer message
-		if nc.TransactionType.TRANSFER == transaction.type_ and transaction.message and isinstance(transaction.message.message, str):
-			transaction.message.message = transaction.message.message.encode('utf8')
-
 		return transaction
 
 	@staticmethod
@@ -66,9 +62,13 @@ class TransactionFactory:
 	def attach_signature(transaction, signature):
 		"""Attaches a signature to a transaction."""
 		transaction.signature = nc.Signature(signature.bytes)
+		return TransactionFactory.to_json(transaction)
 
+	@staticmethod
+	def to_json(transaction):
+		"""Generates a JSON representation of transaction that can be sent to a node."""
 		transaction_hex = hexlify(TransactionFactory.to_non_verifiable_transaction(transaction).serialize()).decode('utf8').upper()
-		signature_hex = str(signature)
+		signature_hex = str(transaction.signature)
 		json_payload = f'{{"data":"{transaction_hex}", "signature":"{signature_hex}"}}'
 		return json_payload
 

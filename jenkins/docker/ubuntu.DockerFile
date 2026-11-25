@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 CMD ["/bin/bash"]
 ENV DEBIAN_FRONTEND=noninteractive
@@ -18,7 +18,7 @@ RUN  apt-get install -y bison gdb git \
 RUN  pip3 install --break-system-packages -U colorama cryptography \
     gitpython pycodestyle pylint pylint-quotes PyYAML
 
-RUN git clone https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git linux.git && \
+RUN git clone --depth 1 --branch v7.3 https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git linux.git && \
     cd linux.git/tools/perf && \
     make && \
     cp perf /usr/bin && \
